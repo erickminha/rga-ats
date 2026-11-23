@@ -1,3 +1,4 @@
+import { appLocale, appName } from '@/lib/i18n';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, MapPin } from 'lucide-react';
@@ -21,7 +22,7 @@ const COMMITMENT_LABELS: Record<string, string> = {
 
 function formatSalary(min: number | null, max: number | null, currency: string | null): string | null {
   if (!min && !max) return null;
-  const fmt = (n: number) => n.toLocaleString();
+  const fmt = (n: number) => n.toLocaleString(appLocale);
   const cur = currency ?? '';
   if (min && max) return `${cur} ${fmt(min)} – ${fmt(max)}`.trim();
   return `${cur} ${fmt(min ?? max ?? 0)}`.trim();
@@ -114,7 +115,7 @@ export default async function PostingPage({
             <div className="py-2">
               <h2 className="text-xl font-medium">This is a sample job board</h2>
               <p className="mt-2 max-w-md text-sm text-ink-2">
-                Applying is off here. It shows what candidates see on a careers page run by Source ATS.
+                Candidaturas estão desativadas nesta demonstração da página de carreiras do {appName}.
               </p>
               <Link href="/" className={buttonClass({ variant: 'primary', size: 'lg', className: 'mt-6' })}>
                 Get your own careers page

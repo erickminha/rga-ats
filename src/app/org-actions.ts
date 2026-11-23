@@ -1,5 +1,6 @@
 'use server';
 
+import { groups, logo } from '@/lib/i18n/pt-BR/organization';
 import { revalidatePath } from 'next/cache';
 import { storeFile } from '@/server/storage';
 import { redirect } from 'next/navigation';
@@ -90,7 +91,7 @@ function groupKind(kind: unknown): GroupKind {
 export async function addGroupsAction(kind: GroupKind, names: string[]): Promise<GroupsResult> {
   const ctx = await requireAdmin();
   const clean = cleanNames(Array.isArray(names) ? names.map(String) : []);
-  if (!clean.length) return { error: 'Type a name first.' };
+  if (!clean.length) return { error: groups.missingName };
   const result = await addGroups(ctx, groupKind(kind), clean);
   refresh();
   return result;
@@ -100,17 +101,17 @@ export async function addGroupsAction(kind: GroupKind, names: string[]): Promise
 export async function importGroupsAction(kind: GroupKind, formData: FormData): Promise<GroupsResult> {
   const ctx = await requireAdmin();
   const file = formData.get('file');
-  if (!(file instanceof File) || !file.size) return { error: 'Choose a file to upload.' };
-  if (file.size > MAX_SHEET_BYTES) return { error: 'That file is over 5 MB.' };
+  if (!(file instanceof File) || !file.size) return { error: groups.missingFile };
+  if (file.size > MAX_SHEET_BYTES) return { error: groups.fileTooLarge };
   let rows: string[][] | null = null;
   try {
     rows = readSpreadsheet(new Uint8Array(await file.arrayBuffer()));
   } catch {
     // A damaged or password-protected workbook reads as unreadable.
   }
-  if (!rows) return { error: 'That file couldn’t be read. Upload a .csv or an Excel (.xlsx) file.' };
+  if (!rows) return { error: groups.unreadableFile };
   const names = namesFromRows(rows);
-  if (!names.length) return { error: 'No names found. Put them in the first column, or under a “Company” heading.' };
+  if (!names.length) return { error: groups.missingNames };
   const result = await addGroups(ctx, groupKind(kind), names);
   refresh();
   return result;
@@ -133,12 +134,12 @@ export async function removeGroupAction(kind: 'department' | 'client', id: strin
 export async function createStageAction(name: string, type: string): Promise<{ error?: string }> {
   const ctx = await requireAdmin();
   const trimmed = String(name ?? '').trim();
-  if (!trimmed) return { error: 'Type a name for the stage.' };
-  if (!STAGE_TYPES.includes(type as never)) return { error: 'Pick what the stage counts as.' };
+  if (!trimmed) return { error: 'Digite um nome para a etapa.' };
+  if (!STAGE_TYPES.includes(type as never)) return { error: 'Escolha o tipo de etapa.' };
   try {
     await createStage(ctx, trimmed, type as StageType);
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Could not add the stage' };
+    return { error: error instanceof Error ? error.message : 'Não foi possível adicionar a etapa.' };
   }
   refresh();
   return {};
@@ -147,11 +148,11 @@ export async function createStageAction(name: string, type: string): Promise<{ e
 export async function renameStageAction(stageId: string, name: string): Promise<{ error?: string }> {
   const ctx = await requireAdmin();
   const trimmed = String(name ?? '').trim();
-  if (!trimmed) return { error: 'A stage needs a name.' };
+  if (!trimmed) return { error: 'Informe o nome da etapa.' };
   try {
     await renameStage(ctx, stageId, trimmed);
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Could not rename the stage' };
+    return { error: error instanceof Error ? error.message : 'Não foi possível renomear a etapa.' };
   }
   refresh();
   return {};
@@ -163,7 +164,7 @@ export async function reorderStagesAction(ids: string[]): Promise<{ error?: stri
   try {
     await setStageOrder(ctx, Array.isArray(ids) ? ids.map(String) : []);
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Could not reorder the stages' };
+    return { error: error instanceof Error ? error.message : 'Não foi possível reordenar as etapas.' };
   }
   refresh();
   return {};
@@ -181,16 +182,16 @@ export async function createCustomFieldAction(
   if (ctx.accessRole !== 'SUPER_ADMIN' && ctx.accessRole !== 'ADMIN')
     return { error: 'Admins only.' };
   const clean = label.trim();
-  if (!clean) return { error: 'Label is required.' };
-  if (!FIELD_TYPES.includes(type as never)) return { error: 'Invalid type.' };
+  if (!clean) return { error: 'Informe o nome do campo.' };
+  if (!FIELD_TYPES.includes(type as never)) return { error: 'Tipo inválido.' };
   const key = clean.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
-  if (!key) return { error: 'Label must contain letters or numbers.' };
+  if (!key) return { error: 'Inclua letras ou números no nome do campo.' };
   const options =
     type === 'SELECT'
       ? optionsRaw.split(',').map((o) => o.trim()).filter(Boolean).slice(0, 20)
       : [];
   if (type === 'SELECT' && options.length < 2)
-    return { error: 'Dropdowns need at least two options.' };
+    return { error: 'A lista precisa de pelo menos duas opções.' };
   try {
     await db.customFieldDef.create({
       data: {
@@ -202,7 +203,7 @@ export async function createCustomFieldAction(
       },
     });
   } catch {
-    return { error: 'A field with this name already exists.' };
+    return { error: 'Já existe um campo com esse nome.' };
   }
   revalidatePath('/settings');
   return {};
@@ -231,7 +232,7 @@ export async function inviteUserAction(
   role: string,
 ): Promise<{ tempPassword?: string; error?: string }> {
   const ctx = await requireSession();
-  if (!ROLE_VALUES.includes(role as never)) return { error: 'Invalid role' };
+  if (!ROLE_VALUES.includes(role as never)) return { error: 'Perfil de acesso inválido.' };
   try {
     const { tempPassword } = await inviteUser(ctx, {
       name,
@@ -375,7 +376,7 @@ export async function deleteStageAction(stageId: string): Promise<{ error?: stri
   try {
     await deleteStage(ctx, stageId);
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Could not delete stage' };
+    return { error: error instanceof Error ? error.message : 'Não foi possível excluir a etapa.' };
   }
   refresh();
   return {};
@@ -385,8 +386,8 @@ const LOGO_MIMES = new Set(['image/png', 'image/jpeg', 'image/svg+xml', 'image/w
 const LOGO_MAX_BYTES = 1_000_000;
 
 async function storeLogo(orgId: string, file: File) {
-  if (!LOGO_MIMES.has(file.type)) throw new Error('Logo must be a PNG, JPEG, SVG, or WebP.');
-  if (file.size > LOGO_MAX_BYTES) throw new Error('Logo must be under 1 MB.');
+  if (!LOGO_MIMES.has(file.type)) throw new Error(logo.invalidType);
+  if (file.size > LOGO_MAX_BYTES) throw new Error(logo.fileTooLarge);
   return storeFile({
     orgId,
     filename: file.name || 'logo',

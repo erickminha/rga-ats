@@ -1,3 +1,4 @@
+import { appLocale } from '@/lib/i18n';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import type { loadDashboardPage } from '@/app/(app)/page-loaders';
@@ -12,7 +13,7 @@ import { Bot } from '@/components/ui/bot';
 export function DashboardScreen({ data }: { data: Awaited<ReturnType<typeof loadDashboardPage>> }) {
   const now = new Date();
   const { upcomingCount, contactCount } = data;
-  const count = (n: number) => n.toLocaleString('en-US');
+  const count = (n: number) => n.toLocaleString(appLocale);
 
   const steps = [
     {

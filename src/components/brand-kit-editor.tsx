@@ -49,7 +49,7 @@ export function BrandKitEditor({ initial, logoFileId, orgName }: { initial: Bran
   return (
     <div className={cn('flex flex-col gap-6', ALL_BRAND_FONT_CLASSES)}>
       <div>
-        <p className={`${sectionLabel} mb-2`}>Font</p>
+        <p className={`${sectionLabel} mb-2`}>Fonte</p>
         <div className="flex flex-wrap gap-2">
           {BRAND_FONTS.map((f) => (
             <Chip key={f.id} selected={(brand.font ?? 'geist') === f.id} onClick={() => set({ font: f.id })}>
@@ -60,7 +60,7 @@ export function BrandKitEditor({ initial, logoFileId, orgName }: { initial: Bran
       </div>
 
       <div>
-        <p className={`${sectionLabel} mb-2`}>Text size</p>
+        <p className={`${sectionLabel} mb-2`}>Tamanho do texto</p>
         <Segmented<TextSizeId>
           size="sm"
           value={brand.textSize}
@@ -71,15 +71,15 @@ export function BrandKitEditor({ initial, logoFileId, orgName }: { initial: Bran
 
       <div className="flex flex-wrap gap-x-10 gap-y-6">
         <ColorField
-          label="Brand color"
-          hint="Buttons and highlights"
+          label="Cor da marca"
+          hint="Botões e destaques"
           value={brand.color}
           fallback="#0a0a0a"
           onChange={(color) => set({ color })}
         />
         <ColorField
-          label="Background"
-          hint="Text and cards follow it"
+          label="Fundo"
+          hint="Define as cores do texto e dos cartões"
           value={brand.background}
           fallback="#f5f4f2"
           onChange={(background) => set({ background })}
@@ -89,7 +89,7 @@ export function BrandKitEditor({ initial, logoFileId, orgName }: { initial: Bran
 
       {/* The preview: the careers layout's own variables, on a small board */}
       <div>
-        <p className={`${sectionLabel} mb-2`}>Preview</p>
+        <p className={`${sectionLabel} mb-2`}>Prévia</p>
         <div
           className={cn('rounded-card bg-canvas p-6 font-sans text-ink shadow-[inset_0_0_0_1px_var(--color-line)]', face.className)}
           style={brandVars(brand, face.cssVar) as React.CSSProperties}
@@ -103,19 +103,19 @@ export function BrandKitEditor({ initial, logoFileId, orgName }: { initial: Bran
               <span className="text-md font-medium">{orgName}</span>
             </div>
           )}
-          <p className="mt-6 text-2xl">Open positions</p>
+          <p className="mt-6 text-2xl">Vagas abertas</p>
           <div className="mt-4 rounded-card bg-surface p-4">
-            <p className="text-md font-medium">Senior Product Designer</p>
+            <p className="text-md font-medium">Designer de Produto Sênior</p>
             <p className="mt-1 flex items-center gap-3 text-sm text-ink-2">
               <span className="flex items-center gap-1">
-                <MapPin size={13} /> New York, NY
+                <MapPin size={13} /> São Paulo, SP
               </span>
-              <span>Hybrid</span>
-              <span>Full-time</span>
+              <span>Híbrido</span>
+              <span>Tempo integral</span>
             </p>
             <div className="mt-4 flex gap-2">
-              <span className={buttonClass({ variant: 'primary', size: 'sm' })}>Apply for this role</span>
-              <span className={buttonClass({ variant: 'tonal', size: 'sm' })}>Share</span>
+              <span className={buttonClass({ variant: 'primary', size: 'sm' })}>Candidatar-se</span>
+              <span className={buttonClass({ variant: 'tonal', size: 'sm' })}>Compartilhar</span>
             </div>
           </div>
         </div>
@@ -123,14 +123,14 @@ export function BrandKitEditor({ initial, logoFileId, orgName }: { initial: Bran
 
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" disabled={!changed || pending} onClick={save} className={buttonClass({ variant: 'primary' })}>
-          {pending ? 'Saving…' : 'Save brand'}
+          {pending ? 'Salvando…' : 'Salvar identidade visual'}
         </button>
         {!isDefaultBrand(brand) ? (
           <button type="button" disabled={pending} onClick={() => set(EMPTY_BRAND)} className={buttonClass({ variant: 'ghost' })}>
-            Use Source’s look
+            Restaurar visual padrão
           </button>
         ) : null}
-        {justSaved && !changed ? <span className="text-sm text-ink-2">Saved</span> : null}
+        {justSaved && !changed ? <span className="text-sm text-ink-2">Salvo</span> : null}
       </div>
     </div>
   );
@@ -159,16 +159,16 @@ function ColorField({
       <div className="flex items-center gap-2">
         <input
           type="color"
-          aria-label={`${label}: pick`}
+          aria-label={`Selecionar cor de ${label}`}
           value={value ?? fallback}
           onChange={(e) => onChange(e.target.value)}
           className="size-9 cursor-pointer rounded-field border-0 bg-recessed p-1"
         />
         <input
           {...noAutofill}
-          aria-label={`${label}: hex`}
+          aria-label={`Código hexadecimal de ${label}`}
           value={shown}
-          placeholder="Default"
+          placeholder="Padrão"
           onChange={(e) => {
             const v = e.target.value.trim();
             setDraft(v);
@@ -180,7 +180,7 @@ function ColorField({
         />
         {value ? (
           <button type="button" onClick={() => onChange(null)} className={buttonClass({ variant: 'ghost', size: 'sm' })}>
-            Default
+            Padrão
           </button>
         ) : null}
       </div>

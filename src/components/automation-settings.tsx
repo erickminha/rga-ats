@@ -20,8 +20,8 @@ export function AutomationSettings({
       name={name}
       defaultValue={current ?? ''}
       options={[
-        { value: '', label: 'Off' },
-        ...templates.map((t) => ({ value: t.id, label: `Send “${t.name}”` })),
+        { value: '', label: 'Desativado' },
+        ...templates.map((t) => ({ value: t.id, label: `Enviar “${t.name}”` })),
       ]}
     />
   );
@@ -29,16 +29,16 @@ export function AutomationSettings({
   return (
     <form action={saveAutomationAction} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="When an application arrives">
+        <Field label="Ao receber uma candidatura">
           {templateSelect('autoConfirmTemplateId', settings.autoConfirmTemplateId)}
         </Field>
-        <Field label="When an interview is scheduled">
+        <Field label="Ao agendar uma entrevista">
           {templateSelect('autoInterviewTemplateId', settings.autoInterviewTemplateId)}
         </Field>
-        <Field label="When a candidate is archived as a rejection">
+        <Field label="Ao arquivar uma candidatura por reprovação">
           {templateSelect('autoRejectTemplateId', settings.autoRejectTemplateId)}
         </Field>
-        <Field label="Rejection delay (hours)">
+        <Field label="Prazo para enviar a devolutiva (horas)">
           <input {...noAutofill}
             name="autoRejectDelayHours"
             type="number"
@@ -49,12 +49,11 @@ export function AutomationSettings({
         </Field>
       </div>
       <p className="text-xs text-ink-2">
-        The rejection delay gives you a window to unarchive before the email goes out — scheduled
-        sends appear on the candidate profile and can be canceled.
+        Durante esse prazo, você pode desarquivar a candidatura antes do envio. Os e-mails agendados aparecem no perfil do candidato e podem ser cancelados.
       </p>
       <div className="flex justify-end">
         <button type="submit" className={btnPrimary}>
-          Save automation
+          Salvar automação
         </button>
       </div>
     </form>

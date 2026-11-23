@@ -15,7 +15,7 @@ export function EeoToggle({ enabled }: { enabled: boolean }) {
       <Switch
         checked={enabled}
         disabled={pending}
-        label="Collect EEO self-identification"
+        label="Coletar autodeclaração para EEO"
         onChange={(next) =>
           startTransition(async () => {
             await setCollectEeoAction(next);
@@ -24,7 +24,7 @@ export function EeoToggle({ enabled }: { enabled: boolean }) {
         }
       />
       <span className="text-xs text-ink-2">
-        <TextSwap>{pending ? 'Saving…' : enabled ? 'Collecting' : 'Off'}</TextSwap>
+        <TextSwap>{pending ? 'Salvando…' : enabled ? 'Coleta ativa' : 'Desativado'}</TextSwap>
       </span>
     </div>
   );

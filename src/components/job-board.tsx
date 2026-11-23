@@ -1,5 +1,6 @@
 'use client';
 
+import { organization } from '@/lib/i18n/pt-BR/organization';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MapPin, Search } from 'lucide-react';
@@ -58,9 +59,8 @@ export function JobBoard({
   }, [shown]);
 
   const active = Object.values(filters).some((v) => v.trim());
-  const plural = groupLabel === 'Client' ? 'clients' : 'teams';
   const facets: [BoardFacet, string, string][] = [
-    ['group', groupLabel, `All ${plural}`],
+    ['group', groupLabel, groupKey === 'client' ? organization.client.all : 'Todas as equipes'],
     ['location', 'Location', 'All locations'],
     ['workplace', 'Workplace', 'Any workplace'],
     ['type', 'Type', 'Any type'],
@@ -129,7 +129,7 @@ export function JobBoard({
         <div className="mt-4 flex flex-col gap-8">
           {groups.map(([group, roles]) => (
             <section key={group}>
-              <h2 className={`mb-3 ${sectionLabel}`}>{group}</h2>
+              <h2 className={`mb-3 ${sectionLabel}`}>{roles[0].groupLabel ?? group}</h2>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3">
                 {roles.map((p) => (
                   <Link key={p.id} href={`/careers/${orgSlug}/${p.slug}`} className={`flex flex-col p-4 ${surfaceHover}`}>

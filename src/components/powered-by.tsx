@@ -1,21 +1,10 @@
+import { appName } from '@/lib/i18n';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
-/**
- * The Source logo: the orb-and-wordmark lockup from public/brand, at 32px
- * tall (its minimum, and a whole multiple of the orb's dither grid), in the
- * light or dark file to match the theme. Never a text stand-in: "SRC" is
- * only for favicons (public/brand/README.md).
- */
+/** App wordmark shared by authentication, navigation and public pages. */
 export function SourceLockup({ href, className }: { href?: string; className?: string }) {
-  const art = (
-    <>
-      {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG, drawn cell for cell */}
-      <img src="/brand/source-lockup-light.svg" alt="Source" width={105} height={32} className="h-8 w-auto dark:hidden" />
-      {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG, drawn cell for cell */}
-      <img src="/brand/source-lockup-dark.svg" alt="Source" width={105} height={32} className="hidden h-8 w-auto dark:block" />
-    </>
-  );
+  const art = <span className="flex h-8 items-center text-lg font-bold tracking-tight text-ink">{appName}</span>;
   return href ? (
     <Link href={href} className={cn('inline-flex shrink-0', className)}>
       {art}
@@ -38,7 +27,7 @@ export function PoweredBySource({ className }: { className?: string }) {
       rel="noopener"
       className={cn('inline-flex items-center gap-2.5 text-xs text-ink-2 transition-colors hover:text-ink', className)}
     >
-      Powered by
+      Plataforma
       <SourceLockup />
     </a>
   );

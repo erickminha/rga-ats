@@ -72,7 +72,7 @@ export function AuthForm({
         disabled={pending}
         className={buttonClass({ variant: 'primary', size: 'lg', className: 'mt-2 w-full' })}
       >
-        <TextSwap>{pending ? 'Working…' : submitLabel}</TextSwap>
+        <TextSwap>{pending ? 'Processando…' : submitLabel}</TextSwap>
       </button>
     </form>
   );

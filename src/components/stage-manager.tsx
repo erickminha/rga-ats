@@ -53,7 +53,7 @@ export function StageManager({ stages }: { stages: Stage[] }) {
     [next[from], next[to]] = [next[to], next[from]];
     const all = withGroup(group, next);
     setItems(all);
-    setAnnouncement(`${next[to].name} moved to position ${to + 1} of ${list.length}`);
+    setAnnouncement(`${next[to].name} está na posição ${to + 1} de ${list.length}`);
     save(all);
   }
 
@@ -85,7 +85,7 @@ export function StageManager({ stages }: { stages: Stage[] }) {
                     onMove={(by) => move(group.id, stage.id, by)}
                     onError={setError}
                     onDelete={() => {
-                      if (!confirm(`Delete the "${stage.name}" stage?`)) return;
+                      if (!confirm(`Excluir a etapa “${stage.name}”?`)) return;
                       startTransition(async () => {
                         const result = await deleteStageAction(stage.id);
                         setError(result?.error ?? null);
@@ -95,7 +95,7 @@ export function StageManager({ stages }: { stages: Stage[] }) {
                 ))}
               </Reorder.Group>
             ) : (
-              <p className="text-xs text-ink-3">No {group.title.toLowerCase()} stages yet.</p>
+              <p className="text-xs text-ink-3">Nenhuma etapa neste grupo.</p>
             )}
             <AddStage group={group.id} onError={setError} />
           </section>
@@ -137,13 +137,13 @@ function StageRow({
       dragControls={controls}
       onDragEnd={onDrop}
       className="flex items-center gap-2 rounded-field bg-surface"
-      title={showType ? `Counts as ${typeLabel(stage.type)}` : undefined}
+      title={showType ? `Tipo de etapa ${typeLabel(stage.type)}` : undefined}
       whileDrag={{ scale: 1.01, boxShadow: 'var(--shadow-float)' }}
     >
       <button
         type="button"
-        aria-label={`Move ${stage.name}, position ${position}. Drag, or use the up and down arrow keys.`}
-        title="Drag to reorder"
+        aria-label={`Mover ${stage.name}, posição ${position}. Arraste ou use as setas para cima e para baixo.`}
+        title="Arraste para reordenar"
         onPointerDown={(e) => {
           e.preventDefault();
           controls.start(e);
@@ -161,12 +161,12 @@ function StageRow({
         {/* Only when the name doesn't already say it: "Phone screen · Screen" is noise,
             "Present candidate to client · Interview" isn't. */}
         {showType && guessInterviewType(stage.name) !== stage.type ? (
-          <span className="hidden shrink-0 text-xs text-ink-2 sm:block">Counts as {typeLabel(stage.type)}</span>
+          <span className="hidden shrink-0 text-xs text-ink-2 sm:block">Tipo de etapa {typeLabel(stage.type)}</span>
         ) : null}
         <button
           type="button"
-          title="Delete stage"
-          aria-label={`Delete ${stage.name}`}
+          title="Excluir etapa"
+          aria-label={`Excluir ${stage.name}`}
           disabled={pending}
           onClick={onDelete}
           className="mr-1 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-3 transition-colors duration-[120ms] hover:bg-muted hover:text-ink disabled:opacity-40"
@@ -240,11 +240,11 @@ function StageName({
           }
         }}
         className={fieldBareInput}
-        aria-label={`${stage.name} stage name`}
+        aria-label={`Nome da etapa ${stage.name}`}
         aria-invalid={typeof state === 'object' || undefined}
       />
       <span role="status" className="shrink-0 text-xs text-ink-3 empty:hidden">
-        {state === 'saving' ? 'Saving…' : state === 'saved' ? 'Saved' : null}
+        {state === 'saving' ? 'Salvando…' : state === 'saved' ? 'Salvo' : null}
       </span>
       {children}
     </div>
@@ -252,9 +252,9 @@ function StageName({
 }
 
 const PLACEHOLDER: Record<StageGroup, string> = {
-  lead: 'New lead stage…',
-  applicant: 'New applicant stage…',
-  interview: 'New interview stage…',
+  lead: 'Nova etapa de prospecção…',
+  applicant: 'Nova etapa de candidatura…',
+  interview: 'Nova etapa de entrevista…',
 };
 
 function AddStage({ group, onError }: { group: StageGroup; onError: (error: string | null) => void }) {
@@ -294,7 +294,7 @@ function AddStage({ group, onError }: { group: StageGroup; onError: (error: stri
       />
       {fixedType ? null : (
         <label className="flex shrink-0 items-center gap-2 text-xs text-ink-2">
-          Counts as
+          Tipo de etapa
           <FormSelect
             value={type}
             onChange={(v) => {
@@ -307,7 +307,7 @@ function AddStage({ group, onError }: { group: StageGroup; onError: (error: stri
         </label>
       )}
       <button type="submit" disabled={pending || !name.trim()} className={btnTonal}>
-        <Plus /> Add
+        <Plus /> Adicionar
       </button>
     </form>
   );

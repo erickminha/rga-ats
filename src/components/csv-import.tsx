@@ -1,5 +1,6 @@
 'use client';
 
+import { appLocale } from '@/lib/i18n';
 import { useRef, useState, useTransition } from 'react';
 import { Upload } from 'lucide-react';
 import { importContactRowsAction } from '@/app/(app)/actions';
@@ -25,7 +26,7 @@ export function CsvImport() {
       setErrors([]);
       const rows = parseCsv(csv);
       if (rows.length < 2) {
-        setErrors(['No data rows found.']);
+        setErrors(['Nenhuma linha de dados encontrada.']);
         return;
       }
       const [header, ...data] = rows;
@@ -35,7 +36,7 @@ export function CsvImport() {
       try {
         for (let i = 0; i < data.length; i += BATCH_ROWS) {
           setProgress(
-            `Importing ${Math.min(i + BATCH_ROWS, data.length).toLocaleString()} of ${data.length.toLocaleString()}…`,
+            `Importando ${Math.min(i + BATCH_ROWS, data.length).toLocaleString(appLocale)} de ${data.length.toLocaleString(appLocale)}…`,
           );
           const last = i + BATCH_ROWS >= data.length;
           const r = await importContactRowsAction(header, data.slice(i, i + BATCH_ROWS), i + 2, last);
@@ -45,11 +46,11 @@ export function CsvImport() {
           if (r.errors[0]?.startsWith('Missing required')) break;
         }
       } catch {
-        errs.unshift('Import stopped partway — rows before this point were saved. Retry to continue; existing emails are skipped.');
+        errs.unshift('A importação foi interrompida. As linhas anteriores foram salvas. Tente novamente para continuar. Os e-mails já cadastrados serão ignorados.');
       } finally {
         setProgress(null);
       }
-      setSummary(`${created} contact(s) created, ${skipped} skipped (email already exists).`);
+      setSummary(`${created} ${created === 1 ? "contato criado" : "contatos criados"} e ${skipped} ${skipped === 1 ? "linha ignorada" : "linhas ignoradas"} por e-mail já cadastrado.`);
       setErrors(errs.slice(0, 5));
     });
 
@@ -75,7 +76,7 @@ export function CsvImport() {
           disabled={pending}
           className={btnGhost}
         >
-          <Upload /> <TextSwap>{pending ? (progress ?? 'Importing…') : 'Import CSV'}</TextSwap>
+          <Upload /> <TextSwap>{pending ? (progress ?? 'Importando…') : 'Importar CSV'}</TextSwap>
         </button>
       </div>
       {summary ? <p className="text-sm text-positive">{summary}</p> : null}

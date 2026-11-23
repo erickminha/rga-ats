@@ -1,5 +1,6 @@
 'use client';
 
+import { appLocale } from '@/lib/i18n';
 import Link from 'next/link';
 import {
   memo,
@@ -43,7 +44,7 @@ const ENDPOINT = '/api/lists/contacts';
 const ROW_H = 52;
 const HEAD_H = 44;
 const EMPTY = new Set<string>();
-const fmt = (n: number) => n.toLocaleString('en-US');
+const fmt = (n: number) => n.toLocaleString(appLocale);
 
 /**
  * Contacts table with selection + pool bulk actions. Filtering happens

@@ -30,9 +30,9 @@ describe('colors', () => {
   });
 
   it('warns only when buttons would nearly vanish into the page', () => {
-    expect(brandColorWarning({ ...EMPTY_BRAND, color: '#f2f1ef' })).toMatch(/hard to see/);
+    expect(brandColorWarning({ ...EMPTY_BRAND, color: '#f2f1ef' })).toMatch(/contraste/);
     expect(brandColorWarning({ ...EMPTY_BRAND, color: '#1d4ed8' })).toBeNull();
-    expect(brandColorWarning({ ...EMPTY_BRAND, color: '#1d4ed8', background: '#1e40af' })).toMatch(/hard to see/);
+    expect(brandColorWarning({ ...EMPTY_BRAND, color: '#1d4ed8', background: '#1e40af' })).toMatch(/contraste/);
   });
 });
 

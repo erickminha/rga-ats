@@ -1,5 +1,7 @@
 'use client';
 
+import { organization } from '@/lib/i18n/pt-BR/organization';
+import { appLocale } from '@/lib/i18n';
 import Link from 'next/link';
 import {
   memo,
@@ -68,7 +70,7 @@ const AFTER_CLEAR_MS = 3_000;
 /** A tile that counts no candidates: its first page is known without asking. */
 const EMPTY_PAGE: ListPage<ListRow> = { rows: [], endCursor: null, hasMore: false };
 
-const fmt = (n: number) => n.toLocaleString('en-US');
+const fmt = (n: number) => n.toLocaleString(appLocale);
 const EMPTY = new Set<string>();
 
 /** "Senior Designer at Northbeam" → { role: 'Senior Designer', org: 'Northbeam' } */
@@ -436,8 +438,8 @@ export function PipelineList({
   const inputQ = (nav.input.q ?? '').trim();
   if (inputQ) filters.push({ key: 'q', label: 'Search', value: `“${inputQ}”`, clear: { q: '' } });
   if (nav.input.client) {
-    const name = clients.find((c) => c.id === nav.input.client)?.name ?? 'Client';
-    filters.push({ key: 'client', label: 'Client', value: name, clear: { client: '', posting: '' } });
+    const name = clients.find((c) => c.id === nav.input.client)?.name ?? organization.client.singular;
+    filters.push({ key: 'client', label: organization.client.singular, value: name, clear: { client: '', posting: '' } });
   }
   if (nav.input.posting) {
     filters.push({ key: 'posting', label: 'Role', value: postingTitle(nav.input.posting), clear: { posting: '', stage: '' } });

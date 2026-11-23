@@ -10,7 +10,7 @@ import {
   workspaceOptions,
 } from '@/server/google-auth';
 
-export const metadata = { title: 'Choose a workspace · Source' };
+export const metadata = { title: 'Choose a workspace' };
 
 export const dynamic = 'force-dynamic';
 

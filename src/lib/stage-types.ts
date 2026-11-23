@@ -14,9 +14,9 @@ import type { StageType } from '@prisma/client';
 export type StageGroup = 'lead' | 'applicant' | 'interview';
 
 export const STAGE_GROUPS: { id: StageGroup; title: string; description: string }[] = [
-  { id: 'lead', title: 'Leads', description: 'People your team sources and reaches out to.' },
-  { id: 'applicant', title: 'Applicants', description: 'People who apply on your careers page or are referred in.' },
-  { id: 'interview', title: 'Interview', description: 'Everything from the first screen to the hire. Make it match how you interview.' },
+  { id: 'lead', title: 'Prospecção', description: 'Pessoas que a equipe identifica e aborda.' },
+  { id: 'applicant', title: 'Candidaturas', description: 'Pessoas que se candidatam pela página de carreiras ou são indicadas.' },
+  { id: 'interview', title: 'Entrevistas', description: 'Da primeira triagem até a contratação. Ajuste as etapas ao seu processo seletivo.' },
 ];
 
 export function stageGroup(type: StageType): StageGroup {
@@ -28,10 +28,10 @@ export const GROUP_RANK: Record<StageGroup, number> = { lead: 0, applicant: 1, i
 
 /** What a stage in the Interview group can count as. */
 export const INTERVIEW_TYPES: { value: StageType; label: string }[] = [
-  { value: 'SCREEN', label: 'Screen' },
-  { value: 'ONSITE', label: 'Interview' },
-  { value: 'OFFER', label: 'Offer' },
-  { value: 'HIRED', label: 'Hired' },
+  { value: 'SCREEN', label: 'Triagem' },
+  { value: 'ONSITE', label: 'Entrevista' },
+  { value: 'OFFER', label: 'Proposta' },
+  { value: 'HIRED', label: 'Contratação' },
 ];
 
 export const TYPE_RANK: Record<StageType, number> = {

@@ -1,3 +1,4 @@
+import { appLocale } from '@/lib/i18n';
 import { notFound } from 'next/navigation';
 import { PoweredBySource } from '@/components/powered-by';
 import { db } from '@/lib/db';
@@ -69,21 +70,21 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   const stageMax = Math.max(...byStage.map((s) => s.count), 1);
 
   const stats = [
-    { label: 'Candidates', value: opportunities.length },
-    { label: 'In process', value: active.length },
-    { label: 'Interviews completed', value: interviewsDone },
-    { label: 'Hired', value: hired.length },
+    { label: 'Candidatos', value: opportunities.length },
+    { label: 'Em processo', value: active.length },
+    { label: 'Entrevistas concluídas', value: interviewsDone },
+    { label: 'Contratados', value: hired.length },
   ];
 
   const daysIn = (d: Date) => Math.max(0, Math.floor((Date.now() - d.getTime()) / 86_400_000));
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
-      <p className={sectionLabel}>{org.name} · Hiring update</p>
+      <p className={sectionLabel}>{org.name} · Acompanhamento de vagas</p>
       <h1 className="mt-2 text-3xl">{clientName ?? postings[0].title}</h1>
       <p className="mt-2 text-sm text-ink-2">
-        {postings.length > 1 ? `${postings.length} open roles · ` : ''}
-        Prepared {new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+        {postings.length > 1 ? `${postings.length} vagas abertas · ` : ''}
+        Atualizado em {new Date().toLocaleDateString(appLocale, { month: 'long', day: 'numeric', year: 'numeric' })}
       </p>
 
       <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -97,7 +98,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
       {byStage.length ? (
         <section className="mt-8 rounded-card bg-surface p-5">
-          <h2 className={`mb-4 ${sectionLabel}`}>Active pipeline</h2>
+          <h2 className={`mb-4 ${sectionLabel}`}>Funil ativo</h2>
           <div className="flex flex-col gap-3">
             {byStage.map((s) => (
               <div key={s.name} className="grid grid-cols-[140px_1fr_32px] items-center gap-3">
@@ -114,7 +115,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left">
-              {['Candidate', ...(postings.length > 1 ? ['Role'] : []), 'Stage', 'Days in process'].map((h) => (
+              {['Candidato', ...(postings.length > 1 ? ['Vaga'] : []), 'Etapa', 'Dias em processo'].map((h) => (
                 <th key={h} className="px-4 py-3 text-xs font-medium text-ink-2">
                   {h}
                 </th>
@@ -132,7 +133,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
                   <Badge
                     tone={o.status === 'HIRED' ? 'positive' : o.status === 'ARCHIVED' ? 'neutral' : undefined}
                   >
-                    {o.status === 'HIRED' ? 'Hired' : o.status === 'ARCHIVED' ? 'No longer in process' : o.stage.name}
+                    {o.status === 'HIRED' ? 'Contratado' : o.status === 'ARCHIVED' ? 'Fora do processo' : o.stage.name}
                   </Badge>
                 </td>
                 <td className="px-4 py-3 text-xs tabular-nums text-ink-2">

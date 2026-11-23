@@ -1,5 +1,6 @@
 'use client';
 
+import { organization } from '@/lib/i18n/pt-BR/organization';
 import { useActionState } from 'react';
 import { createPostingAction, type FormState } from '@/app/(app)/actions';
 import {
@@ -31,11 +32,11 @@ export function NewPostingForm({
       </Field>
 
       <div className="grid grid-cols-2 gap-4">
-        <Field label={isAgency ? 'Client company' : 'Department'}>
+        <Field label={isAgency ? organization.client.singular : organization.department.singular}>
           <FormSelect
             name={isAgency ? 'clientCompanyId' : 'departmentId'}
             options={[
-              { value: '', label: isAgency ? 'No client' : 'No department' },
+              { value: '', label: isAgency ? organization.client.none : organization.department.none },
               ...groups.map((g) => ({ value: g.id, label: g.name })),
             ]}
           />

@@ -1,3 +1,4 @@
+import { organization } from '@/lib/i18n/pt-BR/organization';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
@@ -12,7 +13,7 @@ import {
   resolveGoogle,
 } from '@/server/google-auth';
 
-export const metadata = { title: 'Finish creating your workspace · Source' };
+export const metadata = { title: 'Conclua a criação do seu espaço de trabalho' };
 
 export const dynamic = 'force-dynamic';
 
@@ -33,20 +34,20 @@ export default async function FinishSignupPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-medium">Finish creating your workspace</h1>
+      <h1 className="text-xl font-medium">Conclua a criação do seu espaço de trabalho</h1>
       <p className="mb-6 mt-1 text-sm text-ink-2">
-        Signed in with Google as <span className="text-ink">{pending.email}</span>. Name your
-        organization and you&apos;re in. You&apos;ll be the super admin.
+        Você entrou com a conta Google <span className="text-ink">{pending.email}</span>.
+        Dê um nome à sua organização para concluir. Você terá acesso de administrador principal.
       </p>
       <AuthForm
         action={finishGoogleSignup}
         hidden={agency ? { kind: 'agency' } : undefined}
-        submitLabel="Create workspace"
+        submitLabel="Criar espaço de trabalho"
         fields={[
-          { name: 'orgName', label: agency ? 'Agency name' : 'Organization name', type: 'text', placeholder: agency ? 'Harbor Talent' : 'Acme Inc.' },
+          { name: 'orgName', label: agency ? organization.signup.agencyName : organization.signup.companyName, type: 'text', placeholder: agency ? organization.signup.agencyExample : organization.signup.companyExample },
           {
             name: 'name',
-            label: 'Your name',
+            label: 'Seu nome',
             type: 'text',
             autoComplete: 'name',
             defaultValue: pending.name,
@@ -54,9 +55,9 @@ export default async function FinishSignupPage() {
         ]}
       />
       <p className="mt-6 text-sm text-ink-2">
-        Not you?{' '}
+        Esta conta é sua?{' '}
         <Link href="/signup" className="font-medium text-ink hover:underline">
-          Start over
+          Recomeçar
         </Link>
       </p>
     </div>

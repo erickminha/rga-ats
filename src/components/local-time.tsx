@@ -1,5 +1,6 @@
 'use client';
 
+import { appLocale } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 
 /**
@@ -20,7 +21,7 @@ export function LocalTime({
   const d = new Date(date);
   return (
     <time dateTime={date} suppressHydrationWarning>
-      {mounted ? d.toLocaleString(undefined, options) : d.toLocaleString('en-US', { ...options, timeZone: 'UTC' })}
+      {mounted ? d.toLocaleString(appLocale, options) : d.toLocaleString(appLocale, { ...options, timeZone: 'UTC' })}
     </time>
   );
 }

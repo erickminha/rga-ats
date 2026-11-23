@@ -1,3 +1,4 @@
+import { organization } from '@/lib/i18n/pt-BR/organization';
 import { BarChart3 } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/session';
@@ -25,7 +26,7 @@ const ORIGIN_LABELS: Record<string, string> = {
   APPLIED: 'Applied',
   SOURCED: 'Sourced',
   REFERRED: 'Referred',
-  AGENCY: 'Agency',
+  AGENCY: organization.kinds.AGENCY.title,
   INTERNAL: 'Internal',
   UNIVERSITY: 'University',
 };
@@ -55,7 +56,7 @@ function Panel({
   );
 }
 
-export const metadata = { title: 'Reports — Source' };
+export const metadata = { title: 'Reports' };
 
 export default async function ReportsPage({
   searchParams,

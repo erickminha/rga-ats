@@ -1,5 +1,6 @@
 'use client';
 
+import { appLocale } from '@/lib/i18n';
 import { useState, useActionState, useTransition } from 'react';
 import { FileSignature } from 'lucide-react';
 import {
@@ -180,8 +181,8 @@ export function OfferSection({
               <p className="mt-0.5 text-sm text-ink-2">
                 {o.salaryAmount || o.equity || o.startDate ? (
                   [
-                    // en-US on both sides: a browser locale here would differ from the server's render
-                    o.salaryAmount ? `${o.salaryCurrency} ${o.salaryAmount.toLocaleString('en-US')}` : null,
+                    // Use the same locale on the server and in the browser.
+                    o.salaryAmount ? `${o.salaryCurrency} ${o.salaryAmount.toLocaleString(appLocale)}` : null,
                     o.equity ? `${o.equity} equity` : null,
                     o.startDate ? (
                       <>

@@ -1,10 +1,11 @@
+import { organization } from '@/lib/i18n/pt-BR/organization';
 import Link from 'next/link';
 import { AuthForm } from '@/components/auth-form';
 import { GoogleSignIn } from '@/components/google-auth';
 import { googleAuthEnabled } from '@/server/google-auth';
 import { signup } from '../actions';
 
-export const metadata = { title: 'Sign up · Source' };
+export const metadata = { title: 'Cadastro' };
 
 // Per request, so the Google keys are read at runtime, not at build time.
 export const dynamic = 'force-dynamic';
@@ -14,34 +15,34 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   const agency = (await searchParams).kind === 'agency';
   return (
     <div>
-      <h1 className="text-xl font-medium">{agency ? 'Create your agency workspace' : 'Create your organization'}</h1>
+      <h1 className="text-xl font-medium">{agency ? organization.signup.agencyTitle : 'Crie sua organização'}</h1>
       <p className="mb-6 mt-1 text-sm text-ink-2">
         {agency
-          ? 'Sets up your agency with a default hiring pipeline, ready for your client companies. You’ll be the super admin.'
-          : 'Sets up your org with a default hiring pipeline. You’ll be the super admin.'}
+          ? organization.signup.agencyDescription
+          : 'Sua organização começa com um funil de recrutamento padrão. Você terá acesso de administrador principal.'}
       </p>
       {googleAuthEnabled() ? <GoogleSignIn kind={agency ? 'agency' : undefined} /> : null}
       <AuthForm
         action={signup}
         hidden={agency ? { kind: 'agency' } : undefined}
-        submitLabel="Create organization"
+        submitLabel="Criar organização"
         fields={[
-          { name: 'orgName', label: agency ? 'Agency name' : 'Organization name', type: 'text', placeholder: agency ? 'Harbor Talent' : 'Acme Inc.' },
-          { name: 'name', label: 'Your name', type: 'text', autoComplete: 'name' },
-          { name: 'email', label: 'Work email', type: 'email', autoComplete: 'email' },
+          { name: 'orgName', label: agency ? organization.signup.agencyName : organization.signup.companyName, type: 'text', placeholder: agency ? organization.signup.agencyExample : organization.signup.companyExample },
+          { name: 'name', label: 'Seu nome', type: 'text', autoComplete: 'name' },
+          { name: 'email', label: 'E-mail profissional', type: 'email', autoComplete: 'email' },
           {
             name: 'password',
-            label: 'Password',
+            label: 'Senha',
             type: 'password',
-            placeholder: 'At least 8 characters',
+            placeholder: 'Pelo menos 8 caracteres',
             autoComplete: 'new-password',
           },
         ]}
       />
       <p className="mt-6 text-sm text-ink-2">
-        Already have an account?{' '}
+        Já tem uma conta?{' '}
         <Link href="/login" className="font-medium text-ink hover:underline">
-          Sign in
+          Entrar
         </Link>
       </p>
     </div>

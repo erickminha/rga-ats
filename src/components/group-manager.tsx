@@ -1,5 +1,6 @@
 'use client';
 
+import { groups } from '@/lib/i18n/pt-BR/organization';
 import { useRef, useState, useTransition } from 'react';
 import { FileSpreadsheet, Plus, X } from 'lucide-react';
 import {
@@ -32,14 +33,14 @@ export function GroupManager({
   const [value, setValue] = useState('');
   const [status, setStatus] = useState<Status>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const noun = (n: number) => (kind === 'client' ? (n === 1 ? 'client' : 'clients') : n === 1 ? 'department' : 'departments');
+  const noun = (n: number) => (kind === 'client' ? (n === 1 ? 'cliente' : 'clientes') : n === 1 ? 'departamento' : 'departamentos');
 
   function report(result: GroupsResult, from?: string) {
     if ('error' in result) return setStatus({ error: result.error });
     const { created, existing } = result;
     const parts: string[] = [];
-    if (created.length) parts.push(`Added ${created.length} ${noun(created.length)}${from ? ` from ${from}` : ''}`);
-    if (existing) parts.push(`${existing} ${existing === 1 ? 'was' : 'were'} already here`);
+    if (created.length) parts.push(groups.added(created.length, noun(created.length), from));
+    if (existing) parts.push(groups.existing(existing));
     // One is removed with its own ×; undo is for a batch.
     setStatus({ text: parts.join(' · '), undo: created.length > 1 ? created.map((c) => c.id) : null });
   }
@@ -70,11 +71,11 @@ export function GroupManager({
             >
               {item.name}
               <button
-                title={`Remove ${item.name}`}
-                aria-label={`Remove ${item.name}`}
+                title={groups.remove(item.name)}
+                aria-label={groups.remove(item.name)}
                 disabled={pending}
                 onClick={() => {
-                  if (!confirm(`Remove ${item.name}? Postings keep working but lose this grouping.`)) return;
+                  if (!confirm(groups.confirmRemove(item.name))) return;
                   startTransition(() => removeGroupAction(kind, item.id));
                 }}
                 className="flex size-6 cursor-pointer items-center justify-center rounded-full text-ink-2 transition-colors duration-[120ms] hover:bg-recessed hover:text-ink disabled:opacity-40"
@@ -111,10 +112,10 @@ export function GroupManager({
           className={inputClass}
         />
         <button type="submit" disabled={pending} className={btnTonal}>
-          <Plus /> Add
+          <Plus /> {groups.add}
         </button>
         <button type="button" disabled={pending} onClick={() => fileInput.current?.click()} className={btnTonal}>
-          <FileSpreadsheet /> Upload
+          <FileSpreadsheet /> {groups.upload}
         </button>
         <input
           ref={fileInput}
@@ -145,18 +146,18 @@ export function GroupManager({
                     const ids = status.undo!;
                     startTransition(async () => {
                       await removeGroupsAction(kind, ids);
-                      setStatus({ text: `Removed ${ids.length} ${noun(ids.length)}`, undo: null });
+                      setStatus({ text: groups.removed(ids.length, noun(ids.length)), undo: null });
                     });
                   }}
                   className="cursor-pointer font-medium text-ink-2 underline underline-offset-2 hover:text-ink disabled:opacity-40"
                 >
-                  Undo
+                  {groups.undo}
                 </button>
               </>
             ) : null}
           </>
         ) : (
-          `Add several at once: separate them with commas, paste a column from a spreadsheet, or upload a .csv or Excel file.`
+          groups.hint
         )}
       </p>
     </div>

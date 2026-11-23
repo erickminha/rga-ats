@@ -35,7 +35,7 @@ export function SettingsSwitch({
         }
       />
       <span className="text-xs text-ink-2">
-        <TextSwap>{pending ? 'Saving…' : enabled ? onCaption : offCaption}</TextSwap>
+        <TextSwap>{pending ? 'Salvando…' : enabled ? onCaption : offCaption}</TextSwap>
       </span>
     </div>
   );

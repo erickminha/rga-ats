@@ -12,7 +12,7 @@ const LEGAL_SUFFIX =
 
 // A first row that labels the column rather than naming anyone.
 const HEADER =
-  /^(?:names?|compan(?:y|ies)(?: names?)?|clients?(?: names?| compan(?:y|ies))?|customers?|accounts?|organi[sz]ations?|departments?|teams?)$/i;
+  /^(?:names?|compan(?:y|ies)(?: names?)?|clients?(?: names?| compan(?:y|ies))?|customers?|accounts?|organi[sz]ations?|departments?|teams?|nomes?|empresas?|clientes?|empresas clientes|nome d[ao] (?:empresa|cliente)|organizaç(?:ão|ões)|departamentos?|equipes?)$/i;
 
 const hasLetter = (s: string) => /\p{L}/u.test(s);
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { organization } from '@/lib/i18n/pt-BR/organization';
 import { useTransition } from 'react';
 import { Building2, Users2 } from 'lucide-react';
 import { setOrgKindAction } from '@/app/org-actions';
@@ -9,14 +10,12 @@ const options = [
   {
     kind: 'COMPANY' as const,
     icon: Building2,
-    title: 'Company',
-    description: 'We hire for our own teams and departments.',
+    ...organization.kinds.COMPANY,
   },
   {
     kind: 'AGENCY' as const,
     icon: Users2,
-    title: 'Staffing agency',
-    description: 'We hire on behalf of multiple client companies.',
+    ...organization.kinds.AGENCY,
   },
 ];
 

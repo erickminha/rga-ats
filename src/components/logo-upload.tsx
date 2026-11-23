@@ -1,5 +1,6 @@
 'use client';
 
+import { logo } from '@/lib/i18n/pt-BR/organization';
 import { useRef, useTransition } from 'react';
 import { ImagePlus, X } from 'lucide-react';
 import { buttonClass } from '@/components/ui/button';
@@ -14,7 +15,7 @@ export function LogoUpload({
   logoFileId,
   upload,
   remove,
-  label = 'Logo',
+  label = 'Logotipo',
 }: {
   logoFileId: string | null;
   upload: (formData: FormData) => Promise<void>;
@@ -60,7 +61,7 @@ export function LogoUpload({
         onClick={() => inputRef.current?.click()}
         className={buttonClass({ variant: 'tonal', size: 'sm' })}
       >
-        <TextSwap>{pending ? 'Uploading…' : logoFileId ? `Replace ${label.toLowerCase()}` : `Upload ${label.toLowerCase()}`}</TextSwap>
+        <TextSwap>{pending ? logo.uploading : logoFileId ? logo.replace(label.toLowerCase()) : logo.upload(label.toLowerCase())}</TextSwap>
       </button>
       {logoFileId ? (
         <button
@@ -68,8 +69,8 @@ export function LogoUpload({
           disabled={pending}
           onClick={() => startTransition(() => remove())}
           className={buttonClass({ variant: 'ghost', size: 'sm', icon: true, className: 'hover:text-critical' })}
-          title={`Remove ${label.toLowerCase()}`}
-          aria-label={`Remove ${label.toLowerCase()}`}
+          title={logo.remove(label.toLowerCase())}
+          aria-label={logo.remove(label.toLowerCase())}
         >
           <X size={14} />
         </button>

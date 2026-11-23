@@ -42,6 +42,11 @@ describe('namesFromRows', () => {
     ]);
   });
 
+  it('recognizes Brazilian Portuguese spreadsheet headers', () => {
+    expect(namesFromRows([['Responsável', 'Empresa'], ['Pessoa Exemplo', 'Empresa Exemplo']])).toEqual(['Empresa Exemplo']);
+    expect(splitNames('Empresas clientes\nEmpresa Exemplo\nOutra Empresa')).toEqual(['Empresa Exemplo', 'Outra Empresa']);
+  });
+
   it('otherwise takes the first column with words in it', () => {
     expect(namesFromRows([['1', 'Acme'], ['2', 'Globex'], ['', '']])).toEqual(['Acme', 'Globex']);
   });

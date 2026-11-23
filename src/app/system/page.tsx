@@ -8,7 +8,7 @@ import { inputClass, inputLgClass, textareaClass, Field, badge, noAutofill } fro
 import { EmptyState } from '@/components/empty-state';
 import { BotLab, ChartLab, MotionLab } from './demos';
 
-export const metadata: Metadata = { title: 'Design system · Source', robots: { index: false } };
+export const metadata: Metadata = { title: 'Design system', robots: { index: false } };
 
 /**
  * Living specimen for docs/09-design-system.md. Every token and primitive

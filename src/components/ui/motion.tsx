@@ -1,5 +1,6 @@
 'use client';
 
+import { appLocale } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -26,7 +27,7 @@ function useMounted() {
  */
 export function NumberPop({
   value,
-  format = (n) => n.toLocaleString('en-US'),
+  format = (n) => n.toLocaleString(appLocale),
   animateOnMount = false,
   className,
 }: {

@@ -47,7 +47,7 @@ function GoogleSubmit() {
       className={buttonClass({ variant: 'tonal', size: 'lg', className: 'w-full [&_svg]:size-[18px]' })}
     >
       <GoogleMark />
-      <TextSwap>{pending ? 'Working…' : 'Continue with Google'}</TextSwap>
+      <TextSwap>{pending ? 'Processando…' : 'Continuar com o Google'}</TextSwap>
     </button>
   );
 }
@@ -63,7 +63,7 @@ export function GoogleSignIn({ callbackUrl, kind }: { callbackUrl?: string; kind
       </form>
       <div role="separator" className="my-5 flex items-center gap-3">
         <span className="h-px flex-1 bg-line" />
-        <span className="text-xs text-ink-2">or</span>
+        <span className="text-xs text-ink-2">ou</span>
         <span className="h-px flex-1 bg-line" />
       </div>
     </>
@@ -82,7 +82,7 @@ function WorkspaceSubmit({ orgName }: { orgName: string }) {
       <Avatar name={orgName} size={28} />
       <span className="min-w-0 flex-1 truncate text-left">{orgName}</span>
       {pending ? (
-        <span className="text-sm text-ink-2">Working…</span>
+        <span className="text-sm text-ink-2">Processando…</span>
       ) : (
         <span className="t-learn-arrow" aria-hidden="true">
           →

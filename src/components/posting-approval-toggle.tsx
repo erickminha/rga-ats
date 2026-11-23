@@ -15,7 +15,7 @@ export function PostingApprovalToggle({ enabled }: { enabled: boolean }) {
       <Switch
         checked={enabled}
         disabled={pending}
-        label="Require posting approval"
+        label="Exigir aprovação de vagas"
         onChange={(next) =>
           startTransition(async () => {
             await setRequirePostingApprovalAction(next);
@@ -24,7 +24,7 @@ export function PostingApprovalToggle({ enabled }: { enabled: boolean }) {
         }
       />
       <span className="text-xs text-ink-2">
-        <TextSwap>{pending ? 'Saving…' : enabled ? 'Approval required' : 'Anyone can publish'}</TextSwap>
+        <TextSwap>{pending ? 'Salvando…' : enabled ? 'Aprovação obrigatória' : 'Publicação sem aprovação'}</TextSwap>
       </span>
     </div>
   );

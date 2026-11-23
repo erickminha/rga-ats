@@ -20,6 +20,20 @@ const BOARD = [
 const ids = (ps: BoardPosting[]) => ps.map((p) => p.id).join('');
 
 describe('job board search', () => {
+  it('localizes the fallback group while preserving existing filter links', () => {
+    const other = { ...BOARD[0], group: 'Other clients', groupLabel: 'Outros clientes' };
+    const board = [other, ...BOARD.slice(1)];
+    const filters = readBoardFilters({ client: 'Other clients' }, 'client');
+    expect(knownFilters(board, filters).group).toBe('Other clients');
+    expect(filterPostings(board, { ...EMPTY_FILTERS, q: 'outros clientes' })).toEqual([other]);
+    expect(facetOptions(board, EMPTY_FILTERS, 'group')).toContainEqual({
+      value: 'Other clients', label: 'Outros clientes', count: 1,
+    });
+    expect(facetOptions(board, EMPTY_FILTERS, 'location')).toContainEqual(
+      expect.objectContaining({ value: other.location, label: other.location }),
+    );
+  });
+
   it('matches every word, across title, team, location and kind of work, ignoring case and accents', () => {
     expect(ids(filterPostings(BOARD, { ...EMPTY_FILTERS, q: 'designer' }))).toBe('ab');
     expect(ids(filterPostings(BOARD, { ...EMPTY_FILTERS, q: 'engineer remote' }))).toBe('d');
