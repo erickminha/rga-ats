@@ -28,7 +28,7 @@ if (!file || !slug || slug.startsWith('--')) {
 }
 
 const dump = JSON.parse(readFileSync(file, 'utf8'));
-if (dump.exportVersion !== 1 && dump.exportVersion !== 2) {
+if (![1, 2, 3].includes(dump.exportVersion)) {
   console.error(`Unsupported exportVersion: ${dump.exportVersion}`);
   process.exit(1);
 }
@@ -57,6 +57,35 @@ async function main() {
 
   const src = dump.organization;
   const orgId = remap(src.id);
+  if (dump.exportVersion === 3 && (!Array.isArray(dump.clientCompanies) || !Array.isArray(dump.clientCompanyContacts))) {
+    throw new Error('Export v3 is missing client companies or commercial contacts');
+  }
+  const companies = dump.clientCompanies ?? [];
+  const clientIds = new Map();
+  for (const company of companies) {
+    if ((dump.exportVersion === 3 || company.orgId != null) && company.orgId !== src.id) {
+      throw new Error('Client company belongs to another organization');
+    }
+    if (typeof company.id !== 'string' || !company.id || clientIds.has(company.id)) {
+      throw new Error('Client company has a missing or duplicate ID');
+    }
+    clientIds.set(company.id, remap(company.id));
+  }
+  const postingClientId = (id) => {
+    if (id == null) return null;
+    const target = clientIds.get(id);
+    if (!target && dump.exportVersion === 3) throw new Error('Posting references a client company outside the export');
+    return target ?? null;
+  };
+  const remapClientChange = (payload) => {
+    const { previousClientCompanyId, clientCompanyId, ...rest } = payload;
+    return {
+      ...rest,
+      // Preserve references in historical events even if a company was since deleted.
+      previousClientCompanyId: clientIds.get(previousClientCompanyId) ?? previousClientCompanyId ?? null,
+      clientCompanyId: clientIds.get(clientCompanyId) ?? clientCompanyId ?? null,
+    };
+  };
 
   await db.$transaction(async (tx) => {
     await tx.organization.create({
@@ -87,7 +116,47 @@ async function main() {
         })));
 
     await insertAll(tx, 'department', (dump.departments ?? []).map((d) => ({ id: remap(d.id), orgId, name: d.name })));
-    await insertAll(tx, 'clientCompany', (dump.clientCompanies ?? []).map((c) => ({ id: remap(c.id), orgId, name: c.name })));
+    await insertAll(tx, 'clientCompany', companies.map((c) => ({
+      id: clientIds.get(c.id),
+      orgId,
+      name: c.name,
+      legalName: c.legalName,
+      cnpj: c.cnpj,
+      stateRegistration: c.stateRegistration,
+      segment: c.segment,
+      size: c.size,
+      responsibleName: c.responsibleName,
+      responsibleRole: c.responsibleRole,
+      phone: c.phone,
+      secondaryPhone: c.secondaryPhone,
+      whatsapp: c.whatsapp,
+      channels: c.channels,
+      email: c.email,
+      website: c.website,
+      postalCode: c.postalCode,
+      address: c.address,
+      city: c.city,
+      state: c.state,
+      notes: c.notes,
+      source: c.source,
+      externalSource: c.externalSource,
+      externalId: c.externalId,
+      active: c.active ?? true,
+      createdAt: c.createdAt == null ? null : new Date(c.createdAt),
+    })));
+    await insertAll(tx, 'clientCompanyContact', (dump.clientCompanyContacts ?? []).map((c) => {
+      const clientCompanyId = clientIds.get(c.clientCompanyId);
+      if (!clientCompanyId) throw new Error('Commercial contact references a client company outside the export');
+      return {
+        id: remap(c.id),
+        clientCompanyId,
+        name: c.name,
+        role: c.role,
+        phone: c.phone,
+        whatsapp: c.whatsapp,
+        email: c.email,
+      };
+    }));
 
     await insertAll(tx, 'stage', dump.stages.map((s) => ({ id: remap(s.id), orgId, name: s.name, type: s.type, order: s.order })));
     await insertAll(tx, 'archiveReason', dump.archiveReasons.map((r) => ({ id: remap(r.id), orgId, name: r.name, countsAsRejection: r.countsAsRejection })));
@@ -136,25 +205,30 @@ async function main() {
 
     await insertAll(tx, 'customFieldDef', (dump.customFieldDefs ?? []).map((d) => ({ id: remap(d.id), orgId, key: d.key, label: d.label, type: d.type, options: d.options ?? [] })));
 
-    await insertAll(tx, 'posting', dump.postings.map((p) => ({
-          id: remap(p.id),
-          orgId,
-          requisitionId: mapped(p.requisitionId),
-          slug: p.slug,
-          title: p.title,
-          state: p.state,
-          departmentId: mapped(p.departmentId),
-          clientCompanyId: mapped(p.clientCompanyId),
-          location: p.location,
-          workplaceType: p.workplaceType,
-          commitment: p.commitment,
-          salaryMin: p.salaryMin,
-          salaryMax: p.salaryMax,
-          salaryCurrency: p.salaryCurrency,
-          content: p.content ?? undefined,
-          tags: p.tags ?? [],
-          createdAt: new Date(p.createdAt),
-        })));
+    await insertAll(tx, 'posting', dump.postings.map((p) => {
+      if ((dump.exportVersion === 3 || p.orgId != null) && p.orgId !== src.id) {
+        throw new Error('Posting belongs to another organization');
+      }
+      return {
+        id: remap(p.id),
+        orgId,
+        requisitionId: mapped(p.requisitionId),
+        slug: p.slug,
+        title: p.title,
+        state: p.state,
+        departmentId: mapped(p.departmentId),
+        clientCompanyId: postingClientId(p.clientCompanyId),
+        location: p.location,
+        workplaceType: p.workplaceType,
+        commitment: p.commitment,
+        salaryMin: p.salaryMin,
+        salaryMax: p.salaryMax,
+        salaryCurrency: p.salaryCurrency,
+        content: p.content ?? undefined,
+        tags: p.tags ?? [],
+        createdAt: new Date(p.createdAt),
+      };
+    }));
 
     await insertAll(tx, 'interviewPlanStep', (dump.planSteps ?? []).map((ps) => ({
           id: remap(ps.id),
@@ -333,7 +407,7 @@ async function main() {
           verb: e.verb,
           subjectType: e.subjectType,
           subjectId: mapped(e.subjectId) ?? e.subjectId,
-          payload: e.payload ?? undefined,
+          payload: e.verb === 'posting.client_changed' && e.payload ? remapClientChange(e.payload) : e.payload ?? undefined,
           occurredAt: new Date(e.occurredAt),
         })));
 

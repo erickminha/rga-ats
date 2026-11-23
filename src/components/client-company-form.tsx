@@ -69,7 +69,8 @@ export function ClientCompanyForm({ company }: { company?: ClientValues }) {
       </Section>
       <Section title="Responsável e canais de contato">
         {input('responsibleName')}{input('responsibleRole')}
-        {input('phone', maskPhone, 'tel')}{input('whatsapp', maskPhone, 'tel')}
+        {input('phone', maskPhone, 'tel')}{input('secondaryPhone', maskPhone, 'tel')}
+        {input('whatsapp', maskPhone, 'tel')}{input('channels')}
         {input('email', undefined, 'email')}{input('website')}
       </Section>
       <Section title="Endereço e observações">

@@ -36,4 +36,14 @@ describe('client company fields', () => {
     expect(parseCompany(form({ name: 'Empresa fictícia', website: 'empresa.example' })).website).toBe('https://empresa.example/');
     expect(companyNameKey('  Fíctícia    Ltda  ')).toBe('ficticia ltda');
   });
+
+  it('keeps the second phone, WhatsApp and contact channels separate', () => {
+    expect(parseCompany(form({
+      name: 'Empresa fictícia', phone: '1134567890', secondaryPhone: '+55 (11) 91234-5678',
+      whatsapp: '(11) 98765-4321', channels: 'Site | Indicação',
+    }))).toMatchObject({
+      phone: '1134567890', secondaryPhone: '11912345678', whatsapp: '11987654321', channels: 'Site | Indicação',
+    });
+    expect(() => parseCompany(form({ name: 'Empresa fictícia', secondaryPhone: '999' }))).toThrow(/número brasileiro/);
+  });
 });

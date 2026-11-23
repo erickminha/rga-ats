@@ -124,7 +124,9 @@ model ClientCompany {
   responsibleName  String?
   responsibleRole  String?
   phone            String?
+  secondaryPhone   String?
   whatsapp         String?
+  channels         String?
   email            String?
   website          String?
   postalCode       String?
