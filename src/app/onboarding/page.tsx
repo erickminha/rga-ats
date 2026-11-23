@@ -1,7 +1,7 @@
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import { settings } from '@/lib/i18n/pt-BR/settings';
 import { redirect } from 'next/navigation';
-import { SourceLockup } from '@/components/powered-by';
+import { SourceCodeLinks, SourceLockup } from '@/components/powered-by';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/session';
 import { completeOnboardingAction } from '@/app/org-actions';
@@ -87,6 +87,7 @@ export default async function OnboardingPage() {
 
         <OnboardingPipeline stages={org.stages.map((s) => ({ id: s.id, name: s.name, type: s.type }))} />
       </div>
+      <SourceCodeLinks className="mt-4" />
     </div>
   );
 }

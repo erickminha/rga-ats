@@ -1,5 +1,6 @@
 'use client';
 
+import { jobBoard } from '@/lib/i18n/pt-BR/job-board';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -10,11 +11,9 @@ import { buttonClass } from '@/components/ui/button';
 import { Orb } from '@/components/ui/orb';
 import {
   boardSearch,
-  COMMITMENT_LABELS,
   EMPTY_FILTERS,
   facetOptions,
   filterPostings,
-  WORKPLACE_LABELS,
   type BoardFacet,
   type BoardFilters,
   type BoardPosting,
@@ -40,7 +39,7 @@ export function JobBoard({
   postings: BoardPosting[];
   /** `team`, or `client` on an agency's board: the group's URL key. */
   groupKey: string;
-  /** "Team" or "Client". */
+  /** Display label for customers or teams. */
   groupLabel: string;
   initial: BoardFilters;
 }) {
@@ -60,10 +59,10 @@ export function JobBoard({
 
   const active = Object.values(filters).some((v) => v.trim());
   const facets: [BoardFacet, string, string][] = [
-    ['group', groupLabel, groupKey === 'client' ? organization.client.all : 'Todas as equipes'],
-    ['location', 'Location', 'All locations'],
-    ['workplace', 'Workplace', 'Any workplace'],
-    ['type', 'Type', 'Any type'],
+    ['group', groupLabel, groupKey === 'client' ? organization.client.all : jobBoard.allTeams],
+    ['location', jobBoard.filters.location, jobBoard.filters.allLocations],
+    ['workplace', jobBoard.filters.workplace, jobBoard.filters.allWorkplaces],
+    ['type', jobBoard.filters.type, jobBoard.filters.allTypes],
   ];
 
   return (
@@ -79,8 +78,8 @@ export function JobBoard({
               name="q"
               value={filters.q}
               onChange={(e) => update({ q: e.target.value })}
-              placeholder="Search roles, teams, locations…"
-              aria-label="Search open roles"
+              placeholder={groupKey === 'client' ? jobBoard.agencySearchPlaceholder : jobBoard.searchPlaceholder}
+              aria-label={jobBoard.search}
               className={`${inputLgClass} pl-11`}
             />
           </form>
@@ -104,7 +103,7 @@ export function JobBoard({
             })}
             {active ? (
               <button type="button" onClick={() => update(EMPTY_FILTERS)} className={buttonClass({ variant: 'ghost', size: 'sm' })}>
-                Clear
+                {jobBoard.clear}
               </button>
             ) : null}
           </div>
@@ -112,17 +111,15 @@ export function JobBoard({
       ) : null}
 
       <p aria-live="polite" className="mt-6 text-sm text-ink-2">
-        {active
-          ? `${shown.length} of ${postings.length} ${postings.length === 1 ? 'role' : 'roles'}`
-          : `${postings.length} open ${postings.length === 1 ? 'role' : 'roles'}`}
+        {jobBoard.count(postings.length, active ? shown.length : undefined)}
       </p>
 
       {shown.length === 0 ? (
         <div className="mt-4 rounded-card bg-surface px-5 py-10 text-center">
-          <p className="text-md text-ink">No roles match</p>
-          <p className="mt-1 text-sm text-ink-2">Try fewer words, or another filter.</p>
+          <p className="text-md text-ink">{jobBoard.noMatches}</p>
+          <p className="mt-1 text-sm text-ink-2">{jobBoard.searchHint}</p>
           <button type="button" onClick={() => update(EMPTY_FILTERS)} className={buttonClass({ variant: 'secondary', size: 'sm', className: 'mt-5' })}>
-            Clear filters
+            {jobBoard.clearFilters}
           </button>
         </div>
       ) : (
@@ -142,8 +139,8 @@ export function JobBoard({
                             <MapPin size={13} /> {p.location}
                           </span>
                         ) : null}
-                        <span>{WORKPLACE_LABELS[p.workplaceType]}</span>
-                        <span>{COMMITMENT_LABELS[p.commitment]}</span>
+                        <span>{jobBoard.workplace[p.workplaceType]}</span>
+                        <span>{jobBoard.commitment[p.commitment]}</span>
                       </p>
                     </div>
                   </Link>

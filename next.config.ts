@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import type { NextConfig } from 'next';
 
 // src/server/text/pdf.ts finds these through pdfjs-dist's package.json.
@@ -49,7 +50,19 @@ const OCR_FILES = [
 const MARKETING_ORIGIN = process.env.MARKETING_ORIGIN?.replace(/\/+$/, '');
 const MARKETING_PATHS = ['/', '/agencies', '/self-hosted', '/talent-network', '/extension', '/site-assets/:path*'];
 
+/** Bake the public source revision into this build, including when a container is restarted. */
+function sourceRevision(): string {
+  const revision = process.env.RGA_ATS_SOURCE_REVISION || process.env.VERCEL_GIT_COMMIT_SHA;
+  if (revision && /^[a-f0-9]{40}$/i.test(revision)) return revision;
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return '';
+  }
+}
+
 const nextConfig: NextConfig = {
+  env: { RGA_ATS_SOURCE_REVISION: sourceRevision() },
   // Keep the Docker self-host path honest (see docs/03-architecture.md).
   output: process.env.DOCKER_BUILD ? 'standalone' : undefined,
   // Dev only: let `next dev` serve its chunks to LAN devices (phone, other

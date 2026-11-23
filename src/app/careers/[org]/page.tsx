@@ -1,3 +1,4 @@
+import { jobBoard } from '@/lib/i18n/pt-BR/job-board';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import { db } from '@/lib/db';
 import { JobBoard } from '@/components/job-board';
@@ -31,7 +32,7 @@ export default async function CareersPage({
 
   const isAgency = org.kind === 'AGENCY';
   const fallbackGroup = isAgency ? 'Other clients' : 'Other roles';
-  const fallbackLabel = isAgency ? organization.client.other : 'Outras vagas';
+  const fallbackLabel = isAgency ? organization.client.other : jobBoard.otherRoles;
   const board: BoardPosting[] = postings.map((p) => ({
     id: p.id,
     slug: p.slug,
@@ -46,15 +47,15 @@ export default async function CareersPage({
 
   return (
     <div>
-      <h1 className="text-3xl">Vagas abertas</h1>
+      <h1 className="text-3xl">{jobBoard.title}</h1>
       {board.length === 0 ? (
-        <p className="mt-2 text-sm text-ink-2">Nenhuma vaga aberta no momento. Volte em breve.</p>
+        <p className="mt-2 text-sm text-ink-2">{jobBoard.noOpenRoles}</p>
       ) : (
         <JobBoard
           orgSlug={orgSlug}
           postings={board}
           groupKey={groupKey}
-          groupLabel={isAgency ? organization.client.singular : 'Equipe'}
+          groupLabel={isAgency ? organization.client.singular : jobBoard.team}
           initial={knownFilters(board, readBoardFilters(await searchParams, groupKey))}
         />
       )}

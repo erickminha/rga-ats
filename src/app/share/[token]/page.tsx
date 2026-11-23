@@ -29,7 +29,14 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   if (!org) notFound();
 
   if (payload.scope === 'candidate') {
-    return <CandidatePresentation orgId={org.id} opportunityId={payload.id} />;
+    return (
+      <>
+        <CandidatePresentation orgId={org.id} opportunityId={payload.id} />
+        <footer className="mx-auto flex max-w-3xl justify-center px-6 pb-8">
+          <PoweredBySource />
+        </footer>
+      </>
+    );
   }
 
   const postingWhere =

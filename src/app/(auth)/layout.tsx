@@ -1,4 +1,4 @@
-import { SourceLockup } from '@/components/powered-by';
+import { SourceCodeLinks, SourceLockup } from '@/components/powered-by';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -6,6 +6,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* The logo, back to the homepage */}
       <SourceLockup href="/" className="mb-8" />
       <div className="w-full max-w-sm rounded-dialog bg-surface p-8">{children}</div>
+      <SourceCodeLinks className="mt-5 justify-center" />
     </div>
   );
 }

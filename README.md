@@ -96,3 +96,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). High-value contributions right now: prod
 ## License
 
 Source is free software under the [GNU Affero General Public License v3.0](LICENSE). You can run, study, change and share it; if you run a modified version as a service for others, you share your changes under the same license. Contributions come in under the [contributor license agreement](CLA.md).
+
+### Código-fonte da versão hospedada
+
+A seção 13 da AGPLv3 pede que a versão modificada ofereça a quem usa o serviço pela rede acesso gratuito ao código-fonte correspondente. Os links **Código-fonte do RGA ATS** e **Licença GNU AGPLv3** ficam nas interfaces públicas e autenticadas. O build usa o SHA do checkout ou o SHA fornecido pela Vercel.
+
+Em builds de contêiner a partir de um contexto sem `.git`, forneça o SHA completo e público do código que entra na imagem pelo argumento `RGA_ATS_SOURCE_REVISION`. Para um Cloud Build disparado pelo GitHub, passe `--build-arg RGA_ATS_SOURCE_REVISION=$COMMIT_SHA` ao comando `docker build` antes de publicar a imagem no Cloud Run. Confirme que os links da imagem apontam para o SHA exibido no build e que o repositório pode ser baixado sem autenticação. Quando o build não tem um SHA, os links apontam para a branch pública `homolog`.
