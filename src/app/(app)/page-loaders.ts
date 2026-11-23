@@ -91,7 +91,7 @@ export async function loadDashboardPage() {
     ]);
 
   return {
-    firstName: (session?.user.name ?? '').trim().split(/\s+/)[0] || 'there',
+    firstName: (session?.user.name ?? '').trim().split(/\s+/)[0],
     orgName: org?.name ?? '',
     logoFileId: org?.logoFileId ?? null,
     postingCount,

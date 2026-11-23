@@ -1,5 +1,6 @@
 'use client';
 
+import { dashboard } from '@/lib/i18n/pt-BR/dashboard';
 import { useEffect, useState } from 'react';
 import { Check, EyeOff } from 'lucide-react';
 import { surface } from '@/components/form-controls';
@@ -27,23 +28,24 @@ export function OnboardingCard({ steps }: { steps: OnboardingStep[] }) {
   return (
     <div className={`${surface} p-5`}>
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-md font-medium text-ink">Onboarding</h2>
+        <h2 className="text-md font-medium text-ink">{dashboard.onboarding.title}</h2>
         <span className="text-lg font-medium">
           <NumberPop value={pct} format={(n) => `${n}%`} />
         </span>
       </div>
       <div
         role="progressbar"
-        aria-label="Onboarding progress"
+        aria-label={dashboard.onboarding.progress}
         aria-valuenow={pct}
+        aria-valuetext={dashboard.onboarding.complete(pct)}
         aria-valuemin={0}
         aria-valuemax={100}
         className="mt-3"
       >
-        <DitherBar value={pct} max={100} height={9} label={`${pct}% complete`} />
+        <DitherBar value={pct} max={100} height={9} label={dashboard.onboarding.complete(pct)} />
       </div>
       <p className="mt-3 text-sm text-ink-2">
-        A few steps to get your workspace humming.
+        {dashboard.onboarding.description}
       </p>
       <div className="mt-4 flex flex-col gap-1">
         {steps.map((s) => (
@@ -66,6 +68,7 @@ export function OnboardingCard({ steps }: { steps: OnboardingStep[] }) {
             <span className="min-w-0">
               <span className={cn('block text-sm font-medium', s.done && 'line-through')}>
                 {s.label}
+                {s.done ? <span className="sr-only"> · {dashboard.onboarding.completed}</span> : null}
               </span>
               <span className="block text-xs text-ink-2">{s.detail}</span>
             </span>
@@ -80,7 +83,7 @@ export function OnboardingCard({ steps }: { steps: OnboardingStep[] }) {
         }}
         className={buttonClass({ variant: 'ghost', size: 'xs', className: '-ml-2.5 mt-3' })}
       >
-        <EyeOff size={12} /> Hide onboarding
+        <EyeOff size={12} /> {dashboard.onboarding.hide}
       </button>
     </div>
   );

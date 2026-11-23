@@ -1,3 +1,4 @@
+import { navigation } from '@/lib/i18n/pt-BR/navigation';
 import Link from 'next/link';
 import { Newspaper, Plus } from 'lucide-react';
 import { db } from '@/lib/db';
@@ -9,7 +10,7 @@ import { Badge, StatusDot } from '@/components/ui/primitives';
 import { LocalTime } from '@/components/local-time';
 import { countAudience } from '@/server/newsletters';
 
-export const metadata = { title: 'Newsletters' };
+export const metadata = { title: navigation.newsletters };
 
 const SUBTITLE = 'One email about your open roles, to every candidate';
 

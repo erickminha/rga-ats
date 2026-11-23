@@ -1,5 +1,6 @@
 'use client';
 
+import { dashboard } from '@/lib/i18n/pt-BR/dashboard';
 import { appLocale } from '@/lib/i18n';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -35,8 +36,8 @@ export function DashboardInterviews({ interviews }: { interviews: DashboardInter
     return (
       <EmptyState
         icon={CalendarDays}
-        title="No interviews yet"
-        description="Scheduled interviews appear here, grouped by day, with one-click access to their kits."
+        title={dashboard.interview.empty}
+        description={dashboard.interview.emptyDescription}
       />
     );
   }
@@ -69,17 +70,17 @@ export function DashboardInterviews({ interviews }: { interviews: DashboardInter
                   <p className="mt-0.5 truncate text-xs text-ink-2">
                     {iv.postingTitle
                       ? `${iv.postingTitle}${iv.clientName ? ` · ${iv.clientName}` : ''}`
-                      : 'General opportunity'}
+                      : dashboard.interview.general}
                   </p>
                   <p className="mt-1.5 flex flex-wrap items-center gap-2">
                     <span className={badge}>
                       {new Date(iv.startAt).toLocaleTimeString(locale, {
-                        hour: 'numeric',
+                        hour: '2-digit',
                         minute: '2-digit',
                         timeZone,
                       })}
                       {' · '}
-                      {iv.durationMins} min
+                      {dashboard.interview.duration(iv.durationMins)}
                     </span>
                     {iv.panelistNames.length ? (
                       <span className="text-xs text-ink-2">{iv.panelistNames.join(', ')}</span>
@@ -88,9 +89,9 @@ export function DashboardInterviews({ interviews }: { interviews: DashboardInter
                 </div>
                 <Link
                   href={`/interviews/${iv.id}`}
-                  className={buttonClass({ variant: 'ghost', size: 'sm' })}
+                  className={buttonClass({ variant: 'ghost', size: 'sm', className: 'shrink-0' })}
                 >
-                  View interview <span className="t-learn-arrow text-ink-3">→</span>
+                  {dashboard.interview.open} <span className="t-learn-arrow text-ink-3">→</span>
                 </Link>
               </div>
             ))}

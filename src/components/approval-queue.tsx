@@ -1,5 +1,7 @@
 'use client';
 
+import { approvalError, dashboard } from '@/lib/i18n/pt-BR/dashboard';
+import type { ApprovalSubject } from '@prisma/client';
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { resolveApprovalAction } from '@/app/(app)/actions';
@@ -9,7 +11,7 @@ import { StatusDot } from '@/components/ui/primitives';
 
 export type ApprovalQueueItem = {
   id: string;
-  subjectType: string;
+  subjectType: ApprovalSubject;
   title: string;
   href: string;
   requestedByName: string | null;
@@ -21,8 +23,8 @@ export function ApprovalQueue({ items }: { items: ApprovalQueueItem[] }) {
 
   return (
     <div className={`${surface} p-5`}>
-      <h2 className="text-md font-medium text-ink">Awaiting your approval</h2>
-      {error ? <p className="mt-2 text-sm text-critical">{error}</p> : null}
+      <h2 className="text-md font-medium text-ink">{dashboard.approvals.title}</h2>
+      {error ? <p role="alert" className="mt-2 text-sm text-critical">{error}</p> : null}
       <div className="-mx-2 mt-3 flex flex-col gap-1">
         {items.map((item) => (
           <div
@@ -34,7 +36,7 @@ export function ApprovalQueue({ items }: { items: ApprovalQueueItem[] }) {
               <span className="min-w-0 truncate">{item.title}</span>
             </Link>
             <p className="mt-0.5 pl-4 text-xs text-ink-2">
-              <span className="capitalize">{item.subjectType.toLowerCase()}</span>
+              <span>{dashboard.approvals.subjects[item.subjectType]}</span>
               {item.requestedByName ? ` · ${item.requestedByName}` : ''}
             </p>
             <div className="mt-2 flex gap-1 pl-4">
@@ -43,24 +45,24 @@ export function ApprovalQueue({ items }: { items: ApprovalQueueItem[] }) {
                 onClick={() =>
                   startTransition(async () => {
                     const result = await resolveApprovalAction(item.id, 'APPROVED');
-                    setError(result.error ?? null);
+                    setError(result.error ? approvalError(result.error) : null);
                   })
                 }
                 className={buttonClass({ variant: 'tonal', size: 'xs' })}
               >
-                Approve
+                {dashboard.approvals.approve}
               </button>
               <button
                 disabled={pending}
                 onClick={() =>
                   startTransition(async () => {
                     const result = await resolveApprovalAction(item.id, 'REJECTED');
-                    setError(result.error ?? null);
+                    setError(result.error ? approvalError(result.error) : null);
                   })
                 }
                 className={buttonClass({ variant: 'ghost', size: 'xs' })}
               >
-                Reject
+                {dashboard.approvals.reject}
               </button>
             </div>
           </div>

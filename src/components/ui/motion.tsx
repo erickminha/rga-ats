@@ -127,7 +127,7 @@ export function ThinkingStates({
   interval = 2000,
   className,
 }: {
-  lines: string[];
+  lines: readonly string[];
   interval?: number;
   className?: string;
 }) {

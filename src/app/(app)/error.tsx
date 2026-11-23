@@ -1,5 +1,6 @@
 'use client';
 
+import { appFeedback } from '@/lib/i18n/pt-BR/navigation';
 import { btnSecondary } from '@/components/form-controls';
 
 /**
@@ -16,17 +17,16 @@ export default function AppError({
   const message =
     error.message && error.message.length < 120 && !error.message.includes('digest')
       ? error.message
-      : 'Something went sideways on our end. Your data is safe — this was a display or permissions hiccup.';
+      : appFeedback.errorMessage;
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-3 px-6 text-center">
-      <p className="text-xs font-medium text-ink-2">That didn&apos;t work</p>
+      <p className="text-xs font-medium text-ink-2">{appFeedback.error}</p>
       <h1 className="max-w-prose text-xl font-medium text-ink">{message}</h1>
       <p className="max-w-sm text-sm text-ink-2">
-        Try again — if it keeps happening, the audit log in Settings will show what did and
-        didn&apos;t go through.
+        {appFeedback.retryHint}
       </p>
       <button type="button" onClick={reset} className={`${btnSecondary} mt-2`}>
-        Try again
+        {appFeedback.retry}
       </button>
     </div>
   );

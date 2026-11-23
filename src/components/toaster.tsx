@@ -1,5 +1,6 @@
 'use client';
 
+import { appFeedback } from '@/lib/i18n/pt-BR/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { StatusDot } from '@/components/ui/primitives';
@@ -99,7 +100,7 @@ function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: (id: numb
       <button
         type="button"
         onClick={close}
-        aria-label="Dismiss"
+        aria-label={appFeedback.dismiss}
         className={buttonClass({ variant: 'ghost', size: 'sm', icon: true, className: 'shrink-0' })}
       >
         <X />
