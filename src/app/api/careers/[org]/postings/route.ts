@@ -24,7 +24,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ org
   const postings = await db.posting.findMany({
     where: { orgId: org.id, state: 'PUBLISHED' },
     orderBy: { createdAt: 'desc' },
-    include: { department: true, clientCompany: true },
+    include: { department: true, clientCompany: { select: { name: true } } },
   });
 
   return NextResponse.json(

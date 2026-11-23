@@ -2,6 +2,8 @@ import { organization } from '@/lib/i18n/pt-BR/organization';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { canViewClientCompanies } from '@/server/client-companies';
+import { PostingClientForm } from '@/components/client-company-form';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/session';
 import { PlanEditor } from '@/components/plan-editor';
@@ -34,7 +36,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
     include: {
       owner: { select: { id: true, name: true, email: true } },
       department: true,
-      clientCompany: true,
+      clientCompany: { select: { id: true, name: true, active: true, orgId: true } },
       requisition: true,
       planSteps: { orderBy: { order: 'asc' } },
       _count: { select: { opportunities: true } },
@@ -47,6 +49,12 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
     }),
   ]);
   if (!posting) notFound();
+  const canManageClient = await canViewClientCompanies(ctx);
+  const linkedClient = posting.clientCompany?.orgId === ctx.orgId ? posting.clientCompany : null;
+  const choices = canManageClient ? await db.clientCompany.findMany({
+    where: { orgId: ctx.orgId, OR: [{ active: true }, ...(linkedClient ? [{ id: linkedClient.id }] : [])] },
+    orderBy: { name: 'asc' }, select: { id: true, name: true, active: true },
+  }) : [];
   const state = STATE_BADGES[posting.state] ?? { label: posting.state, tone: 'neutral' as Tone };
   const criteria = cleanCriteria(posting.matchCriteria);
   const aiOn = aiConfigured();
@@ -68,7 +76,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
         <h1 className="mt-5 text-xl font-medium text-ink">{posting.title}</h1>
         <p className="mt-1 text-sm text-ink-2">
           {[
-            posting.clientCompany?.name ?? posting.department?.name,
+            linkedClient?.name ?? posting.department?.name,
             posting.location,
             `${posting._count.opportunities} candidate(s)`,
             posting.requisition ? `req ${posting.requisition.code}` : null,
@@ -80,6 +88,16 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
           <span className="w-20 shrink-0 text-xs font-medium text-ink-2">Recruiter</span>
           <RoleOwner inline postingId={posting.id} owner={posting.owner} teammates={teammates} />
         </div>
+        {canManageClient ? (
+          <div className="mt-6 grid gap-2">
+            {linkedClient ? (
+              <Link href={`/clients/${linkedClient.id}`} className="justify-self-start text-sm underline underline-offset-2">
+                Ver empresa cliente: {linkedClient.name}
+              </Link>
+            ) : null}
+            <PostingClientForm key={posting.clientCompanyId ?? 'unassigned'} postingId={posting.id} clientId={linkedClient?.id ?? null} choices={choices} />
+          </div>
+        ) : null}
         <div className="mt-6">
           <LogoUpload
             logoFileId={posting.logoFileId}
@@ -102,9 +120,9 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
               <ShareLinkButton
                 scope="client"
                 id={posting.clientCompanyId}
-                label={`Todas as vagas de ${posting.clientCompany?.name ?? organization.client.singular}`}
+                label={`Todas as vagas de ${linkedClient?.name ?? organization.client.singular}`}
                 subject={{
-                  name: posting.clientCompany?.name ?? organization.client.singular,
+                  name: linkedClient?.name ?? organization.client.singular,
                   detail: 'Todas as vagas',
                   seed: posting.clientCompanyId,
                 }}

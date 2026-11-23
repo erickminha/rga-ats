@@ -64,7 +64,7 @@ export async function getPortalData(token: string) {
       opportunities: {
         orderBy: { createdAt: 'desc' },
         include: {
-          posting: { include: { clientCompany: true } },
+          posting: { include: { clientCompany: { select: { name: true } } } },
           stage: true,
           archiveReason: true,
         },

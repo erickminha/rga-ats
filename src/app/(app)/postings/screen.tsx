@@ -62,6 +62,9 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
 
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-6 pb-6 pt-4">
         <div className="mb-4 flex flex-wrap items-center gap-2">
+          {data.canViewClients ? (
+            <Link href="/clients" className={buttonClass({ variant: 'tonal', size: 'sm' })}>Empresas clientes</Link>
+          ) : null}
           <Segmented
             size="sm"
             value={data.archived ? 'archived' : 'active'}

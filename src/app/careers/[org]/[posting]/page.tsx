@@ -35,7 +35,7 @@ export default async function PostingPage({
   if (!org) notFound();
   const posting = await db.posting.findFirst({
     where: { orgId: org.id, slug: postingSlug, state: 'PUBLISHED' },
-    include: { department: true, clientCompany: true },
+    include: { department: true, clientCompany: { select: { name: true } } },
   });
   if (!posting) notFound();
 

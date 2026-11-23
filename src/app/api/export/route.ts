@@ -49,7 +49,7 @@ function collections(db: Tx, orgId: string): [string, Batch][] {
         }),
     ],
     ['departments', (c) => db.department.findMany({ where: org, ...page(c) })],
-    ['clientCompanies', (c) => db.clientCompany.findMany({ where: org, ...page(c) })],
+    ['clientCompanies', (c) => db.clientCompany.findMany({ where: org, select: { id: true, orgId: true, name: true }, ...page(c) })],
     ['stages', (c) => db.stage.findMany({ where: org, ...page(c) })],
     ['archiveReasons', (c) => db.archiveReason.findMany({ where: org, ...page(c) })],
     ['contacts', (c) => db.contact.findMany({ where: org, ...page(c) })],

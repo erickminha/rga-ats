@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import { closePendingApprovals, requestApproval } from '@/server/approvals';
 import { isAdmin, type SessionContext } from '@/lib/session';
+import { lockClientWrites } from '@/server/client-companies';
 import { invalidateListMeta } from '@/server/lists/cache';
 
 function slugify(input: string): string {
@@ -40,14 +41,14 @@ export async function createPosting(ctx: SessionContext, input: CreatePostingInp
     });
     if (!dept) throw new Error('Department not found');
   }
-  if (input.clientCompanyId) {
-    const client = await db.clientCompany.findFirst({
-      where: { id: input.clientCompanyId, orgId: ctx.orgId },
-    });
-    if (!client) throw new Error('Client not found');
-  }
-
   const created = await db.$transaction(async (tx) => {
+    if (input.clientCompanyId) {
+      await lockClientWrites(tx, ctx.orgId);
+      const client = await tx.clientCompany.findFirst({
+        where: { id: input.clientCompanyId, orgId: ctx.orgId, active: true }, select: { id: true },
+      });
+      if (!client) throw new Error('Client not found');
+    }
     const posting = await tx.posting.create({
       data: {
         orgId: ctx.orgId,

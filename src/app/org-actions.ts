@@ -37,7 +37,7 @@ import {
   setWebhookActive,
 } from '@/server/webhooks';
 
-const PATHS = ['/onboarding', '/settings', '/pipeline', '/postings'];
+const PATHS = ['/clients', '/onboarding', '/settings', '/pipeline', '/postings'];
 const STAGE_TYPES = ['LEAD', 'APPLICANT', 'SCREEN', 'ONSITE', 'OFFER', 'HIRED'] as const;
 
 function refresh() {

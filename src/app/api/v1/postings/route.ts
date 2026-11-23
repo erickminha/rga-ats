@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      include: { department: true, clientCompany: true },
+      include: { department: true, clientCompany: { select: { name: true } } },
     });
     return paginated(
       postings.map((p) => ({

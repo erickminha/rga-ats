@@ -71,11 +71,14 @@ export function GroupManager({
             >
               {item.name}
               <button
-                title={groups.remove(item.name)}
-                aria-label={groups.remove(item.name)}
+                title={kind === 'client' ? `Inativar ${item.name}` : groups.remove(item.name)}
+                aria-label={kind === 'client' ? `Inativar ${item.name}` : groups.remove(item.name)}
                 disabled={pending}
                 onClick={() => {
-                  if (!confirm(groups.confirmRemove(item.name))) return;
+                  const confirmRemoval = kind === 'client'
+                    ? `Inativar ${item.name}? As vagas vinculadas continuam no histórico da empresa.`
+                    : groups.confirmRemove(item.name);
+                  if (!confirm(confirmRemoval)) return;
                   startTransition(() => removeGroupAction(kind, item.id));
                 }}
                 className="flex size-6 cursor-pointer items-center justify-center rounded-full text-ink-2 transition-colors duration-[120ms] hover:bg-recessed hover:text-ink disabled:opacity-40"
@@ -146,7 +149,7 @@ export function GroupManager({
                     const ids = status.undo!;
                     startTransition(async () => {
                       await removeGroupsAction(kind, ids);
-                      setStatus({ text: groups.removed(ids.length, noun(ids.length)), undo: null });
+                      setStatus({ text: kind === 'client' ? `${ids.length} clientes inativados` : groups.removed(ids.length, noun(ids.length)), undo: null });
                     });
                   }}
                   className="cursor-pointer font-medium text-ink-2 underline underline-offset-2 hover:text-ink disabled:opacity-40"

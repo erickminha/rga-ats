@@ -112,13 +112,52 @@ model Department {
 
 // For staffing agencies: the client company a posting is hired for
 model ClientCompany {
-  id       String       @id @default(uuid())
-  orgId    String
-  org      Organization @relation(fields: [orgId], references: [id])
-  name     String
-  postings Posting[]
+  id               String       @id @default(uuid())
+  orgId            String
+  org              Organization @relation(fields: [orgId], references: [id])
+  name             String
+  legalName        String?
+  cnpj             String?
+  stateRegistration String?
+  segment          String?
+  size             String?
+  responsibleName  String?
+  responsibleRole  String?
+  phone            String?
+  whatsapp         String?
+  email            String?
+  website          String?
+  postalCode       String?
+  address          String?
+  city             String?
+  state            String?
+  notes            String?
+  source           String?
+  externalSource   String?
+  externalId       String?
+  active           Boolean      @default(true)
+  createdAt        DateTime?    @default(now())
+  postings         Posting[]
+  commercialContacts ClientCompanyContact[]
 
   @@unique([orgId, name])
+  @@unique([orgId, cnpj])
+  @@unique([orgId, externalSource, externalId])
+  @@index([orgId, active, segment])
+}
+
+// Business contacts belong to the client record, separate from the talent pool.
+model ClientCompanyContact {
+  id              String        @id @default(uuid())
+  clientCompanyId String
+  clientCompany   ClientCompany @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
+  name            String
+  role            String?
+  phone           String?
+  whatsapp        String?
+  email           String?
+
+  @@index([clientCompanyId])
 }
 
 enum AccessRole {
@@ -387,6 +426,7 @@ model Posting {
 
   @@unique([orgId, slug])
   @@index([orgId, state])
+  @@index([orgId, clientCompanyId])
   @@index([ownerId])
 }
 

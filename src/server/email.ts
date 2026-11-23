@@ -179,7 +179,7 @@ export async function buildOpportunityVars(
     include: {
       contact: true,
       org: true,
-      posting: { include: { clientCompany: true } },
+      posting: { include: { clientCompany: { select: { name: true } } } },
     },
   });
   if (!opp) throw new Error('Opportunity not found');
