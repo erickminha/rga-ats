@@ -96,7 +96,7 @@ export default async function SettingsPage({
       where: { id: ctx.orgId },
       include: {
         departments: { orderBy: { name: 'asc' } },
-        clientCompanies: { orderBy: { name: 'asc' } },
+        clientCompanies: { where: { active: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } },
       },
     }),
     db.user.findMany({
@@ -217,14 +217,27 @@ export default async function SettingsPage({
                 ? settings.business.clientsDescription
                 : settings.business.departmentsDescription}
             </p>
-            <GroupManager
-              kind={isAgency ? 'client' : 'department'}
-              items={((isAgency ? org?.clientCompanies : org?.departments) ?? []).map((g) => ({
-                id: g.id,
-                name: g.name,
-              }))}
-              placeholder={isAgency ? organization.client.example : organization.department.example}
-            />
+            {isAgency ? (
+              isAdmin(ctx) || ctx.accessRole === 'TEAM_MEMBER' ? (
+                <div className="grid justify-items-start gap-4">
+                  <Link href="/clients" className={buttonClass({ variant: 'tonal' })}>Gerenciar empresas clientes</Link>
+                  {isAdmin(ctx) ? (
+                    <details className="w-full">
+                      <summary className="cursor-pointer text-sm underline">Cadastro rápido de empresas</summary>
+                      <div className="mt-3">
+                        <GroupManager kind="client" items={org?.clientCompanies ?? []} placeholder={organization.client.example} />
+                      </div>
+                    </details>
+                  ) : null}
+                </div>
+              ) : null
+            ) : (
+              <GroupManager
+                kind="department"
+                items={(org?.departments ?? []).map((group) => ({ id: group.id, name: group.name }))}
+                placeholder={organization.department.example}
+              />
+            )}
           </Row>
         </Group>
         ) : null}

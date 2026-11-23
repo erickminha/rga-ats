@@ -43,7 +43,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     payload.scope === 'posting' ? { id: payload.id } : { clientCompanyId: payload.id };
   const postings = await db.posting.findMany({
     where: { orgId: org.id, ...postingWhere },
-    include: { clientCompany: true },
+    include: { clientCompany: { select: { name: true } } },
     orderBy: { createdAt: 'desc' },
   });
   if (!postings.length) notFound();

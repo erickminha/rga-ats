@@ -24,7 +24,7 @@ export default async function OnboardingPage() {
     where: { id: ctx.orgId },
     include: {
       departments: { orderBy: { name: 'asc' } },
-      clientCompanies: { orderBy: { name: 'asc' } },
+      clientCompanies: { where: { active: true }, orderBy: { name: 'asc' } },
       stages: { orderBy: { order: 'asc' } },
     },
   });

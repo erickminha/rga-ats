@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ org:
   const postings = await db.posting.findMany({
     where: { orgId: org.id, state: 'PUBLISHED' },
     orderBy: { createdAt: 'desc' },
-    include: { clientCompany: true },
+    include: { clientCompany: { select: { name: true } } },
   });
 
   const jobs = postings

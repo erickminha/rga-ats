@@ -10,9 +10,8 @@ import { db } from '@/lib/db';
  *
  * Streamed: each collection is read in id-ordered batches and written as it
  * goes, so memory stays flat and the download has no size ceiling (Vercel's
- * 4.5MB response cap doesn't apply to streamed bodies). The document shape is
- * identical to the old all-at-once export, so scripts/import-org.mjs reads it
- * unchanged.
+ * 4.5MB response cap doesn't apply to streamed bodies). The versioned
+ * document is read by scripts/import-org.mjs.
  *
  * All batches run in one read-only REPEATABLE READ transaction, so every
  * collection sees the same moment: a candidate added mid-export is either
@@ -50,6 +49,7 @@ function collections(db: Tx, orgId: string): [string, Batch][] {
     ],
     ['departments', (c) => db.department.findMany({ where: org, ...page(c) })],
     ['clientCompanies', (c) => db.clientCompany.findMany({ where: org, ...page(c) })],
+    ['clientCompanyContacts', (c) => db.clientCompanyContact.findMany({ where: { clientCompany: org }, ...page(c) })],
     ['stages', (c) => db.stage.findMany({ where: org, ...page(c) })],
     ['archiveReasons', (c) => db.archiveReason.findMany({ where: org, ...page(c) })],
     ['contacts', (c) => db.contact.findMany({ where: org, ...page(c) })],
@@ -92,9 +92,8 @@ function collections(db: Tx, orgId: string): [string, Batch][] {
 }
 
 async function* exportDocument(db: Tx, orgId: string, organization: unknown): AsyncGenerator<string> {
-  // v2 adds tasks/offers/requisitions/custom fields/plan steps/
-  // transcripts/saved reports/EEO; the importer accepts v1 too.
-  yield `{"exportVersion":2,"exportedAt":${JSON.stringify(new Date().toISOString())},`;
+  // v3 includes full client company profiles and their commercial contacts.
+  yield `{"exportVersion":3,"exportedAt":${JSON.stringify(new Date().toISOString())},`;
   yield `"organization":${JSON.stringify(organization)}`;
   for (const [key, next] of collections(db, orgId)) {
     yield `,${JSON.stringify(key)}:[`;

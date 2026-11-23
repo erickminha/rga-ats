@@ -16,8 +16,10 @@ import { TextSwap } from '@/components/ui/motion';
 export function NewPostingForm({
   isAgency,
   groups,
+  initialClientId,
 }: {
   isAgency: boolean;
+  initialClientId?: string;
   groups: { id: string; name: string }[];
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
@@ -35,6 +37,7 @@ export function NewPostingForm({
         <Field label={isAgency ? organization.client.singular : organization.department.singular}>
           <FormSelect
             name={isAgency ? 'clientCompanyId' : 'departmentId'}
+            defaultValue={initialClientId ?? ''}
             options={[
               { value: '', label: isAgency ? organization.client.none : organization.department.none },
               ...groups.map((g) => ({ value: g.id, label: g.name })),

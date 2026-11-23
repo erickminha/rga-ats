@@ -471,6 +471,7 @@ export async function loadPostingsPage(input: { status?: string; state?: string;
     stateFilter,
     q,
     isAgency,
+    canViewClients: isAgency && ['SUPER_ADMIN', 'ADMIN', 'TEAM_MEMBER'].includes(ctx.accessRole),
     isAdmin: ctx.accessRole === 'SUPER_ADMIN' || ctx.accessRole === 'ADMIN',
     org: org
       ? {

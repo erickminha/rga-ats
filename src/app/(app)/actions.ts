@@ -88,18 +88,25 @@ export async function createPostingAction(
     return { error: 'Invalid workplace type.' };
   if (!COMMITMENTS.includes(commitment as never)) return { error: 'Invalid commitment.' };
 
-  await createPosting(ctx, {
-    title,
-    departmentId: String(formData.get('departmentId') ?? '') || undefined,
-    clientCompanyId: String(formData.get('clientCompanyId') ?? '') || undefined,
-    location: String(formData.get('location') ?? '').trim() || undefined,
-    workplaceType: workplaceType as WorkplaceType,
-    commitment: commitment as Commitment,
-    salaryMin: parseIntOrUndefined(formData.get('salaryMin')),
-    salaryMax: parseIntOrUndefined(formData.get('salaryMax')),
-    salaryCurrency: String(formData.get('salaryCurrency') ?? '').trim() || undefined,
-    description: String(formData.get('description') ?? '').trim() || undefined,
-  });
+  try {
+    await createPosting(ctx, {
+      title,
+      departmentId: String(formData.get('departmentId') ?? '') || undefined,
+      clientCompanyId: String(formData.get('clientCompanyId') ?? '') || undefined,
+      location: String(formData.get('location') ?? '').trim() || undefined,
+      workplaceType: workplaceType as WorkplaceType,
+      commitment: commitment as Commitment,
+      salaryMin: parseIntOrUndefined(formData.get('salaryMin')),
+      salaryMax: parseIntOrUndefined(formData.get('salaryMax')),
+      salaryCurrency: String(formData.get('salaryCurrency') ?? '').trim() || undefined,
+      description: String(formData.get('description') ?? '').trim() || undefined,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Client not found') {
+      return { error: 'Selecione uma empresa cliente ativa do seu espaço de trabalho.' };
+    }
+    throw error;
+  }
 
   revalidatePath('/postings');
   redirect('/postings');

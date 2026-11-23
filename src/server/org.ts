@@ -1,6 +1,8 @@
 import type { OrgKind } from '@prisma/client';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
+import { lockClientWrites } from '@/server/client-companies';
+import { companyNameKey } from '@/lib/client-company';
 import type { SessionContext } from '@/lib/session';
 import { invalidateListMeta } from '@/server/lists/cache';
 
@@ -49,26 +51,26 @@ export async function addGroups(
   kind: GroupKind,
   names: string[],
 ): Promise<{ created: { id: string; name: string }[]; existing: number }> {
-  const current =
-    kind === 'client'
-      ? await db.clientCompany.findMany({ where: { orgId: ctx.orgId }, select: { name: true } })
-      : await db.department.findMany({ where: { orgId: ctx.orgId }, select: { name: true } });
-  const have = new Set(current.map((g) => g.name.toLowerCase()));
-  const wanted = new Map<string, string>(); // lowercased → as written, first one wins
-  for (const n of names) {
-    const name = n.trim();
-    if (name && !wanted.has(name.toLowerCase())) wanted.set(name.toLowerCase(), name);
-  }
-  const fresh = [...wanted].filter(([key]) => !have.has(key)).map(([, name]) => name);
-  const existing = wanted.size - fresh.length;
-  if (!fresh.length) return { created: [], existing };
-
-  const created = await db.$transaction(async (tx) => {
-    const data = fresh.map((name) => ({ orgId: ctx.orgId, name }));
-    const rows =
-      kind === 'client'
-        ? await tx.clientCompany.createManyAndReturn({ data, skipDuplicates: true, select: { id: true, name: true } })
-        : await tx.department.createManyAndReturn({ data, skipDuplicates: true, select: { id: true, name: true } });
+  const result = await db.$transaction(async (tx) => {
+    if (kind === 'client') await lockClientWrites(tx, ctx.orgId);
+    const current = kind === 'client'
+      ? (await tx.clientCompany.findMany({
+          where: { orgId: ctx.orgId }, select: { name: true, legalName: true },
+        })).flatMap((item) => item.legalName ? [item.name, item.legalName] : [item.name])
+      : (await tx.department.findMany({ where: { orgId: ctx.orgId }, select: { name: true } })).map((item) => item.name);
+    const keyOf = kind === 'client' ? companyNameKey : (name: string) => name.toLowerCase();
+    const have = new Set(current.map(keyOf));
+    const wanted = new Map<string, string>();
+    for (const raw of names) {
+      const name = raw.trim();
+      const key = keyOf(name);
+      if (key && !wanted.has(key)) wanted.set(key, name);
+    }
+    const fresh = [...wanted].filter(([key]) => !have.has(key)).map(([, name]) => ({ orgId: ctx.orgId, name }));
+    if (!fresh.length) return { created: [], existing: wanted.size };
+    const rows = kind === 'client'
+      ? await tx.clientCompany.createManyAndReturn({ data: fresh, skipDuplicates: true, select: { id: true, name: true } })
+      : await tx.department.createManyAndReturn({ data: fresh, skipDuplicates: true, select: { id: true, name: true } });
     for (const row of rows) {
       await emitEvent(tx, {
         orgId: ctx.orgId,
@@ -79,25 +81,30 @@ export async function addGroups(
         payload: { name: row.name },
       });
     }
-    return rows;
+    return { created: rows, existing: wanted.size - rows.length };
   });
   invalidateListMeta(ctx.orgId);
-  return { created, existing: existing + (fresh.length - created.length) };
+  return result;
 }
 
-/** Undo a bulk add: postings tied to them keep working, ungrouped (SetNull). */
+/** Undo a bulk add, retaining client records and their posting history. */
 export async function removeGroups(ctx: SessionContext, kind: GroupKind, ids: string[]) {
   const where = { orgId: ctx.orgId, id: { in: ids.slice(0, 500) } };
-  if (kind === 'client') await db.clientCompany.deleteMany({ where });
+  if (kind === 'client') {
+    await db.$transaction(async (tx) => {
+      await lockClientWrites(tx, ctx.orgId);
+      await tx.clientCompany.updateMany({ where, data: { active: false } });
+    });
+  }
   else await db.department.deleteMany({ where });
   invalidateListMeta(ctx.orgId);
 }
 
 export async function removeClientCompany(ctx: SessionContext, clientId: string) {
-  const client = await db.clientCompany.findFirst({
-    where: { id: clientId, orgId: ctx.orgId },
+  await db.$transaction(async (tx) => {
+    await lockClientWrites(tx, ctx.orgId);
+    const result = await tx.clientCompany.updateMany({ where: { id: clientId, orgId: ctx.orgId }, data: { active: false } });
+    if (!result.count) throw new Error('Client not found');
   });
-  if (!client) throw new Error('Client not found');
-  await db.clientCompany.delete({ where: { id: client.id } });
   invalidateListMeta(ctx.orgId);
 }

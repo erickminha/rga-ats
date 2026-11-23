@@ -13,12 +13,29 @@ over from another ATS.
 
 ## Moving an organization between deployments
 
-The unit of migration is the **organization export**: Settings → Data export downloads a single versioned JSON file (`exportVersion: 1`) containing the org, users (no credentials), departments/clients, stages, archive reasons, contacts, postings, opportunities, full stage-transition history, interviews, feedback, notes, email templates/messages, and the complete event stream.
+The unit of migration is the **organization export**. Settings → Data export downloads a single versioned JSON file containing the organization, users without credentials, departments, client companies, stages, archive reasons, contacts, postings, opportunities, stage-transition history, interviews, feedback, notes, email templates/messages, and the event stream.
 
 - **Self-hosted → hosted**: export from your instance, import into a fresh org on the hosted service (Source ATS). Because both run the same Prisma schema, the import is a mechanical ID-remapping load, not a lossy translation.
 - **Hosted → self-hosted** (no lock-in): the same export is available on Source ATS; import into your own instance. For large orgs, a raw Postgres dump path can also be offered on request — it is literally the same schema.
 
-**Status:** both halves ship now. Export (v2 — includes tasks, offers, requisitions, transcripts, custom fields, plan steps, saved reports, and aggregate EEO data) from Settings → Data export; import with `npm run import-org -- export.json --slug new-slug` against the target deployment's DATABASE_URL (v1 files still import). IDs are remapped mechanically; teammates reset passwords after import (credentials never migrate); file binaries move separately from blob/disk storage.
+Export v3 includes the full client-company profile, commercial contacts, and their links to postings and posting history. It retains the tasks, offers, requisitions, transcripts, custom fields, plan steps, saved reports, and aggregate EEO data introduced in v2. Use `npm run import-org -- export.json --slug new-slug` with the target deployment's DATABASE_URL. The importer also reads v1 and v2. A legacy company with no registration date restores with an unknown date and defaults to active if the file omits its status. Contacts and fields absent from the file cannot be recovered. IDs are remapped to the new organization. Teammates reset passwords after import, and file binaries move separately from blob/disk storage.
+
+## RGA ATS — mapeamento de empresas para a Parte 6/6
+
+| Coluna da aba Empresas | Campo de destino | Tratamento na futura importação |
+|---|---|---|
+| Telefone 2 | `ClientCompany.secondaryPhone` | Conservar como segundo telefone. Normalizar números brasileiros válidos e registrar valores não reconhecidos para revisão. |
+| Canais | `ClientCompany.channels` | Preservar o texto e os separadores da célula em um campo próprio, sem disparar comunicações ou inferir números de WhatsApp. |
+
+Usar `externalSource` e o identificador de origem estável em `externalId` para reconciliar empresas dentro da organização. Usar o CNPJ normalizado para conferir duplicidades e resolver divergências antes de vincular vagas pelo ID remapeado da empresa. A leitura das planilhas e a carga de dados ficam para a Parte 6/6.
+
+## RGA ATS — aprovação da implantação em homologação
+
+O contêiner do Cloud Run executa `node scripts/migrate.mjs` antes de iniciar a aplicação. A primeira inicialização da revisão aprovada aplica as migrações pendentes ao banco configurado para a revisão.
+
+1. Antes de aprovar o build, conferir que o gatilho selecionou `homolog` e o SHA auditado. Conferir que a revisão e a conexão usada pelo migrador apontam para o Neon de homologação isolado do banco de produção.
+2. Registrar um snapshot, ponto de restauração ou backup verificável do Neon de homologação e identificar a última revisão saudável do Cloud Run. Definir quem executará a recuperação e como validará o banco restaurado.
+3. Em caso de falha na inicialização ou nas verificações após o deploy, manter ou devolver o tráfego à revisão saudável. Reverter o tráfego mantém as mudanças já aplicadas ao banco. Se houver necessidade de recuperar dados ou esquema, restaurar o ponto registrado em uma instância isolada, validar e autorizar o redirecionamento de homologação antes de retomar a publicação.
 
 ## Migrating from another ATS
 
