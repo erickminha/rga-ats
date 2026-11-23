@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { publicClientName } from '@/lib/public-careers';
+import { isDemoCareers, publicClientSelect } from '@/server/public-careers';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -18,13 +20,14 @@ export function OPTIONS() {
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ org: string }> }) {
   const { org: orgSlug } = await params;
+  if (isDemoCareers(orgSlug)) return NextResponse.json({ error: 'not found' }, { status: 404, headers: CORS });
   const org = await db.organization.findUnique({ where: { slug: orgSlug } });
   if (!org) return NextResponse.json({ error: 'not found' }, { status: 404, headers: CORS });
 
   const postings = await db.posting.findMany({
     where: { orgId: org.id, state: 'PUBLISHED' },
     orderBy: { createdAt: 'desc' },
-    include: { department: true, clientCompany: { select: { name: true } } },
+    include: { department: { select: { name: true, orgId: true } }, clientCompany: { select: publicClientSelect } },
   });
 
   return NextResponse.json(
@@ -34,8 +37,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ org
         id: p.id,
         title: p.title,
         slug: p.slug,
-        department: p.department?.name ?? null,
-        hiring_for: p.clientCompany?.name ?? null,
+        department: p.department?.orgId === org.id ? p.department.name : null,
+        hiring_for: publicClientName(p),
         location: p.location,
         workplace_type: p.workplaceType.toLowerCase(),
         commitment: p.commitment.toLowerCase(),
@@ -47,6 +50,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ org
         published_at: p.createdAt.toISOString(),
       })),
     },
-    { headers: { ...CORS, 'Cache-Control': 'public, max-age=300' } },
+    { headers: { ...CORS, 'Cache-Control': 'no-store' } },
   );
 }

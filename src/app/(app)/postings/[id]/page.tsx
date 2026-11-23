@@ -1,11 +1,12 @@
+import { publicClientName } from '@/lib/public-careers';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { canViewClientCompanies } from '@/server/client-companies';
-import { PostingClientForm } from '@/components/client-company-form';
+import { PostingClientForm, PublicClientIdentityForm } from '@/components/client-company-form';
 import { db } from '@/lib/db';
-import { requireSession } from '@/lib/session';
+import { isAdmin, requireSession } from '@/lib/session';
 import { PlanEditor } from '@/components/plan-editor';
 import { ShareLinkButton } from '@/components/share-link-button';
 import { sectionLabel, surface } from '@/components/form-controls';
@@ -105,6 +106,9 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
             remove={removePostingLogoAction.bind(null, posting.id)}
             label={posting.clientCompanyId ? 'Logotipo do cliente' : 'Logotipo da vaga'}
           />
+          {canManageClient && linkedClient && isAdmin(ctx) ? <div className="mt-3">
+            <PublicClientIdentityForm key={linkedClient.id} postingId={posting.id} clientId={linkedClient.id} allowed={!!publicClientName(posting)} />
+          </div> : null}
         </div>
         <div className="mt-6">
           <p className="mb-2 text-xs text-ink-2">

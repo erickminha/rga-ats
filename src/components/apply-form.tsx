@@ -1,30 +1,27 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useId, useState } from 'react';
 import { applyAction, type ApplyFormState } from '@/app/careers/actions';
 import { Field, inputLgClass, selectClass, textareaClass } from '@/components/form-controls';
 import { buttonClass } from '@/components/ui/button';
 import { TextSwap } from '@/components/ui/motion';
 import { Checkbox } from '@/components/ui/checkbox';
+import { candidate } from '@/lib/i18n/pt-BR/candidate';
 
-const EEO_QUESTIONS: { name: string; label: string; options: string[] }[] = [
-  { name: 'eeo_gender', label: 'Gender', options: ['Female', 'Male', 'Non-binary'] },
+const EEO_QUESTIONS = [
+  { name: 'eeo_gender', label: 'Gênero', options: { Female: 'Feminino', Male: 'Masculino', 'Non-binary': 'Não binário' } },
   {
-    name: 'eeo_race',
-    label: 'Race / ethnicity',
-    options: [
-      'American Indian or Alaska Native',
-      'Asian',
-      'Black or African American',
-      'Hispanic or Latino',
-      'Native Hawaiian or Other Pacific Islander',
-      'White',
-      'Two or more races',
-    ],
+    name: 'eeo_race', label: 'Raça ou etnia',
+    options: {
+      'American Indian or Alaska Native': 'Indígena americano ou nativo do Alasca',
+      Asian: 'Asiática', 'Black or African American': 'Negra ou afro-americana',
+      'Hispanic or Latino': 'Hispânica ou latina', 'Native Hawaiian or Other Pacific Islander': 'Nativa do Havaí ou de outra ilha do Pacífico',
+      White: 'Branca', 'Two or more races': 'Duas ou mais raças ou etnias',
+    },
   },
-  { name: 'eeo_veteran', label: 'Veteran status', options: ['Protected veteran', 'Not a protected veteran'] },
-  { name: 'eeo_disability', label: 'Disability status', options: ['Yes, I have a disability', 'No, I do not have a disability'] },
-];
+  { name: 'eeo_veteran', label: 'Condição de veterano', options: { 'Protected veteran': 'Veterano protegido', 'Not a protected veteran': 'Não sou veterano protegido' } },
+  { name: 'eeo_disability', label: 'Deficiência', options: { 'Yes, I have a disability': 'Tenho deficiência', 'No, I do not have a disability': 'Não tenho deficiência' } },
+] as const;
 
 export function ApplyForm({
   orgSlug,
@@ -39,10 +36,23 @@ export function ApplyForm({
   collectEeo?: boolean;
   utm?: { source?: string; medium?: string; campaign?: string };
 }) {
-  const [state, formAction, pending] = useActionState<ApplyFormState, FormData>(
-    applyAction,
-    undefined,
-  );
+  const resumeId = useId();
+  const [resume, setResume] = useState<File | null>(null);
+  const [storeProfile, setStoreProfile] = useState(false);
+  const [joinNetwork, setJoinNetwork] = useState(false);
+  const [fields, setFields] = useState({ name: '', email: '', location: '', linkedin: '', coverNote: '' });
+  const [state, formAction, pending] = useActionState<ApplyFormState, FormData>((previous, form) => {
+    if (resume) form.set('resume', resume);
+    return applyAction(previous, form);
+  }, undefined);
+  const field = (key: keyof typeof fields) => ({
+    name: key,
+    value: fields[key],
+    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const value = event.target.value;
+      setFields((current) => ({ ...current, [key]: value }));
+    },
+  });
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -53,80 +63,85 @@ export function ApplyForm({
       {utm?.campaign ? <input type="hidden" name="utm_campaign" value={utm.campaign} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Full name">
-          <input name="name" required autoComplete="name" className={inputLgClass} />
+        <Field label={candidate.name}>
+          <input {...field('name')} required autoComplete="name" className={inputLgClass} />
         </Field>
-        <Field label="Email">
-          <input name="email" type="email" required autoComplete="email" className={inputLgClass} />
+        <Field label={candidate.email}>
+          <input {...field('email')} type="email" required autoComplete="email" className={inputLgClass} />
         </Field>
-        <Field label="Location">
-          <input name="location" placeholder="City, Country" className={inputLgClass} />
+        <Field label={candidate.location}>
+          <input {...field('location')} autoComplete="address-level2" placeholder="Ex.: Recife, PE" className={inputLgClass} />
         </Field>
-        <Field label="LinkedIn / portfolio">
-          <input name="linkedin" type="url" placeholder="https://…" className={inputLgClass} />
+        <Field label={candidate.profileLink}>
+          <input {...field('linkedin')} type="url" placeholder="https://…" className={inputLgClass} />
         </Field>
       </div>
 
-      <Field label="Resume (PDF, Word, ODT, RTF or TXT — max 5 MB)">
-        <input
-          name="resume"
-          type="file"
-          accept=".pdf,.doc,.docx,.odt,.rtf,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,application/rtf,text/rtf,text/plain"
-          className="text-sm text-ink-2 file:mr-3 file:h-8 file:cursor-pointer file:rounded-full file:border-0 file:bg-muted file:px-3 file:text-sm file:font-medium file:text-ink file:transition-colors hover:file:bg-recessed"
-        />
+      <div className="grid gap-2">
+        <label htmlFor={resumeId} className="text-sm font-medium">{candidate.resume}</label>
+        <p id={resumeId + '-help'} className="text-xs text-ink-2">{candidate.resumeHelp}</p>
+        <div className="flex flex-wrap items-center gap-3 rounded-field border border-line bg-canvas p-3">
+          <input
+            id={resumeId}
+            name="resume"
+            type="file"
+            aria-describedby={resumeId + '-help ' + resumeId + '-name'}
+            accept=".pdf,.doc,.docx,.odt,.rtf,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,application/rtf,text/rtf,text/plain"
+            onChange={(event) => setResume(event.target.files?.[0] ?? null)}
+            className="peer sr-only"
+          />
+          <label htmlFor={resumeId} className={buttonClass({ variant: 'secondary', size: 'sm', className: 'cursor-pointer peer-focus-visible:outline peer-focus-visible:outline-2' })}>
+            {candidate.chooseFile}
+          </label>
+          <span role="status" id={resumeId + '-name'} className="min-w-0 text-sm text-ink-2 [overflow-wrap:anywhere]">{resume?.name ?? candidate.noFile}</span>
+          {resume ? <button type="button" className="text-sm underline" onClick={() => {
+            const input = document.getElementById(resumeId) as HTMLInputElement | null;
+            if (input) input.value = '';
+            setResume(null);
+          }}>Remover currículo</button> : null}
+        </div>
+      </div>
+
+      <Field label={candidate.coverNote}>
+        <textarea {...field('coverNote')} rows={4} placeholder="Conte brevemente sobre sua experiência." className={textareaClass} />
       </Field>
 
-      <Field label="Anything you'd like to share?">
-        <textarea
-          name="coverNote"
-          rows={4}
-          placeholder="A short note about why you're a great fit…"
-          className={textareaClass}
-        />
-      </Field>
-
-      <label className="flex cursor-pointer items-start gap-2.5 rounded-field bg-muted p-3">
-        <Checkbox name="storeProfile" defaultChecked className="mt-0.5" />
-        <span className="text-xs text-ink-2">
-          <span className="font-medium text-ink">
-            Save my profile to make future applications faster.
-          </span>{' '}
-          Your details and resume stay on file so applying to other roles here is one click.
-          Uncheck it and everything you submit is erased automatically once this process ends.
-        </span>
-      </label>
-
-      {networkOptIn ? (
+      <fieldset className="grid gap-3 border-t border-line pt-4">
+        <legend className="pr-2 text-sm font-semibold">Privacidade e preferências</legend>
+        <p className="text-sm text-ink-2">{candidate.privacy}</p>
         <label className="flex cursor-pointer items-start gap-2.5 rounded-field bg-muted p-3">
-          <Checkbox name="networkOptIn" className="mt-0.5" />
+          <Checkbox name="storeProfile" checked={storeProfile} onChange={(event) => setStoreProfile(event.target.checked)} className="mt-0.5" />
           <span className="text-xs text-ink-2">
-            <span className="font-medium text-ink">
-              Make my profile discoverable by other employers hiring on Source.
-            </span>{' '}
-            Optional — does not affect this application. Only the details you submit here are
-            shared, never interview notes or feedback. You can withdraw at any time from your
-            application status page.
+            <span className="block font-medium text-ink">{candidate.saveProfile}</span>
+            {candidate.saveProfileDetail}
           </span>
         </label>
-      ) : null}
+        {networkOptIn ? (
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-field bg-muted p-3">
+            <Checkbox name="networkOptIn" checked={joinNetwork} onChange={(event) => setJoinNetwork(event.target.checked)} className="mt-0.5" />
+            <span className="text-xs text-ink-2">
+              <span className="block font-medium text-ink">{candidate.discover}</span>
+              {candidate.discoverDetail}
+            </span>
+          </label>
+        ) : null}
+      </fieldset>
 
       {collectEeo ? (
         <div className="pt-2">
-          <p className="text-sm font-medium text-ink">Voluntary self-identification (EEO)</p>
+          <p className="text-sm font-medium text-ink">Autodeclaração voluntária (EEO)</p>
           <p className="mt-1 text-xs text-ink-2">
-            Entirely optional and never shown alongside your application — responses are stored
-            separately with no link to your profile and reported only in aggregate. Answering (or
-            declining) has no effect on your application.
+            As respostas são opcionais, armazenadas separadamente do seu perfil e usadas apenas em relatórios agregados. Sua escolha não afeta a candidatura.
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {EEO_QUESTIONS.map((q) => (
               <label key={q.name} className="flex flex-col gap-1.5">
                 <span className="text-xs font-medium text-ink-2">{q.label}</span>
                 <select name={q.name} defaultValue="declined" className={selectClass}>
-                  <option value="declined">Decline to self-identify</option>
-                  {q.options.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
+                  <option value="declined">Prefiro não responder</option>
+                  {Object.entries(q.options).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
                     </option>
                   ))}
                 </select>
@@ -137,7 +152,7 @@ export function ApplyForm({
       ) : null}
 
       {state?.error ? (
-        <p className="rounded-field bg-critical/10 px-3 py-2 text-sm text-critical">{state.error}</p>
+        <p role="alert" className="rounded-field bg-critical/10 px-3 py-2 text-sm text-critical">{state.error}</p>
       ) : null}
 
       <button
@@ -145,7 +160,7 @@ export function ApplyForm({
         disabled={pending}
         className={buttonClass({ variant: 'primary', size: 'lg', className: 'mt-2 w-full' })}
       >
-        <TextSwap>{pending ? 'Submitting…' : 'Submit application'}</TextSwap>
+        <TextSwap>{pending ? candidate.applying : candidate.apply}</TextSwap>
       </button>
     </form>
   );

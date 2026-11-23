@@ -4,8 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { parseCommercialContact, parseCompany } from '@/lib/client-company';
+import { careersPath } from '@/lib/public-careers';
 import { requireSession } from '@/lib/session';
-import { ClientCompanyError, saveClientCompany, saveCommercialContact, setPostingClient } from '@/server/client-companies';
+import { ClientCompanyError, saveClientCompany, saveCommercialContact, setPostingClient, setPublicClientIdentity } from '@/server/client-companies';
 
 export type ClientFormState = { error?: string; success?: string; resetKey?: string };
 
@@ -72,4 +73,17 @@ export async function setPostingClientAction(postingId: string, _: ClientFormSta
   const org = await db.organization.findUnique({ where: { id: ctx.orgId }, select: { slug: true } });
   if (org) revalidatePath(`/careers/${org.slug}`, 'layout');
   return { success: 'Vínculo da vaga atualizado.' };
+}
+
+export async function savePublicClientIdentityAction(postingId: string, clientId: string, _prev: ClientFormState, form: FormData): Promise<ClientFormState> {
+  const ctx = await requireSession();
+  try {
+    const enabled = form.get('publicClient') === 'on';
+    const orgSlug = await setPublicClientIdentity(ctx, postingId, clientId, enabled);
+    revalidatePath(`/postings/${postingId}`);
+    revalidatePath(careersPath(orgSlug), 'layout');
+    return { success: enabled ? 'Divulgação autorizada.' : 'Identidade da empresa mantida em sigilo.' };
+  } catch (error) {
+    return { error: error instanceof ClientCompanyError ? error.message : 'Não foi possível salvar a autorização.' };
+  }
 }

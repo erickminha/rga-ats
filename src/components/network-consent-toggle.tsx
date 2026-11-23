@@ -12,11 +12,11 @@ export function NetworkConsentToggle({ token, optedIn }: { token: string; optedI
   return (
     <div className={`${surface} flex flex-wrap items-center justify-between gap-3 p-4`}>
       <div className="min-w-0 max-w-md">
-        <p className="text-sm font-medium">Discoverable by other employers</p>
+        <p className="text-sm font-medium">Visibilidade do perfil na rede de talentos</p>
         <p className="mt-0.5 text-xs text-ink-2">
           {optedIn
-            ? 'Your profile can be found by other companies hiring on Source. Only details you submitted are shared — never interview notes or feedback.'
-            : 'Your profile is private to the companies you applied to.'}
+            ? 'Outros empregadores na rede podem encontrar os dados que você enviou. Anotações de entrevista e avaliações ficam privadas.'
+            : 'Seu perfil está fora da busca de outros empregadores na rede.'}
         </p>
       </div>
       <button
@@ -24,7 +24,7 @@ export function NetworkConsentToggle({ token, optedIn }: { token: string; optedI
         onClick={() => startTransition(() => setNetworkConsentAction(token, !optedIn))}
         className={buttonClass({ variant: 'tonal', size: 'sm' })}
       >
-        <TextSwap>{pending ? 'Saving…' : optedIn ? 'Withdraw' : 'Opt in'}</TextSwap>
+        <TextSwap>{pending ? 'Salvando…' : optedIn ? 'Retirar autorização' : 'Autorizar'}</TextSwap>
       </button>
     </div>
   );

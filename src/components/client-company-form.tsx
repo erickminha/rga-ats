@@ -3,7 +3,7 @@
 import { useActionState, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
-  saveClientAction, saveCommercialContactAction, setPostingClientAction,
+  saveClientAction, saveCommercialContactAction, setPostingClientAction, savePublicClientIdentityAction,
   type ClientFormState,
 } from '@/app/(app)/clients/actions';
 import { brazilianStates, companyFields, maskCnpj, maskPhone, maskPostalCode, type CompanyField } from '@/lib/client-company';
@@ -139,6 +139,26 @@ export function PostingClientForm({ postingId, clientId, choices }: {
         </button>
       </div>
       <Feedback state={state} />
+    </form>
+  );
+}
+
+export function PublicClientIdentityForm({ postingId, clientId, allowed }: {
+  postingId: string; clientId: string; allowed: boolean;
+}) {
+  const [checked, setChecked] = useState(allowed);
+  const [state, action, pending] = useActionState(savePublicClientIdentityAction.bind(null, postingId, clientId), {});
+  return (
+    <form action={action} className="grid gap-2 rounded-field border border-line p-3">
+      <label className="flex items-start gap-2 text-sm font-medium">
+        <input type="checkbox" name="publicClient" checked={checked} onChange={(event) => setChecked(event.target.checked)} className="mt-1" />
+        Autorizar a divulgação do nome e do logotipo atual da empresa nesta vaga
+      </label>
+      <p className="text-xs text-ink-2">A autorização vale para esta empresa e para o logotipo atual. Se trocar o logotipo, salve a autorização novamente.</p>
+      <Feedback state={state} />
+      <button type="submit" disabled={pending} className={buttonClass({ variant: 'tonal', size: 'sm', className: 'justify-self-start' })}>
+        Salvar autorização
+      </button>
     </form>
   );
 }

@@ -19,9 +19,10 @@ export type BoardPosting = {
   group: string;
   /** Display text when it differs from the value shared in URLs. */
   groupLabel?: string;
+  area?: string;
 };
 
-export type BoardFilters = { q: string; group: string; location: string; workplace: string; type: string };
+export type BoardFilters = { q: string; group: string; location: string; workplace: string; type: string; area?: string };
 export type BoardFacet = Exclude<keyof BoardFilters, 'q'>;
 
 export const EMPTY_FILTERS: BoardFilters = { q: '', group: '', location: '', workplace: '', type: '' };
@@ -40,6 +41,7 @@ export const slugOf = (value: string) => value.toLowerCase().replace(/_/g, '-');
 /** A posting's value for one facet, in its URL form. */
 export function facetValue(p: BoardPosting, facet: BoardFacet): string {
   if (facet === 'group') return p.group;
+  if (facet === 'area') return p.area ?? '';
   if (facet === 'location') return p.location ?? '';
   if (facet === 'workplace') return slugOf(p.workplaceType);
   return slugOf(p.commitment);
@@ -54,6 +56,7 @@ export function readBoardFilters(params: Record<string, string | string[] | unde
     location: one(params.location),
     workplace: one(params.workplace),
     type: one(params.type),
+    ...(groupKey === 'client' && one(params.area) && { area: one(params.area) }),
   };
 }
 
@@ -63,8 +66,12 @@ export function readBoardFilters(params: Record<string, string | string[] | unde
  * no menu shows.
  */
 export function knownFilters(postings: BoardPosting[], f: BoardFilters): BoardFilters {
-  const known = (facet: BoardFacet) => (postings.some((p) => facetValue(p, facet) === f[facet]) ? f[facet] : '');
-  return { q: f.q, group: known('group'), location: known('location'), workplace: known('workplace'), type: known('type') };
+  const known = (facet: BoardFacet) => {
+    const value = f[facet] ?? '';
+    return postings.some((p) => facetValue(p, facet) === value) ? value : '';
+  };
+  const area = known('area');
+  return { q: f.q, group: known('group'), location: known('location'), workplace: known('workplace'), type: known('type'), ...(area ? { area } : {}) };
 }
 
 /** The query string for a set of filters: empty ones left out. */
@@ -76,6 +83,7 @@ export function boardSearch(filters: BoardFilters, groupKey: string): string {
     ['location', filters.location],
     ['workplace', filters.workplace],
     ['type', filters.type],
+    ...(groupKey === 'client' && filters.area ? [['area', filters.area] as [string, string]] : []),
   ];
   for (const [k, v] of pairs) if (v) params.set(k, v);
   const s = params.toString();
@@ -94,6 +102,7 @@ function matchesQuery(p: BoardPosting, q: string): boolean {
       p.title,
       p.group,
       p.groupLabel,
+      p.area,
       p.location,
       jobBoard.workplace[p.workplaceType],
       jobBoard.commitment[p.commitment],
@@ -107,7 +116,7 @@ function matchesQuery(p: BoardPosting, q: string): boolean {
 
 /** The postings that pass every filter, except `skip` (for a facet's own counts). */
 export function filterPostings(postings: BoardPosting[], f: BoardFilters, skip?: BoardFacet): BoardPosting[] {
-  const facets: BoardFacet[] = ['group', 'location', 'workplace', 'type'];
+  const facets: BoardFacet[] = ['group', 'location', 'workplace', 'type', 'area'];
   return postings.filter(
     (p) => matchesQuery(p, f.q) && facets.every((k) => k === skip || !f[k] || facetValue(p, k) === f[k]),
   );

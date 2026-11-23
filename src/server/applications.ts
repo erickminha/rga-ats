@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { capName } from '@/lib/utils';
 import { emitEvent } from '@/server/events';
-import { sendEmail } from '@/server/email';
+import { DEFAULT_TEMPLATES, sendEmail } from '@/server/email';
 import { storeFile } from '@/server/storage';
 import { extractSignals, uniqueLinks } from '@/server/resume';
 import { parseQueueFields } from '@/server/resume-parse';
@@ -243,14 +243,21 @@ export async function submitApplication(input: ApplicationInput) {
       where: { id: org.autoConfirmTemplateId, orgId: org.id },
     });
     if (template) {
+      const original = DEFAULT_TEMPLATES[0];
+      const welcome = template.subject === original.subject && template.body === original.body
+        ? {
+            subject: 'Recebemos sua candidatura para {{job_title}}',
+            body: 'Olá, {{first_name}}!\n\nRecebemos sua candidatura para {{job_title}}. A equipe de {{company_name}} vai analisar seu perfil e poderá entrar em contato sobre as próximas etapas.\n\nEquipe de recrutamento de {{company_name}}',
+          }
+        : template;
       await sendEmail({
         orgId: org.id,
         contactId: opportunity.contactId,
         opportunityId: opportunity.id,
         templateId: template.id,
         toEmail: email,
-        subject: template.subject,
-        body: template.body,
+        subject: welcome.subject,
+        body: welcome.body,
         vars: {
           candidate_name: opportunity.contactName,
           first_name: opportunity.contactName.split(' ')[0] ?? opportunity.contactName,

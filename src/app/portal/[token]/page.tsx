@@ -5,7 +5,11 @@ import { sectionLabel } from '@/components/form-controls';
 import { Avatar } from '@/components/ui/orb';
 import { Badge, type Tone } from '@/components/ui/primitives';
 
-export const metadata = { title: 'Your applications' };
+import { appLocale } from '@/lib/i18n';
+import { candidate } from '@/lib/i18n/pt-BR/candidate';
+import { noIndex } from '@/lib/public-careers';
+
+export const metadata = { title: 'Minhas candidaturas', robots: noIndex, referrer: 'no-referrer' };
 
 const STATUS_TONES: Record<string, Tone> = {
   Hired: 'positive',
@@ -23,11 +27,11 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
   if (!data) {
     return (
       <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 text-center">
-        <h1 className="text-xl font-medium">This link has expired</h1>
+        <h1 className="text-xl font-medium">Link inválido ou expirado</h1>
         <p className="mt-2 text-sm text-ink-2">
-          Status links are valid for 14 days. Request a fresh one from the careers page you applied
-          on.
+          Os links de acompanhamento são válidos por 14 dias. Solicite um novo no portal onde você se candidatou.
         </p>
+        <PoweredBySource className="mt-8 justify-center" />
       </div>
     );
   }
@@ -38,12 +42,12 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
         <Avatar name={data.org.name} size={36} />
         <div>
           <p className="text-md font-medium text-ink">{data.org.name}</p>
-          <p className="text-xs text-ink-2">Application status for {data.contact.name}</p>
+          <p className="text-xs text-ink-2">Acompanhamento de {data.contact.name}</p>
         </div>
       </div>
 
       <section>
-        <h2 className={`mb-3 ${sectionLabel}`}>Your applications</h2>
+        <h1 className={`mb-3 ${sectionLabel}`}>Minhas candidaturas</h1>
         {data.applications.length > 0 ? (
           <div className="divide-y divide-line overflow-hidden rounded-card bg-surface">
             {data.applications.map((app) => (
@@ -51,26 +55,27 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-ink">{app.postingTitle}</p>
                   <p className="mt-0.5 text-xs text-ink-2">
-                    {app.company} · applied{' '}
-                    {app.appliedAt.toLocaleDateString(undefined, {
+                    {app.company} · enviada em{' '}
+                    {app.appliedAt.toLocaleDateString(appLocale, {
+                      timeZone: 'America/Sao_Paulo',
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',
                     })}
                   </p>
                 </div>
-                <Badge tone={STATUS_TONES[app.status] ?? 'neutral'}>{app.status}</Badge>
+                <Badge tone={STATUS_TONES[app.status] ?? 'neutral'}>{candidate.stages[app.status]}</Badge>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-ink-2">No applications found.</p>
+          <p className="text-sm text-ink-2">Nenhuma candidatura encontrada.</p>
         )}
       </section>
 
       {data.networkEnabled || data.networkOptIn ? (
         <section className="mt-8">
-          <h2 className={`mb-3 ${sectionLabel}`}>Your preferences</h2>
+          <h2 className={`mb-3 ${sectionLabel}`}>Minhas preferências</h2>
           <NetworkConsentToggle token={token} optedIn={data.networkOptIn} />
         </section>
       ) : null}

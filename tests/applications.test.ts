@@ -155,11 +155,11 @@ describe.skipIf(!hasDb)('applying with a resume', () => {
     const before = await db.storedFile.count();
     const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
     expect(await applyForm('rowan.png@example.test', new File([png], 'resume.pdf', { type: 'application/pdf' }))).toEqual({
-      error: 'Upload your resume as a PDF, Word (.doc or .docx), OpenDocument (.odt), RTF or plain-text file.',
+      error: 'Envie um currículo em PDF, Word (.doc ou .docx), ODT, RTF ou TXT.',
     });
     // Word's "Web Page" export, named .doc: say what it is and how to fix it.
     expect(await applyForm('rowan.html@example.test', new File([fixture('resume.html')], 'resume.doc', { type: 'application/msword' }))).toEqual({
-      error: 'That file is a web page, not a document. Open it in Word, save it as a PDF or .docx, and upload that.',
+      error: 'O arquivo enviado é uma página da web. Salve o currículo em PDF ou .docx e tente novamente.',
     });
     expect(await db.storedFile.count()).toBe(before);
   });
@@ -168,7 +168,7 @@ describe.skipIf(!hasDb)('applying with a resume', () => {
     const before = await db.storedFile.count();
     const email = 'rowan.locked@example.test';
     expect(await applyForm(email, new File([fixture('encrypted.pdf')], 'cv.pdf', { type: 'application/pdf' }))).toEqual({
-      error: 'That file is password-protected. Remove the password and try again.',
+      error: 'O arquivo está protegido por senha. Remova a senha e tente novamente.',
     });
     expect(await db.storedFile.count()).toBe(before);
     expect(await db.contact.count({ where: { emails: { has: email } } })).toBe(0);

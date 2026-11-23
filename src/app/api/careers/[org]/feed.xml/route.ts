@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { isSampleSlug } from '@/server/sample-boards';
+import { isDemoCareers, publicClientSelect } from '@/server/public-careers';
+import { publicClientName, publicPostingText } from '@/lib/public-careers';
 
 function cdata(text: string): string {
   return `<![CDATA[${text.replace(/\]\]>/g, ']]]]><![CDATA[>')}]]>`;
@@ -15,7 +16,7 @@ function cdata(text: string): string {
 export async function GET(request: Request, { params }: { params: Promise<{ org: string }> }) {
   const { org: orgSlug } = await params;
   // Sample boards' roles aren't real: never hand them to an aggregator.
-  if (isSampleSlug(orgSlug)) return NextResponse.json({ error: 'not found' }, { status: 404 });
+  if (isDemoCareers(orgSlug)) return NextResponse.json({ error: 'not found' }, { status: 404 });
   const org = await db.organization.findUnique({ where: { slug: orgSlug } });
   if (!org) return NextResponse.json({ error: 'not found' }, { status: 404 });
 
@@ -23,22 +24,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ org:
   const postings = await db.posting.findMany({
     where: { orgId: org.id, state: 'PUBLISHED' },
     orderBy: { createdAt: 'desc' },
-    include: { clientCompany: { select: { name: true } } },
+    include: { clientCompany: { select: publicClientSelect } },
   });
 
   const jobs = postings
     .map((p) => {
-      const description =
-        p.content && typeof p.content === 'object' && 'description' in p.content
-          ? String((p.content as { description?: string }).description ?? '')
-          : p.title;
+      const employer = publicClientName(p) ?? (org.kind === 'AGENCY' || p.clientCompany ? 'Confidencial' : org.name);
+      const description = publicPostingText(p.content).description || p.title;
       return [
         '  <job>',
         `    <title>${cdata(p.title)}</title>`,
         `    <date>${cdata(p.createdAt.toUTCString())}</date>`,
         `    <referencenumber>${cdata(p.id)}</referencenumber>`,
         `    <url>${cdata(`${base}/careers/${org.slug}/${p.slug}?utm_source=jobboard`)}</url>`,
-        `    <company>${cdata(p.clientCompany?.name ?? org.name)}</company>`,
+        `    <company>${cdata(employer)}</company>`,
         `    <city>${cdata(p.location ?? '')}</city>`,
         `    <description>${cdata(description)}</description>`,
         `    <jobtype>${cdata(p.commitment.toLowerCase().replace('_', ''))}</jobtype>`,
@@ -60,6 +59,6 @@ ${jobs}
 </source>`;
 
   return new NextResponse(xml, {
-    headers: { 'Content-Type': 'application/xml', 'Cache-Control': 'public, max-age=600' },
+    headers: { 'Content-Type': 'application/xml', 'Cache-Control': 'no-store' },
   });
 }
