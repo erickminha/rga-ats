@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { db } from '@/lib/db';
+import { publicClientName } from '@/lib/public-careers';
 import { emitEvent } from '@/server/events';
 import type { SessionContext } from '@/lib/session';
 
@@ -179,7 +180,7 @@ export async function buildOpportunityVars(
     include: {
       contact: true,
       org: true,
-      posting: { include: { clientCompany: { select: { name: true } } } },
+      posting: { include: { clientCompany: { select: { id: true, orgId: true, name: true } } } },
     },
   });
   if (!opp) throw new Error('Opportunity not found');
@@ -190,7 +191,7 @@ export async function buildOpportunityVars(
       candidate_name: opp.contact.name,
       first_name: opp.contact.name.split(' ')[0] ?? opp.contact.name,
       job_title: opp.posting?.title ?? 'the role',
-      company_name: opp.posting?.clientCompany?.name ?? opp.org.name,
+      company_name: (opp.posting?.orgId === opp.orgId && publicClientName(opp.posting)) || opp.org.name,
       ...extra,
     },
   };

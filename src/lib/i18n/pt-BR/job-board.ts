@@ -1,10 +1,12 @@
 export const jobBoard = {
   careers: 'Carreiras',
-  title: 'Vagas abertas',
+  title: 'Oportunidades de carreira',
   noOpenRoles: 'Nenhuma vaga aberta no momento. Volte em breve.',
   otherRoles: 'Outras vagas',
-  team: 'Equipe',
-  allTeams: 'Todas as equipes',
+  team: 'Área',
+  company: 'Empresa',
+  allCompanies: 'Todas as empresas',
+  allTeams: 'Todas as áreas',
   filters: {
     location: 'Localização',
     allLocations: 'Todas as localizações',
@@ -14,16 +16,16 @@ export const jobBoard = {
     allTypes: 'Todos os tipos',
   },
   search: 'Buscar vagas abertas',
-  searchPlaceholder: 'Buscar vagas, equipes ou localidades…',
-  agencySearchPlaceholder: 'Buscar vagas, clientes ou localidades…',
+  searchPlaceholder: 'Buscar cargo, cidade ou área…',
+  agencySearchPlaceholder: 'Buscar cargo, cidade ou empresa…',
   clear: 'Limpar',
   clearFilters: 'Limpar filtros',
   noMatches: 'Nenhuma vaga encontrada',
   searchHint: 'Tente usar menos palavras ou escolher outros filtros.',
   count: (total: number, shown?: number) =>
     shown === undefined
-      ? `${total} ${total === 1 ? 'vaga aberta' : 'vagas abertas'}`
-      : `${shown} de ${total} ${total === 1 ? 'vaga' : 'vagas'}`,
+      ? `${total.toLocaleString('pt-BR')} ${total === 1 ? 'vaga aberta' : 'vagas abertas'}`
+      : `${shown.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')} ${total === 1 ? 'vaga' : 'vagas'}`,
   workplace: {
     ONSITE: 'Presencial',
     HYBRID: 'Híbrido',

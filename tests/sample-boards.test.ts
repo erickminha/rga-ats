@@ -53,7 +53,7 @@ describe.skipIf(!hasDb)('sample boards', () => {
     form.set('name', 'Someone');
     form.set('email', 'someone@example.com');
     const result = await applyAction({}, form);
-    expect(result?.error).toMatch(/sample job board/);
+    expect(result?.error).toMatch(/demonstração/);
   });
 
   it('never gives a new workspace a sample- slug', async () => {

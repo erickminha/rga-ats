@@ -1,14 +1,13 @@
 'use client';
 
 import { jobBoard } from '@/lib/i18n/pt-BR/job-board';
-import { organization } from '@/lib/i18n/pt-BR/organization';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { MapPin, Search } from 'lucide-react';
+import { ArrowUpRight, MapPin, Search } from 'lucide-react';
 import { Dropdown } from '@/components/dropdown';
 import { inputLgClass, noAutofill, sectionLabel, surfaceHover } from '@/components/form-controls';
 import { buttonClass } from '@/components/ui/button';
-import { Orb } from '@/components/ui/orb';
+import { CareersShare } from '@/components/careers-share';
 import {
   boardSearch,
   EMPTY_FILTERS,
@@ -18,9 +17,6 @@ import {
   type BoardFilters,
   type BoardPosting,
 } from '@/lib/job-board';
-
-/** Fewer roles than this and the board is short enough to read whole: no search bar. */
-const SEARCH_FROM = 4;
 
 /**
  * The public job board's roles, with search and filters. Filtering happens
@@ -44,6 +40,10 @@ export function JobBoard({
   initial: BoardFilters;
 }) {
   const [filters, setFilters] = useState(initial);
+  const reset = () => {
+    setFilters(EMPTY_FILTERS);
+    window.history.replaceState(null, '', window.location.pathname);
+  };
   const update = (patch: Partial<BoardFilters>) => {
     const next = { ...filters, ...patch };
     setFilters(next);
@@ -57,18 +57,20 @@ export function JobBoard({
     return [...byGroup.entries()];
   }, [shown]);
 
-  const active = Object.values(filters).some((v) => v.trim());
+  const active = Object.values(filters).some((v) => v?.trim());
   const facets: [BoardFacet, string, string][] = [
-    ['group', groupLabel, groupKey === 'client' ? organization.client.all : jobBoard.allTeams],
+    ['group', groupLabel, groupKey === 'client' ? jobBoard.allCompanies : jobBoard.allTeams],
     ['location', jobBoard.filters.location, jobBoard.filters.allLocations],
     ['workplace', jobBoard.filters.workplace, jobBoard.filters.allWorkplaces],
     ['type', jobBoard.filters.type, jobBoard.filters.allTypes],
   ];
 
+  if (groupKey === 'client') facets.push(['area', jobBoard.team, jobBoard.allTeams]);
+
   return (
     <>
-      {postings.length >= SEARCH_FROM ? (
-        <div className="mt-8 flex flex-col gap-3">
+      {postings.length > 0 ? (
+        <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4 sm:p-5">
           {/* a GET form, so Enter still searches before the page's script has loaded */}
           <form role="search" method="get" onSubmit={(e) => e.preventDefault()} className="relative">
             <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
@@ -95,14 +97,14 @@ export function JobBoard({
                   size="sm"
                   label={label}
                   allLabel={allLabel}
-                  value={filters[facet]}
+                  value={filters[facet] ?? ''}
                   options={options}
                   onSelect={(value) => update({ [facet]: value })}
                 />
               );
             })}
             {active ? (
-              <button type="button" onClick={() => update(EMPTY_FILTERS)} className={buttonClass({ variant: 'ghost', size: 'sm' })}>
+              <button type="button" onClick={reset} className={buttonClass({ variant: 'ghost', size: 'sm' })}>
                 {jobBoard.clear}
               </button>
             ) : null}
@@ -110,15 +112,23 @@ export function JobBoard({
         </div>
       ) : null}
 
-      <p aria-live="polite" className="mt-6 text-sm text-ink-2">
-        {jobBoard.count(postings.length, active ? shown.length : undefined)}
-      </p>
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-medium">Vagas disponíveis</h2>
+          <p aria-live="polite" className="mt-1 text-sm text-ink-2">
+            {jobBoard.count(postings.length, active ? shown.length : undefined)}
+          </p>
+        </div>
+        <CareersShare />
+      </div>
 
-      {shown.length === 0 ? (
+      {postings.length === 0 ? (
+        <p className="mt-4 rounded-card border border-line bg-surface p-6 text-sm text-ink-2">{jobBoard.noOpenRoles}</p>
+      ) : shown.length === 0 ? (
         <div className="mt-4 rounded-card bg-surface px-5 py-10 text-center">
           <p className="text-md text-ink">{jobBoard.noMatches}</p>
           <p className="mt-1 text-sm text-ink-2">{jobBoard.searchHint}</p>
-          <button type="button" onClick={() => update(EMPTY_FILTERS)} className={buttonClass({ variant: 'secondary', size: 'sm', className: 'mt-5' })}>
+          <button type="button" onClick={reset} className={buttonClass({ variant: 'secondary', size: 'sm', className: 'mt-5' })}>
             {jobBoard.clearFilters}
           </button>
         </div>
@@ -126,12 +136,11 @@ export function JobBoard({
         <div className="mt-4 flex flex-col gap-8">
           {groups.map(([group, roles]) => (
             <section key={group}>
-              <h2 className={`mb-3 ${sectionLabel}`}>{roles[0].groupLabel ?? group}</h2>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3">
+              <h3 className={`mb-3 ${sectionLabel}`}>{roles[0].groupLabel ?? group}</h3>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {roles.map((p) => (
-                  <Link key={p.id} href={`/careers/${orgSlug}/${p.slug}`} className={`flex flex-col p-4 ${surfaceHover}`}>
-                    <Orb seed={p.id} size={40} />
-                    <div className="mt-6">
+                  <Link key={p.id} href={`/careers/${orgSlug}/${p.slug}`} className={`group flex min-w-0 flex-col justify-between gap-4 rounded-card border border-line p-5 ${surfaceHover}`}>
+                    <div className="min-w-0 break-words">
                       <p className="text-md font-medium text-ink">{p.title}</p>
                       <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-2">
                         {p.location ? (
@@ -141,8 +150,10 @@ export function JobBoard({
                         ) : null}
                         <span>{jobBoard.workplace[p.workplaceType]}</span>
                         <span>{jobBoard.commitment[p.commitment]}</span>
+                        {p.area ? <span>{p.area}</span> : null}
                       </p>
                     </div>
+                    <span className="flex items-center gap-2 text-sm font-medium">Ver vaga <ArrowUpRight aria-hidden="true" size={15} /></span>
                   </Link>
                 ))}
               </div>

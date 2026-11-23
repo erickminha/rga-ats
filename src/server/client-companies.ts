@@ -1,3 +1,4 @@
+import { postingContent, publicClientName } from '@/lib/public-careers';
 import { Prisma, type PostingState } from '@prisma/client';
 import { db } from '@/lib/db';
 import { cnpjKey, companyNameKey, parseCommercialContact, parseCompany } from '@/lib/client-company';
@@ -168,15 +169,21 @@ export async function setPostingClient(ctx: SessionContext, postingId: string, c
   const posting = await db.$transaction(async (tx) => {
     await lockClientWrites(tx, ctx.orgId);
     const current = await tx.posting.findFirst({
-      where: { id: postingId, orgId: ctx.orgId }, select: { id: true, clientCompanyId: true },
+      where: { id: postingId, orgId: ctx.orgId }, select: { id: true, clientCompanyId: true, content: true },
     });
     if (!current) throw new ClientCompanyError('Vaga não encontrada.');
     if (current.clientCompanyId === clientId) return current;
     if (clientId && !(await tx.clientCompany.findFirst({
       where: { id: clientId, orgId: ctx.orgId, active: true }, select: { id: true },
     }))) throw new ClientCompanyError('Selecione uma empresa ativa do seu espaço de trabalho.');
+    const { publicClientCompanyId, publicClientLogoId, ...content } = postingContent(current.content);
     const updated = await tx.posting.update({
-      where: { id: postingId, orgId: ctx.orgId }, data: { clientCompanyId: clientId },
+      where: { id: postingId, orgId: ctx.orgId },
+      data: {
+        clientCompanyId: clientId,
+        ...(publicClientCompanyId || publicClientLogoId ? { content: content as Prisma.InputJsonObject } : {}),
+        ...(current.clientCompanyId ? { logoFileId: null } : {}),
+      },
     });
     await emitEvent(tx, {
       orgId: ctx.orgId, ...actorOf(ctx), verb: 'posting.client_changed', subjectType: 'posting', subjectId: updated.id,
@@ -186,4 +193,30 @@ export async function setPostingClient(ctx: SessionContext, postingId: string, c
   });
   invalidateListMeta(ctx.orgId);
   return posting;
+}
+
+export async function setPublicClientIdentity(ctx: SessionContext, postingId: string, clientId: string, enabled: boolean) {
+  await assertAccess(ctx, true);
+  return db.$transaction(async (tx) => {
+    await lockClientWrites(tx, ctx.orgId);
+    const posting = await tx.posting.findFirst({
+      where: { id: postingId, orgId: ctx.orgId, clientCompanyId: clientId },
+      select: {
+        orgId: true, logoFileId: true, content: true, org: { select: { slug: true } },
+        clientCompany: { select: { id: true, name: true, orgId: true } },
+      },
+    });
+    if (!posting || posting.clientCompany?.orgId !== ctx.orgId) throw new ClientCompanyError('Empresa vinculada indisponível.');
+    const content = {
+      ...postingContent(posting.content),
+      publicClientCompanyId: enabled ? clientId : null,
+      publicClientLogoId: enabled ? posting.logoFileId : null,
+    } as Prisma.InputJsonObject;
+    await tx.posting.update({ where: { id: postingId, orgId: ctx.orgId }, data: { content } });
+    await emitEvent(tx, {
+      orgId: ctx.orgId, ...actorOf(ctx), verb: 'posting.client_disclosure_changed', subjectType: 'posting', subjectId: postingId,
+      payload: { clientCompanyId: clientId, enabled, wasEnabled: !!publicClientName(posting) },
+    });
+    return posting.org.slug;
+  });
 }

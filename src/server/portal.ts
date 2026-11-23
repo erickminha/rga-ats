@@ -2,6 +2,8 @@ import type { StageType } from '@prisma/client';
 import { db } from '@/lib/db';
 import { emitEvent } from '@/server/events';
 import { sendEmail } from '@/server/email';
+import { candidate } from '@/lib/i18n/pt-BR/candidate';
+import { publicClientName } from '@/lib/public-careers';
 import { createPortalToken, verifyPortalToken } from '@/lib/portal-token';
 
 /**
@@ -14,7 +16,7 @@ export function candidateStatus(
   status: string,
   stageType: StageType,
   countsAsRejection: boolean | null,
-): string {
+): keyof typeof candidate.stages {
   if (status === 'HIRED') return 'Hired';
   if (status === 'ARCHIVED') return countsAsRejection ? 'Not selected' : 'Closed';
   switch (stageType) {
@@ -38,7 +40,7 @@ export async function requestPortalLink(orgSlug: string, email: string, baseUrl:
   if (!org) return;
   const normalized = email.toLowerCase().trim();
   const contact = await db.contact.findFirst({
-    where: { orgId: org.id, emails: { has: normalized }, isAnonymized: false },
+    where: { orgId: org.id, emails: { has: normalized }, isAnonymized: false, opportunities: { some: { orgId: org.id, origin: 'APPLIED', confidential: false } } },
   });
   if (!contact) return;
 
@@ -48,8 +50,7 @@ export async function requestPortalLink(orgSlug: string, email: string, baseUrl:
     orgId: org.id,
     contactId: contact.id,
     toEmail: normalized,
-    subject: `Your application status at ${org.name}`,
-    body: `Hi ${contact.name.split(' ')[0]},\n\nUse this link to view the status of your application(s) at ${org.name} and manage your preferences:\n\n${link}\n\nThe link is valid for 14 days.\n\n${org.name} Recruiting`,
+    ...candidate.linkEmail(org.name, contact.name.split(' ')[0], link),
   });
 }
 
@@ -62,9 +63,10 @@ export async function getPortalData(token: string) {
     include: {
       org: true,
       opportunities: {
+        where: { orgId: payload.orgId, origin: 'APPLIED', confidential: false },
         orderBy: { createdAt: 'desc' },
         include: {
-          posting: { include: { clientCompany: { select: { name: true } } } },
+          posting: { select: { orgId: true, title: true, content: true, clientCompany: { select: { id: true, orgId: true, name: true } } } },
           stage: true,
           archiveReason: true,
         },
@@ -75,7 +77,7 @@ export async function getPortalData(token: string) {
   if (!contact) return null;
 
   const networkConsent = contact.consents.find(
-    (c) => c.purpose === 'NETWORK_DISCOVERY' && !c.withdrawnAt,
+    (c) => c.orgId === payload.orgId && c.purpose === 'NETWORK_DISCOVERY' && !c.withdrawnAt,
   );
 
   return {
@@ -83,8 +85,8 @@ export async function getPortalData(token: string) {
     org: contact.org,
     applications: contact.opportunities.map((opp) => ({
       id: opp.id,
-      postingTitle: opp.posting?.title ?? 'General application',
-      company: opp.posting?.clientCompany?.name ?? contact.org.name,
+      postingTitle: opp.posting?.orgId === contact.orgId ? opp.posting.title : 'Candidatura geral',
+      company: (opp.posting?.orgId === contact.orgId && publicClientName(opp.posting)) || contact.org.name,
       appliedAt: opp.createdAt,
       status: candidateStatus(opp.status, opp.stage.type, opp.archiveReason?.countsAsRejection ?? null),
     })),
@@ -100,7 +102,8 @@ export async function setNetworkConsent(token: string, granted: boolean) {
 
   return db.$transaction(async (tx) => {
     const contact = await tx.contact.findFirst({
-      where: { id: payload.contactId, orgId: payload.orgId },
+      where: { id: payload.contactId, orgId: payload.orgId, isAnonymized: false },
+      select: { id: true, org: { select: { talentNetworkEnabled: true } } },
     });
     if (!contact) throw new Error('Not found');
 
@@ -113,7 +116,7 @@ export async function setNetworkConsent(token: string, granted: boolean) {
       },
     });
 
-    if (granted && !active) {
+    if (granted && !active && contact.org.talentNetworkEnabled) {
       await tx.consentRecord.create({
         data: { orgId: payload.orgId, contactId: contact.id, purpose: 'NETWORK_DISCOVERY' },
       });
