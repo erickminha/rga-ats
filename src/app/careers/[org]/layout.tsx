@@ -1,3 +1,4 @@
+import { jobBoard } from '@/lib/i18n/pt-BR/job-board';
 import { notFound } from 'next/navigation';
 import { PoweredBySource } from '@/components/powered-by';
 import { db } from '@/lib/db';
@@ -45,13 +46,13 @@ export default async function CareersLayout({
             <Avatar name={org.name} size={36} />
             <div>
               <p className="text-md font-medium text-ink">{org.name}</p>
-              <p className="text-xs text-ink-2">Careers</p>
+              <p className="text-xs text-ink-2">{jobBoard.careers}</p>
             </div>
           </>
         )}
       </header>
       <main className="mx-auto max-w-3xl px-6 py-8">{children}</main>
-      {/* on a dark brand background, the lockup's light-on-dark version */}
+      {/* Match the footer to the careers page palette. */}
       <footer className={cn('mx-auto max-w-3xl px-6 pb-8', onDark && 'dark')}>
         <PoweredBySource />
       </footer>

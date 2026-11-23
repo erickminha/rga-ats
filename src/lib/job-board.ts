@@ -1,3 +1,5 @@
+import { appLocale } from '@/lib/i18n';
+import { jobBoard } from '@/lib/i18n/pt-BR/job-board';
 /**
  * Search and filters for the public job board (careers/[org]). Pure, so the
  * server renders a shared link's filtered board and the client filters as
@@ -15,6 +17,8 @@ export type BoardPosting = {
   commitment: string;
   /** The department, or the client on an agency's board. */
   group: string;
+  /** Display text when it differs from the value shared in URLs. */
+  groupLabel?: string;
 };
 
 export type BoardFilters = { q: string; group: string; location: string; workplace: string; type: string };
@@ -86,7 +90,17 @@ function matchesQuery(p: BoardPosting, q: string): boolean {
   const words = fold(q).split(/\s+/).filter(Boolean);
   if (!words.length) return true;
   const hay = fold(
-    [p.title, p.group, p.location ?? '', WORKPLACE_LABELS[p.workplaceType] ?? '', COMMITMENT_LABELS[p.commitment] ?? ''].join(' '),
+    [
+      p.title,
+      p.group,
+      p.groupLabel,
+      p.location,
+      jobBoard.workplace[p.workplaceType],
+      jobBoard.commitment[p.commitment],
+      // Shared search links can still contain the previous English labels.
+      WORKPLACE_LABELS[p.workplaceType],
+      COMMITMENT_LABELS[p.commitment],
+    ].join(' '),
   );
   return words.every((w) => hay.includes(w));
 }
@@ -112,12 +126,15 @@ export function facetOptions(postings: BoardPosting[], f: BoardFilters, facet: B
     const v = facetValue(p, facet);
     if (!v) continue;
     const label =
-      facet === 'workplace' ? WORKPLACE_LABELS[p.workplaceType] : facet === 'type' ? COMMITMENT_LABELS[p.commitment] : v;
+      facet === 'workplace' ? jobBoard.workplace[p.workplaceType]
+        : facet === 'type' ? jobBoard.commitment[p.commitment]
+        : facet === 'group' ? p.groupLabel
+        : v;
     values.set(v, label ?? v);
   }
   if (values.size < 2) return [];
   const pool = filterPostings(postings, f, facet);
   return [...values.entries()]
     .map(([value, label]) => ({ value, label, count: pool.filter((p) => facetValue(p, facet) === value).length }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .sort((a, b) => a.label.localeCompare(b.label, appLocale));
 }

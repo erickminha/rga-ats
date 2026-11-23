@@ -1,5 +1,6 @@
 'use client';
 
+import { appLocale } from '@/lib/i18n';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { deleteTalentPoolAction } from '@/app/(app)/actions';
@@ -10,7 +11,7 @@ import { buttonClass } from '@/components/ui/button';
 import { StatusDot } from '@/components/ui/primitives';
 import { cn } from '@/lib/utils';
 
-const fmt = (n: number) => n.toLocaleString('en-US');
+const fmt = (n: number) => n.toLocaleString(appLocale);
 
 /**
  * Pools and saved segments. Names render with the page; their counts

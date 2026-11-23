@@ -1,3 +1,4 @@
+import { organization } from '@/lib/i18n/pt-BR/organization';
 import Link from 'next/link';
 import { CandidateLink } from '@/components/candidate-link';
 import { notFound } from 'next/navigation';
@@ -45,7 +46,7 @@ const ORIGIN_LABELS: Record<string, string> = {
   APPLIED: 'Applied',
   SOURCED: 'Sourced',
   REFERRED: 'Referred',
-  AGENCY: 'Agency',
+  AGENCY: organization.kinds.AGENCY.title,
   INTERNAL: 'Internal',
   UNIVERSITY: 'University',
 };

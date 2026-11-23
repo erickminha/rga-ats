@@ -1,5 +1,7 @@
+import { organization } from '@/lib/i18n/pt-BR/organization';
+import { settings } from '@/lib/i18n/pt-BR/settings';
 import { redirect } from 'next/navigation';
-import { SourceLockup } from '@/components/powered-by';
+import { SourceCodeLinks, SourceLockup } from '@/components/powered-by';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/session';
 import { completeOnboardingAction } from '@/app/org-actions';
@@ -9,7 +11,7 @@ import { OnboardingPipeline } from '@/components/onboarding-pipeline';
 import { btnGhost, surface } from '@/components/form-controls';
 import { signOut } from '@/lib/auth';
 
-export const metadata = { title: 'Set up · Source' };
+export const metadata = { title: 'Configuração inicial' };
 
 async function signOutAction() {
   'use server';
@@ -39,39 +41,39 @@ export default async function OnboardingPage() {
         <div className="flex items-center gap-1">
           <form action={completeOnboardingAction}>
             <button type="submit" className={btnGhost}>
-              Skip for now
+              Pular por enquanto
             </button>
           </form>
           <form action={signOutAction}>
             <button type="submit" className={btnGhost}>
-              Sign out
+              Sair
             </button>
           </form>
         </div>
       </div>
 
-      <h1 className="text-xl font-medium">Set up {org.name}</h1>
+      <h1 className="text-xl font-medium">Configure {org.name}</h1>
       <p className="mt-1 text-sm text-ink-2">
-        A few choices to shape your workspace — everything here can be changed later in Settings.
+        Personalize seu espaço de trabalho. Você pode alterar essas opções nas configurações.
       </p>
 
       <div className="mt-8 flex flex-col gap-4">
         <section className={`${surface} p-5`}>
-          <h2 className="mb-1 text-md font-medium">1 · Who are you hiring for?</h2>
+          <h2 className="mb-1 text-md font-medium">1 · Para quem você recruta?</h2>
           <p className="mb-4 text-sm text-ink-2">
-            This shapes how postings are organized across the app.
+            Essa escolha define como as vagas são organizadas no aplicativo.
           </p>
           <OrgKindPicker current={org.kind} />
         </section>
 
         <section className={`${surface} p-5`}>
           <h2 className="mb-1 text-md font-medium">
-            2 · {isAgency ? 'Client companies' : 'Departments'}
+            2 · {isAgency ? organization.client.plural : organization.department.plural}
           </h2>
           <p className="mb-4 text-sm text-ink-2">
             {isAgency
-              ? 'Add the companies you hire for. Every posting can be tied to a client, and your pipeline can be filtered per client.'
-              : 'Add your teams or departments (Engineering, Design, Sales…). Postings are grouped by department on your careers page.'}
+              ? settings.business.clientsDescription
+              : settings.business.departmentsDescription}
           </p>
           <GroupManager
             kind={isAgency ? 'client' : 'department'}
@@ -79,12 +81,13 @@ export default async function OnboardingPage() {
               id: g.id,
               name: g.name,
             }))}
-            placeholder={isAgency ? 'Acme Corp' : 'Engineering'}
+            placeholder={isAgency ? organization.client.example : organization.department.example}
           />
         </section>
 
         <OnboardingPipeline stages={org.stages.map((s) => ({ id: s.id, name: s.name, type: s.type }))} />
       </div>
+      <SourceCodeLinks className="mt-4" />
     </div>
   );
 }

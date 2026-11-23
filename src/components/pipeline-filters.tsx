@@ -1,5 +1,6 @@
 'use client';
 
+import { organization } from '@/lib/i18n/pt-BR/organization';
 import { useMemo } from 'react';
 import { Dropdown } from '@/components/dropdown';
 import { usePipelineNav } from '@/components/pipeline-nav';
@@ -22,9 +23,9 @@ export function PipelineFilters({
     <>
       {clients.length > 0 ? (
         <Dropdown
-          label="Client"
+          label={organization.client.singular}
           value={nav.input.client ?? ''}
-          allLabel="All clients"
+          allLabel={organization.client.all}
           options={clients.map((c) => ({ value: c.id, label: c.name }))}
           // A client change resets the posting.
           onSelect={(value) => nav.go({ client: value, posting: '' })}

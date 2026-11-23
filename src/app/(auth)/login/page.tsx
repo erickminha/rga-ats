@@ -9,7 +9,7 @@ import { googleAuthEnabled } from '@/server/google-auth';
 import { requestOrigin } from '@/server/request-origin';
 import { demoLogin, login } from '../actions';
 
-export const metadata = { title: 'Sign in · Source' };
+export const metadata = { title: 'Entrar' };
 
 // Rendered per-request so the DEMO_MODE flag and the Google keys are read
 // at runtime, not baked in at build time.
@@ -30,8 +30,8 @@ export default async function LoginPage({
 
   return (
     <div>
-      <h1 className="text-xl font-medium">Sign in</h1>
-      <p className="mb-6 mt-1 text-sm text-ink-2">Welcome back.</p>
+      <h1 className="text-xl font-medium">Entrar</h1>
+      <p className="mb-6 mt-1 text-sm text-ink-2">Acesse seu espaço de trabalho.</p>
       {error ? (
         <p role="alert" className="mb-4 rounded-field bg-critical/10 px-3 py-2 text-sm text-critical">
           {error}
@@ -40,11 +40,11 @@ export default async function LoginPage({
       {google ? <GoogleSignIn callbackUrl={callbackUrl} /> : null}
       <AuthForm
         action={login}
-        submitLabel="Sign in"
+        submitLabel="Entrar"
         hidden={{ callbackUrl }}
         fields={[
-          { name: 'email', label: 'Email', type: 'email', autoComplete: 'email' },
-          { name: 'password', label: 'Password', type: 'password', autoComplete: 'current-password' },
+          { name: 'email', label: 'E-mail', type: 'email', autoComplete: 'email' },
+          { name: 'password', label: 'Senha', type: 'password', autoComplete: 'current-password' },
         ]}
       />
       {demoEnabled() ? (
@@ -54,19 +54,18 @@ export default async function LoginPage({
               type="submit"
               className={buttonClass({ variant: 'tonal', size: 'lg', className: 'w-full' })}
             >
-              Explore the demo <span className="t-learn-arrow">→</span>
+              Explorar a demonstração <span className="t-learn-arrow">→</span>
             </button>
           </form>
           <p className="mt-2 text-xs text-ink-2">
-            One click into a sample workspace — seeded candidates, interviews, and an offer. No
-            account needed.
+            Explore um espaço de trabalho com candidatos, entrevistas e uma proposta de exemplo, sem precisar criar conta.
           </p>
         </div>
       ) : null}
       <p className="mt-6 text-sm text-ink-2">
-        New here?{' '}
+        Primeiro acesso?{' '}
         <Link href="/signup" className="font-medium text-ink hover:underline">
-          Create an organization
+          Criar uma organização
         </Link>
       </p>
     </div>

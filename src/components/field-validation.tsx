@@ -21,13 +21,13 @@ const HIDE_MS = 4000;
 function messageFor(el: Field) {
   const v = el.validity;
   if (v.valueMissing) {
-    return el instanceof HTMLSelectElement ? 'Choose an option' : 'This can’t be empty';
+    return el instanceof HTMLSelectElement ? 'Escolha uma opção' : 'Preencha este campo';
   }
-  if (v.typeMismatch && el.type === 'email') return 'Enter an email address, like name@company.com';
-  if (v.typeMismatch && el.type === 'url') return 'Enter a full link, starting with https://';
-  if (v.tooShort && 'minLength' in el) return `Use at least ${el.minLength} characters`;
-  if (v.rangeUnderflow && 'min' in el) return `Enter ${el.min} or more`;
-  if (v.rangeOverflow && 'max' in el) return `Enter ${el.max} or less`;
+  if (v.typeMismatch && el.type === 'email') return 'Digite um e-mail, como nome@empresa.com';
+  if (v.typeMismatch && el.type === 'url') return 'Digite um link completo, começando com https://';
+  if (v.tooShort && 'minLength' in el) return `Use pelo menos ${el.minLength} caracteres`;
+  if (v.rangeUnderflow && 'min' in el) return `Digite ${el.min} ou mais`;
+  if (v.rangeOverflow && 'max' in el) return `Digite ${el.max} ou menos`;
   if (v.patternMismatch && el.title) return el.title;
   return el.validationMessage;
 }

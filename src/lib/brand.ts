@@ -27,9 +27,9 @@ export const BRAND_FONTS = [
 export type BrandFontId = (typeof BRAND_FONTS)[number]['id'];
 
 export const TEXT_SIZES = [
-  { id: 'sm', label: 'Small', scale: 0.9375 },
-  { id: 'md', label: 'Default', scale: 1 },
-  { id: 'lg', label: 'Large', scale: 1.125 },
+  { id: 'sm', label: 'Pequeno', scale: 0.9375 },
+  { id: 'md', label: 'Padrão', scale: 1 },
+  { id: 'lg', label: 'Grande', scale: 1.125 },
 ] as const;
 
 export type TextSizeId = (typeof TEXT_SIZES)[number]['id'];
@@ -182,5 +182,5 @@ export function brandVars(brand: Brand, fontVariable?: string): Record<string, s
 export function brandColorWarning(brand: Brand): string | null {
   if (!brand.color) return null;
   const page = brand.background ?? '#f5f4f2';
-  return contrast(brand.color, page) < 1.6 ? 'Buttons in this color will be hard to see on the background.' : null;
+  return contrast(brand.color, page) < 1.6 ? 'O contraste com o fundo dificulta a visualização dos botões nessa cor.' : null;
 }

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { signOut } from '@/lib/auth';
 import { getAuthSession, getOrgNav } from '@/lib/session';
 import { readOrgNavCookie } from '@/lib/org-nav-cookie';
+import { SourceCodeLinks } from '@/components/powered-by';
 import { Sidebar } from '@/components/sidebar';
 import { Toaster } from '@/components/toaster';
 import { PersistOrgNav } from '@/components/persist-org-nav';
@@ -59,7 +60,10 @@ export default async function AppLayout({
           onboardedAt={fetched.onboardedAt ? fetched.onboardedAt.toISOString() : null}
         />
       ) : null}
-      <main className="min-w-0 flex-1 pb-28 md:pb-0">{children}</main>
+      <main className="min-w-0 flex-1 pb-28 md:pb-0">
+        {children}
+        <footer className="px-6 pb-6 pt-4"><SourceCodeLinks /></footer>
+      </main>
       <Toaster />
       {modal}
     </div>

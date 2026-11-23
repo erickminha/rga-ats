@@ -1,3 +1,4 @@
+import { organization } from '@/lib/i18n/pt-BR/organization';
 /**
  * Page data loaders. Server components call these directly, so each page's
  * data arrives in the same response as its HTML — no client-side fetch. The
@@ -167,7 +168,7 @@ export async function loadPipelinePage(input: PipelineInput) {
     clientFilter: input.client ?? '',
     /** The cursor this page was rendered after ('' for the first page). */
     after: after ? (input.after ?? '') : '',
-    fallbackGroupLabel: meta.kind === 'AGENCY' ? 'Other clients' : 'Roles',
+    fallbackGroupLabel: meta.kind === 'AGENCY' ? organization.client.other : 'Roles',
     stages: meta.stages,
     counts,
     page,

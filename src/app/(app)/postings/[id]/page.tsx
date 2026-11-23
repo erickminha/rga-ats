@@ -1,3 +1,4 @@
+import { organization } from '@/lib/i18n/pt-BR/organization';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
@@ -84,13 +85,12 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
             logoFileId={posting.logoFileId}
             upload={uploadPostingLogoAction.bind(null, posting.id)}
             remove={removePostingLogoAction.bind(null, posting.id)}
-            label="Role logo"
+            label={posting.clientCompanyId ? 'Logotipo do cliente' : 'Logotipo da vaga'}
           />
         </div>
         <div className="mt-6">
           <p className="mb-2 text-xs text-ink-2">
-            Share progress with the hiring client — read-only, candidate names and stages only,
-            no notes, scorecards, or compensation.
+            Compartilhe com o cliente um link de consulta com os nomes dos candidatos e suas etapas. Anotações, avaliações e remuneração ficam privadas.
           </p>
           <div className="flex flex-wrap gap-2">
             <ShareLinkButton
@@ -102,10 +102,10 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
               <ShareLinkButton
                 scope="client"
                 id={posting.clientCompanyId}
-                label={`All ${posting.clientCompany?.name} roles`}
+                label={`Todas as vagas de ${posting.clientCompany?.name ?? organization.client.singular}`}
                 subject={{
-                  name: posting.clientCompany?.name ?? 'Client',
-                  detail: 'All roles',
+                  name: posting.clientCompany?.name ?? organization.client.singular,
+                  detail: 'Todas as vagas',
                   seed: posting.clientCompanyId,
                 }}
               />

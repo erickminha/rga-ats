@@ -1,21 +1,10 @@
+import { appName } from '@/lib/i18n';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
-/**
- * The Source logo: the orb-and-wordmark lockup from public/brand, at 32px
- * tall (its minimum, and a whole multiple of the orb's dither grid), in the
- * light or dark file to match the theme. Never a text stand-in: "SRC" is
- * only for favicons (public/brand/README.md).
- */
+/** App wordmark shared by authentication, navigation and public pages. */
 export function SourceLockup({ href, className }: { href?: string; className?: string }) {
-  const art = (
-    <>
-      {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG, drawn cell for cell */}
-      <img src="/brand/source-lockup-light.svg" alt="Source" width={105} height={32} className="h-8 w-auto dark:hidden" />
-      {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG, drawn cell for cell */}
-      <img src="/brand/source-lockup-dark.svg" alt="Source" width={105} height={32} className="hidden h-8 w-auto dark:block" />
-    </>
-  );
+  const art = <span className="flex h-8 items-center text-lg font-bold tracking-tight text-ink">{appName}</span>;
   return href ? (
     <Link href={href} className={cn('inline-flex shrink-0', className)}>
       {art}
@@ -25,21 +14,37 @@ export function SourceLockup({ href, className }: { href?: string; className?: s
   );
 }
 
-/**
- * "Powered by" and the logo, for pages candidates and clients see: careers
- * pages, the candidate portal, offers, scheduling and share links. Opens our
- * site in a new tab so nobody loses their place.
- */
+const repository = 'https://github.com/erickminha/rga-ats';
+const revision = process.env.RGA_ATS_SOURCE_REVISION || 'homolog';
+const linkClass = 'underline underline-offset-2 hover:text-ink focus-visible:is-focused';
+
+export function SourceCodeLinks({ className }: { className?: string }) {
+  return (
+    <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-2', className)}>
+      <a href={`${repository}/tree/${revision}`} className={linkClass}>
+        Código-fonte do RGA ATS
+      </a>
+      <a href={`${repository}/blob/${revision}/LICENSE`} className={linkClass}>
+        Licença GNU AGPLv3
+      </a>
+    </div>
+  );
+}
+
+/** The product wordmark and source notices on pages for candidates and clients. */
 export function PoweredBySource({ className }: { className?: string }) {
   return (
-    <a
-      href="/"
-      target="_blank"
-      rel="noopener"
-      className={cn('inline-flex items-center gap-2.5 text-xs text-ink-2 transition-colors hover:text-ink', className)}
-    >
-      Powered by
-      <SourceLockup />
-    </a>
+    <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-1', className)}>
+      <a
+        href="/"
+        target="_blank"
+        rel="noopener"
+        className="inline-flex items-center gap-2.5 text-xs text-ink-2 transition-colors hover:text-ink"
+      >
+        Plataforma
+        <SourceLockup />
+      </a>
+      <SourceCodeLinks />
+    </div>
   );
 }

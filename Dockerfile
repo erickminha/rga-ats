@@ -10,6 +10,7 @@ RUN npm ci
 
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG RGA_ATS_SOURCE_REVISION
 RUN npm run build
 
 ENV NODE_ENV=production \

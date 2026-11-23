@@ -15,7 +15,7 @@ export function TalentNetworkToggle({ enabled }: { enabled: boolean }) {
       <Switch
         checked={enabled}
         disabled={pending}
-        label="Talent network opt-in"
+        label="Participação na rede de talentos"
         onChange={(next) =>
           startTransition(async () => {
             await setTalentNetworkAction(next);
@@ -24,7 +24,7 @@ export function TalentNetworkToggle({ enabled }: { enabled: boolean }) {
         }
       />
       <span className="text-xs text-ink-2">
-        <TextSwap>{pending ? 'Saving…' : enabled ? 'Opt-in enabled' : 'Disabled'}</TextSwap>
+        <TextSwap>{pending ? 'Salvando…' : enabled ? 'Opção habilitada' : 'Desativado'}</TextSwap>
       </span>
     </div>
   );

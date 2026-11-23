@@ -6,6 +6,13 @@ import { createCustomFieldAction, deleteCustomFieldAction } from '@/app/org-acti
 import { btnTonal, inputClass, badge, noAutofill } from '@/components/form-controls';
 import { FormSelect } from '@/components/form-select';
 
+const fieldTypes = [
+  { value: 'TEXT', label: 'Texto' },
+  { value: 'NUMBER', label: 'Número' },
+  { value: 'DATE', label: 'Data' },
+  { value: 'SELECT', label: 'Lista de opções' },
+];
+
 export type FieldDef = { id: string; label: string; type: string; options: string[] };
 
 export function CustomFieldsManager({ defs }: { defs: FieldDef[] }) {
@@ -21,13 +28,13 @@ export function CustomFieldsManager({ defs }: { defs: FieldDef[] }) {
         <div className="flex flex-wrap gap-2">
           {defs.map((d) => (
             <span key={d.id} className={`${badge} pr-1.5`}>
-              {d.label} · {d.type.toLowerCase()}
+              {d.label} · {fieldTypes.find((type) => type.value === d.type)?.label ?? d.type}
               <button
-                title={`Remove ${d.label}`}
-                aria-label={`Remove ${d.label}`}
+                title={`Remover ${d.label}`}
+                aria-label={`Remover ${d.label}`}
                 disabled={pending}
                 onClick={() => {
-                  if (!confirm(`Remove the "${d.label}" field? Existing values stay on candidates but stop being shown.`)) return;
+                  if (!confirm(`Remover o campo “${d.label}”? Os valores ficam armazenados e deixam de aparecer nos perfis.`)) return;
                   startTransition(() => deleteCustomFieldAction(d.id));
                 }}
                 className="flex size-4 cursor-pointer items-center justify-center rounded-full text-ink-3 transition-colors duration-[120ms] hover:text-critical disabled:opacity-40"
@@ -58,30 +65,25 @@ export function CustomFieldsManager({ defs }: { defs: FieldDef[] }) {
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           required
-          placeholder="Field label (e.g. Notice period)"
+          placeholder="Nome do campo (ex.: aviso prévio)"
           className={inputClass}
         />
         <FormSelect
           value={type}
           onChange={setType}
           className="sm:w-32"
-          options={[
-            { value: 'TEXT', label: 'Text' },
-            { value: 'NUMBER', label: 'Number' },
-            { value: 'DATE', label: 'Date' },
-            { value: 'SELECT', label: 'Dropdown' },
-          ]}
+          options={fieldTypes}
         />
         {type === 'SELECT' ? (
           <input {...noAutofill}
             value={options}
             onChange={(e) => setOptions(e.target.value)}
-            placeholder="Options, comma-separated"
+            placeholder="Opções separadas por vírgulas"
             className={inputClass}
           />
         ) : null}
         <button type="submit" disabled={pending || !label.trim()} className={btnTonal}>
-          <Plus /> Add field
+          <Plus /> Adicionar campo
         </button>
       </form>
       {error ? <p className="text-sm text-critical">{error}</p> : null}

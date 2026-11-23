@@ -1,3 +1,5 @@
+import { organization } from '@/lib/i18n/pt-BR/organization';
+import { settings } from '@/lib/i18n/pt-BR/settings';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { isAdmin, requireSession } from '@/lib/session';
@@ -38,7 +40,7 @@ import { badge, btnPrimary, btnTonal, inputClass, selectClass, surface, noAutofi
 import { buttonClass } from '@/components/ui/button';
 import { SectionHeader } from '@/components/ui/primitives';
 
-export const metadata = { title: 'Settings — Source' };
+export const metadata = { title: settings.title };
 
 /** A settings group: a quiet label on the canvas above one white card of rows. */
 function Group({
@@ -121,25 +123,25 @@ export default async function SettingsPage({
 
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Organization, pipeline, and team" />
+      <PageHeader title={settings.title} subtitle={settings.subtitle} />
 
       <div className="mx-6 mt-4 flex gap-8 pb-8">
         <aside className="hidden w-52 shrink-0 md:block">
           {[
             {
-              eyebrow: 'Personal',
+              eyebrow: settings.personal,
               items: [
-                ['integrations', 'Integrations'],
-                ['email', 'Email'],
+                ['integrations', settings.sections.integrations],
+                ['email', settings.sections.email],
               ],
             },
             {
-              eyebrow: 'Organization',
+              eyebrow: settings.organization,
               items: [
-                ['business', 'Business information'],
-                ['hiring', 'Hiring'],
-                ['team', 'Team'],
-                ['data', 'Data & privacy'],
+                ['business', settings.sections.business],
+                ['hiring', settings.sections.hiring],
+                ['team', settings.sections.team],
+                ['data', settings.sections.data],
               ],
             },
           ].map((g) => (
@@ -165,14 +167,14 @@ export default async function SettingsPage({
 
       <div className="flex max-w-3xl min-w-0 flex-1 flex-col gap-8">
         {section === 'business' ? (
-        <Group id="org" title="Organization">
+        <Group id="org" title={settings.organization}>
           <Row>
             <div className="flex items-center gap-2">
               <p className="text-md font-medium text-ink">{org?.name}</p>
-              <span className={badge}>{isAgency ? 'Staffing agency' : 'Company'}</span>
+              <span className={badge}>{organization.kinds[isAgency ? 'AGENCY' : 'COMPANY'].title}</span>
             </div>
             <p className="mt-1 text-sm text-ink-2">
-              Careers page:{' '}
+              {settings.business.careers}{' '}
               <a
                 href={`/careers/${org?.slug}`}
                 target="_blank"
@@ -184,23 +186,23 @@ export default async function SettingsPage({
           </Row>
           <Row>
             <p className="mb-3 text-sm text-ink-2">
-              Company logo — shown on your careers pages{isAgency ? ' (roles can override it with a client logo)' : ''}.
+              {isAgency ? settings.business.agencyLogo : settings.business.companyLogo}
             </p>
             <LogoUpload
               logoFileId={org?.logoFileId ?? null}
               upload={uploadOrgLogoAction}
               remove={removeOrgLogoAction}
-              label="Logo"
+              label={settings.business.logo}
             />
           </Row>
         </Group>
         ) : null}
 
         {section === 'business' && isAdmin(ctx) && org ? (
-        <Group title="Brand">
+        <Group title={settings.business.brand}>
           <Row>
             <p className="mb-5 text-sm text-ink-2">
-              How your job board, application form and emails to candidates look: your font, text size and colors, with your logo from above.
+              {settings.business.brandDescription}
             </p>
             <BrandKitEditor initial={readBrand(org.brand)} logoFileId={org.logoFileId} orgName={org.name} />
           </Row>
@@ -208,12 +210,12 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'business' ? (
-        <Group title={isAgency ? 'Client companies' : 'Departments'}>
+        <Group title={isAgency ? organization.client.plural : organization.department.plural}>
           <Row>
             <p className="mb-4 text-sm text-ink-2">
               {isAgency
-                ? 'The companies you hire for. Postings attach to a client; the pipeline can be filtered per client.'
-                : 'Teams you hire into. Postings are grouped by department on your careers page.'}
+                ? settings.business.clientsDescription
+                : settings.business.departmentsDescription}
             </p>
             <GroupManager
               kind={isAgency ? 'client' : 'department'}
@@ -221,17 +223,17 @@ export default async function SettingsPage({
                 id: g.id,
                 name: g.name,
               }))}
-              placeholder={isAgency ? 'Acme Corp' : 'Engineering'}
+              placeholder={isAgency ? organization.client.example : organization.department.example}
             />
           </Row>
         </Group>
         ) : null}
 
         {section === 'hiring' ? (
-        <Group id="hiring" title="Pipeline stages">
+        <Group id="hiring" title={settings.controls.stages}>
           <Row>
             <p className="mb-4 text-sm text-ink-2">
-              Rename, reorder, add, or remove the stages every candidate moves through.
+              {settings.controls.stagesDescription}
             </p>
             <StageManager
               stages={stages.map((s) => ({ id: s.id, name: s.name, type: s.type }))}
@@ -241,10 +243,10 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'email' ? (
-        <Group id="email" title="Email templates">
+        <Group id="email" title={settings.controls.templates}>
           <Row>
             <p className="mb-4 text-sm text-ink-2">
-              Reusable emails with merge tokens — used for manual sends and automation.
+              {settings.controls.templatesDescription}
             </p>
             <TemplateManager
               templates={templates.map((t) => ({
@@ -259,10 +261,10 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'email' ? (
-        <Group title="Email automation">
+        <Group title={settings.controls.automation}>
           <Row>
             <p className="mb-4 text-sm text-ink-2">
-              Automatic candidate emails on pipeline events.
+              {settings.controls.automationDescription}
             </p>
             <AutomationSettings
               templates={templates.map((t) => ({ id: t.id, name: t.name }))}
@@ -278,11 +280,10 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'hiring' ? (
-        <Group title="Custom fields">
+        <Group title={settings.controls.fields}>
           <Row>
             <p className="mb-4 text-sm text-ink-2">
-              Extra fields shown on every candidate profile — notice period, visa status, current
-              compensation, whatever your process tracks.
+              {settings.controls.fieldsDescription}
             </p>
             <CustomFieldsManager
               defs={fieldDefs.map((d) => ({ id: d.id, label: d.label, type: d.type, options: d.options }))}
@@ -292,9 +293,9 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'hiring' ? (
-        <Group title="EEO self-identification">
+        <Group title={settings.controls.eeo}>
           <ControlRow
-            description="Adds the standard voluntary EEO/OFCCP block to apply forms. Responses are stored with no link to any candidate — structurally impossible to view individually, reported only in aggregate on Reports."
+            description={settings.controls.eeoDescription}
           >
             <EeoToggle enabled={org?.collectEeo ?? false} />
           </ControlRow>
@@ -302,14 +303,9 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'hiring' ? (
-        <Group title="Independent scorecards">
+        <Group title={settings.controls.independent}>
           <ControlRow
-            description={
-              <>
-                Bias control: hide teammates&apos; interview feedback on a candidate until the
-                viewer has submitted their own scorecard.
-              </>
-            }
+            description={settings.controls.independentDescription}
           >
             <FeedbackVisibilityToggle enabled={org?.hideFeedbackUntilSubmitted ?? false} />
           </ControlRow>
@@ -317,16 +313,9 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'hiring' ? (
-        <Group title="Talent network">
+        <Group title={settings.controls.network}>
           <ControlRow
-            description={
-              <>
-                Adds an optional, unchecked opt-in to your apply forms: candidates can choose to be
-                discoverable by other employers on the Source network. Consent is recorded per
-                candidate and withdrawable from their status portal. (Network search &amp;
-                distribution are Source ATS features.)
-              </>
-            }
+            description={settings.controls.networkDescription}
           >
             <TalentNetworkToggle enabled={org?.talentNetworkEnabled ?? false} />
           </ControlRow>
@@ -334,24 +323,23 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'hiring' ? (
-        <Group title="Approvals">
+        <Group title={settings.controls.approvals}>
           <Row>
             <p className="text-sm text-ink-2">
-              When on, team members request approval instead of publishing a role or sending an
-              offer — an admin reviews from the dashboard before anything goes live.
+              {settings.controls.approvalsDescription}
             </p>
           </Row>
           <Row className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm font-medium text-ink">Job postings</p>
+            <p className="text-sm font-medium text-ink">{settings.controls.postings}</p>
             <PostingApprovalToggle enabled={org?.requirePostingApproval ?? false} />
           </Row>
           <Row className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm font-medium text-ink">Offers</p>
+            <p className="text-sm font-medium text-ink">{settings.controls.offers}</p>
             <SettingsSwitch
               enabled={org?.requireOfferApproval ?? false}
-              label="Require offer approval"
-              onCaption="Approval required"
-              offCaption="Anyone can send"
+              label={settings.controls.offerApproval}
+              onCaption={settings.controls.approvalRequired}
+              offCaption={settings.controls.anyoneCanSend}
               onToggle={setRequireOfferApprovalAction}
             />
           </Row>
@@ -359,21 +347,15 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'hiring' ? (
-        <Group title="Self-scheduling">
+        <Group title={settings.controls.scheduling}>
           <ControlRow
-            description={
-              <>
-                When a candidate enters a Screen or On-site stage, email them a booking link against
-                the opportunity owner&apos;s hours. Unused links are reused instead of minting
-                duplicates.
-              </>
-            }
+            description={settings.controls.schedulingDescription}
           >
             <SettingsSwitch
               enabled={org?.autoScheduleOnInterviewStages ?? false}
-              label="Auto-send booking links"
-              onCaption="Links send on stage entry"
-              offCaption="Manual booking links only"
+              label={settings.controls.sendLinks}
+              onCaption={settings.controls.autoLinks}
+              offCaption={settings.controls.manualLinks}
               onToggle={setAutoScheduleOnInterviewStagesAction}
             />
           </ControlRow>
@@ -381,11 +363,10 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'hiring' ? (
-        <Group title="Scorecard questions">
+        <Group title={settings.controls.scorecard}>
           <Row>
             <p className="text-sm text-ink-2">
-              Custom questions every interviewer answers alongside the overall rating and summary.
-              Past feedback keeps its answers even if you change the questions later.
+              {settings.controls.scorecardDescription}
             </p>
           </Row>
           {scorecardQuestions.length ? (
@@ -394,7 +375,7 @@ export default async function SettingsPage({
                 <span className="min-w-0 truncate">
                   {q.label}{' '}
                   <span className="text-xs text-ink-2">
-                    · {q.kind === 'RATING' ? '1–4 rating' : 'free text'}
+                    · {q.kind === 'RATING' ? settings.controls.rating : settings.controls.freeText}
                   </span>
                 </span>
                 <form action={archiveScorecardQuestionAction.bind(null, q.id)}>
@@ -402,7 +383,7 @@ export default async function SettingsPage({
                     type="submit"
                     className={buttonClass({ variant: 'ghost', size: 'xs', className: 'hover:text-critical' })}
                   >
-                    Remove
+                    {settings.controls.remove}
                   </button>
                 </form>
               </Row>
@@ -410,7 +391,7 @@ export default async function SettingsPage({
           ) : (
             <Row>
               <p className="text-sm text-ink-2">
-                No custom questions yet — scorecards are the fixed overall rating + summary.
+                {settings.controls.noQuestions}
               </p>
             </Row>
           )}
@@ -419,15 +400,15 @@ export default async function SettingsPage({
               <input {...noAutofill}
                 name="label"
                 required
-                placeholder="e.g. Technical depth, Communication…"
+                placeholder={settings.controls.scorecardExample}
                 className={cn(inputClass, 'min-w-64 flex-1')}
               />
               <select name="kind" defaultValue="RATING" className={cn(selectClass, 'w-auto')}>
-                <option value="RATING">1–4 rating</option>
-                <option value="TEXT">Free text</option>
+                <option value="RATING">{settings.controls.rating}</option>
+                <option value="TEXT">{settings.controls.freeText}</option>
               </select>
               <button type="submit" className={btnPrimary}>
-                Add question
+                {settings.controls.addQuestion}
               </button>
             </form>
           </Row>
@@ -435,7 +416,7 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'integrations' && notetakers ? (
-        <Group id="notetakers" title="Meeting notetakers · Beta">
+        <Group id="notetakers" title={settings.controls.notetakers}>
           <NotetakerConnections
             connections={notetakers[0]}
             overview={notetakers[1]}
@@ -447,12 +428,11 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'integrations' ? (
-        <Group id="developers" title="API keys">
+        <Group id="developers" title={settings.controls.apiKeys}>
           <Row>
             <p className="mb-4 text-sm text-ink-2">
-              Bearer keys for the REST API (<code className="font-mono text-xs">/api/v1</code>):
-              postings, opportunities, contacts, stages, and the event stream. Keys are shown once
-              and stored hashed.
+              Chaves Bearer da API REST (<code className="font-mono text-xs">/api/v1</code>):
+              vagas, candidaturas, contatos, etapas e eventos. As chaves são exibidas uma vez e armazenadas como hash.
             </p>
             <ApiKeysManager
               keys={apiKeys.map((k) => ({
@@ -472,9 +452,7 @@ export default async function SettingsPage({
         <Group title="Webhooks">
           <Row>
             <p className="mb-4 text-sm text-ink-2">
-              POST signed events (X-Source-Signature, HMAC-SHA256) to your endpoints as they
-              happen — applications, stage moves, hires, and everything else in the event stream.
-              Delivery is at-least-once with per-endpoint ordering.
+              Envia eventos assinados por POST (X-Source-Signature, HMAC-SHA256) para seus endpoints à medida que ocorrem, incluindo candidaturas, mudanças de etapa e contratações. Cada evento é entregue pelo menos uma vez, com a ordem preservada por endpoint.
             </p>
             <WebhooksManager
               endpoints={webhooks.map((w) => ({
@@ -491,7 +469,7 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'integrations' && isAdmin(ctx) ? (
-        <Group id="resume-parsing" title="Resume parsing">
+        <Group id="resume-parsing" title={settings.controls.resume}>
           <Row>
             <ResumeParsingStatus orgId={ctx.orgId} />
           </Row>
@@ -499,13 +477,12 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'data' ? (
-        <Group id="data" title="Contact import">
+        <Group id="data" title={settings.controls.importContacts}>
           <Row>
             <p className="mb-4 text-sm text-ink-2">
-              Bulk-import contacts from a CSV with a header row:{' '}
+              Importe contatos em lote com um CSV que inclua este cabeçalho:{' '}
               <code className="font-mono text-xs">name,email,phone,headline,location,tags</code>{' '}
-              (only name is required; tags are ;-separated). Rows matching an existing email are
-              skipped. Moving from another ATS? Use the full import below.
+              Apenas o campo name é obrigatório. Separe as etiquetas com ponto e vírgula. Linhas com e-mails já cadastrados são ignoradas. Para migrar de outro ATS, use a importação completa abaixo.
             </p>
             <CsvImport />
           </Row>
@@ -513,29 +490,29 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'data' ? (
-        <Group title="Import from another ATS">
-          <ControlRow description="Bring candidates, applications, postings, and their history over from the ATS you use today. Running it again only adds what's new.">
+        <Group title={settings.controls.importAts}>
+          <ControlRow description={settings.controls.importDescription}>
             <Link href="/settings/import" className={buttonClass({ variant: 'tonal', size: 'sm' })}>
-              Start an import
+              {settings.controls.startImport}
             </Link>
           </ControlRow>
         </Group>
         ) : null}
 
         {section === 'data' ? (
-        <Group title="Data export">
+        <Group title={settings.controls.export}>
           <ControlRow
-            description="Download everything your organization owns as JSON — candidates, postings, pipeline history, feedback, emails, and the full activity stream. Use it for backups or to move between self-hosted and managed Source."
+            description={settings.controls.exportDescription}
           >
             <a href="/api/export" className={buttonClass({ variant: 'tonal', size: 'sm' })}>
-              Export organization data
+              {settings.controls.exportOrg}
             </a>
           </ControlRow>
         </Group>
         ) : null}
 
         {section === 'team' ? (
-        <Group id="team" title="Team">
+        <Group id="team" title={settings.sections.team}>
           <Row>
             <TeamManager
               isAdmin={ctx.accessRole === 'SUPER_ADMIN' || ctx.accessRole === 'ADMIN'}
@@ -554,12 +531,10 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'data' ? (
-        <Group title="Data retention">
+        <Group title={settings.controls.retention}>
           <Row>
             <p className="mb-4 text-sm text-ink-2">
-              GDPR housekeeping: automatically anonymize candidates whose every process has been
-              archived for longer than this many months (hired candidates are exempt). Leave blank
-              to keep everything forever.
+              {settings.controls.retentionDescription}
             </p>
             <form action={saveRetentionAction} className="flex items-center gap-2">
               <input {...noAutofill}
@@ -567,12 +542,12 @@ export default async function SettingsPage({
                 name="retentionMonths"
                 min="1"
                 defaultValue={org?.retentionMonths ?? ''}
-                placeholder="e.g. 24"
+                placeholder={settings.controls.retentionExample}
                 className={cn(inputClass, 'w-28 tabular-nums')}
               />
-              <span className="text-sm text-ink-2">months</span>
+              <span className="text-sm text-ink-2">{settings.controls.months}</span>
               <button type="submit" className={btnTonal}>
-                Save
+                {settings.controls.save}
               </button>
             </form>
           </Row>
@@ -580,17 +555,17 @@ export default async function SettingsPage({
         ) : null}
 
         {section === 'data' ? (
-        <Group title="Audit log">
-          <ControlRow description="Every action by every user, API key, and automation — searchable and exportable.">
+        <Group title={settings.controls.audit}>
+          <ControlRow description={settings.controls.auditDescription}>
             <a href="/settings/audit" className={buttonClass({ variant: 'tonal', size: 'sm' })}>
-              Open audit log
+              {settings.controls.openAudit}
             </a>
           </ControlRow>
         </Group>
         ) : null}
 
         {section === 'data' ? (
-        <Group title="Archive reasons">
+        <Group title={settings.controls.archive}>
           <Row className="flex flex-wrap gap-2">
             {archiveReasons.map((r) => (
               <span key={r.id} className={badge}>

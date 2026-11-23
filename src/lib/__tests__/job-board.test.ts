@@ -20,6 +20,20 @@ const BOARD = [
 const ids = (ps: BoardPosting[]) => ps.map((p) => p.id).join('');
 
 describe('job board search', () => {
+  it('localizes the fallback group while preserving existing filter links', () => {
+    const other = { ...BOARD[0], group: 'Other clients', groupLabel: 'Outros clientes' };
+    const board = [other, ...BOARD.slice(1)];
+    const filters = readBoardFilters({ client: 'Other clients' }, 'client');
+    expect(knownFilters(board, filters).group).toBe('Other clients');
+    expect(filterPostings(board, { ...EMPTY_FILTERS, q: 'outros clientes' })).toEqual([other]);
+    expect(facetOptions(board, EMPTY_FILTERS, 'group')).toContainEqual({
+      value: 'Other clients', label: 'Outros clientes', count: 1,
+    });
+    expect(facetOptions(board, EMPTY_FILTERS, 'location')).toContainEqual(
+      expect.objectContaining({ value: other.location, label: other.location }),
+    );
+  });
+
   it('matches every word, across title, team, location and kind of work, ignoring case and accents', () => {
     expect(ids(filterPostings(BOARD, { ...EMPTY_FILTERS, q: 'designer' }))).toBe('ab');
     expect(ids(filterPostings(BOARD, { ...EMPTY_FILTERS, q: 'engineer remote' }))).toBe('d');
@@ -41,7 +55,7 @@ describe('job board search', () => {
       { value: 'Engineering', label: 'Engineering', count: 1 },
     ]);
     // the facet's own filter doesn't narrow its own counts
-    expect(facetOptions(BOARD, f, 'workplace').map((o) => `${o.label}:${o.count}`)).toEqual(['Hybrid:2', 'On-site:1', 'Remote:2']);
+    expect(facetOptions(BOARD, f, 'workplace').map((o) => `${o.label}:${o.count}`)).toEqual(['Híbrido:2', 'Presencial:1', 'Remoto:2']);
     expect(facetOptions(BOARD.slice(0, 1), EMPTY_FILTERS, 'group')).toEqual([]);
   });
 
@@ -52,6 +66,23 @@ describe('job board search', () => {
     expect(readBoardFilters(Object.fromEntries(new URLSearchParams(search)), 'team')).toEqual({ ...f, q: 'staff' });
     expect(boardSearch(EMPTY_FILTERS, 'client')).toBe('');
     expect(readBoardFilters({ client: ['Harbor', 'x'] }, 'client').group).toBe('Harbor');
+  });
+
+  it.each(['client', 'team'])('keeps previously shared %s URLs working with localized facets', (groupKey) => {
+    const query = `?${groupKey}=Engineering&location=Remote+%E2%80%94+US&workplace=remote&type=full-time`;
+    const filters = knownFilters(BOARD, readBoardFilters(Object.fromEntries(new URLSearchParams(query)), groupKey));
+
+    expect(ids(filterPostings(BOARD, filters))).toBe('d');
+    expect(boardSearch(filters, groupKey)).toBe(query);
+    expect(facetOptions(BOARD, filters, 'workplace')).toContainEqual({ value: 'remote', label: 'Remoto', count: 1 });
+    expect(facetOptions(BOARD, filters, 'type')).toContainEqual({ value: 'full-time', label: 'Tempo integral', count: 1 });
+  });
+
+  it('accepts localized search terms and English terms from existing links', () => {
+    for (const q of ['hibrido tempo integral', 'hybrid full-time']) {
+      expect(ids(filterPostings(BOARD, { ...EMPTY_FILTERS, q }))).toBe('ae');
+    }
+    expect(ids(filterPostings(BOARD, { ...EMPTY_FILTERS, q: 'presencial' }))).toBe('c');
   });
 
   it("drops a link's filter values the board doesn't have", () => {

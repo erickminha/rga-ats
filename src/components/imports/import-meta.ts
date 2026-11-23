@@ -1,3 +1,4 @@
+import { appLocale } from '@/lib/i18n';
 import type { ImportStatus, StageType } from '@prisma/client';
 import type { Tone } from '@/components/ui/primitives';
 
@@ -69,5 +70,5 @@ export function timeAgo(iso: string, now = Date.now()): string {
 }
 
 export function formatCount(n: number): string {
-  return n.toLocaleString('en-US');
+  return n.toLocaleString(appLocale);
 }

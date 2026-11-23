@@ -15,7 +15,7 @@ export function FeedbackVisibilityToggle({ enabled }: { enabled: boolean }) {
       <Switch
         checked={enabled}
         disabled={pending}
-        label="Independent scorecards"
+        label="Avaliações independentes"
         onChange={(next) =>
           startTransition(async () => {
             await setFeedbackVisibilityAction(next);
@@ -24,7 +24,7 @@ export function FeedbackVisibilityToggle({ enabled }: { enabled: boolean }) {
         }
       />
       <span className="text-xs text-ink-2">
-        <TextSwap>{pending ? 'Saving…' : enabled ? 'Hidden until submitted' : 'Open scorecards'}</TextSwap>
+        <TextSwap>{pending ? 'Salvando…' : enabled ? 'Ocultas até o envio' : 'Avaliações visíveis'}</TextSwap>
       </span>
     </div>
   );

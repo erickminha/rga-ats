@@ -1,5 +1,6 @@
 'use client';
 
+import { settings } from '@/lib/i18n/pt-BR/settings';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SourceLockup } from '@/components/powered-by';
 import Link from 'next/link';
@@ -40,7 +41,7 @@ const nav = [
   { href: '/tasks', label: 'Tasks', icon: ListTodo },
   { href: '/newsletters', label: 'Newsletters', icon: Newspaper },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/settings', label: settings.title, icon: Settings },
 ];
 
 export function Sidebar({

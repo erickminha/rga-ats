@@ -1,5 +1,6 @@
 'use client';
 
+import { appLocale } from '@/lib/i18n';
 import { useEffect, useEffectEvent, useRef, useSyncExternalStore, type RefObject } from 'react';
 import { buttonClass } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -14,7 +15,7 @@ const LEAD_PX = 1_200;
 const RESCROLL_PX = 400;
 
 const subscribeNoop = () => () => {};
-const fmt = (n: number) => n.toLocaleString('en-US');
+const fmt = (n: number) => n.toLocaleString(appLocale);
 
 /**
  * The end of a long list: "Showing 300 of 5,101" and a real Load more

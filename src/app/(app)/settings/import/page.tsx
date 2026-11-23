@@ -13,7 +13,7 @@ import { buttonClass } from '@/components/ui/button';
 import { Card, SectionHeader, StatusDot } from '@/components/ui/primitives';
 
 /** Settings → Import from another ATS: start a new import, reach the open one, and see past runs. */
-export const metadata = { title: 'Import from another ATS — Source' };
+export const metadata = { title: 'Import from another ATS' };
 
 const OPEN_COPY = {
   DISCOVERING: { title: (p: string) => `Reading your ${p} setup`, action: 'View progress' },

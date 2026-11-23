@@ -1,5 +1,6 @@
 'use client';
 
+import { appLocale } from '@/lib/i18n';
 import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { unstable_rethrow } from 'next/navigation';
@@ -35,28 +36,28 @@ const COPY: Record<
 > = {
   candidate: {
     working: (name) => [
-      `Gathering ${firstName(name)}'s profile…`,
-      'Leaving out notes and scorecards…',
-      'Making the link…',
+      `Preparando o perfil de ${firstName(name)}…`,
+      'Ocultando anotações e avaliações…',
+      'Gerando o link…',
     ],
-    ready: 'Presentation ready',
-    open: 'Open presentation',
+    ready: 'Apresentação pronta',
+    open: 'Abrir apresentação',
     note: (name) =>
-      `A one-pager on ${firstName(name)}: background, links, and contact details. Notes, scorecards, and pay stay private.`,
+      `Resumo de ${firstName(name)} com histórico, links e dados de contato. Anotações, avaliações e remuneração ficam privadas.`,
   },
   posting: {
-    working: () => ['Counting candidates by stage…', 'Leaving out notes and scorecards…', 'Making the link…'],
-    ready: 'Share link ready',
-    open: 'Open share page',
+    working: () => ['Contando candidatos por etapa…', 'Ocultando anotações e avaliações…', 'Gerando o link…'],
+    ready: 'Link pronto para compartilhar',
+    open: 'Abrir página compartilhada',
     note: () =>
-      'Hiring progress for this role: each candidate and their stage. Notes, scorecards, and pay stay private.',
+      'Acompanhe os candidatos e suas etapas nesta vaga. Anotações, avaliações e remuneração ficam privadas.',
   },
   client: {
-    working: () => ['Counting candidates by stage…', 'Leaving out notes and scorecards…', 'Making the link…'],
-    ready: 'Share link ready',
-    open: 'Open share page',
+    working: () => ['Contando candidatos por etapa…', 'Ocultando anotações e avaliações…', 'Gerando o link…'],
+    ready: 'Link pronto para compartilhar',
+    open: 'Abrir página compartilhada',
     note: (name) =>
-      `Hiring progress across ${name}'s roles: each candidate and their stage. Notes, scorecards, and pay stay private.`,
+      `Acompanhe os candidatos e suas etapas nas vagas de ${name}. Anotações, avaliações e remuneração ficam privadas.`,
   },
 };
 
@@ -69,7 +70,7 @@ const COPY: Record<
 export function ShareLinkButton({
   scope,
   id,
-  label = 'Client share link',
+  label = 'Link para o cliente',
   subject,
 }: {
   scope: Scope;
@@ -121,7 +122,7 @@ export function ShareLinkButton({
         <Dialog.Overlay className="dialog-overlay fixed inset-0 z-[300] bg-ink/10" />
         <Dialog.Content className="dialog-animate fixed left-1/2 top-[max(16px,16vh)] z-[300] w-[min(420px,calc(100vw-32px))] -translate-x-1/2 rounded-dialog bg-surface p-6 shadow-float outline-none">
           <Dialog.Close
-            aria-label="Close"
+            aria-label="Fechar"
             className={buttonClass({ variant: 'ghost', size: 'sm', icon: true, className: 'absolute right-3 top-3' })}
           >
             <X />
@@ -167,7 +168,7 @@ export function ShareLinkButton({
           <div className="mt-6">
             {working ? (
               <>
-                <Dialog.Title className="sr-only">Making the link</Dialog.Title>
+                <Dialog.Title className="sr-only">Gerando o link</Dialog.Title>
                 <Dialog.Description className="sr-only">{copy.note(subject.name)}</Dialog.Description>
                 <ThinkingStates
                   lines={copy.working(subject.name)}
@@ -195,8 +196,8 @@ export function ShareLinkButton({
                   />
                   {state.expiresAt ? (
                     <p className="mt-1.5 text-xs text-ink-3">
-                      Anyone with the link can view it until{' '}
-                      {new Date(state.expiresAt).toLocaleDateString(undefined, {
+                      Qualquer pessoa com o link pode acessar até{' '}
+                      {new Date(state.expiresAt).toLocaleDateString(appLocale, {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
@@ -206,7 +207,7 @@ export function ShareLinkButton({
                   ) : null}
                 </Rise>
                 <Rise i={3} className="mt-5 flex flex-wrap justify-end gap-2">
-                  <CopyButton text={state.url} label="Copy link" variant="tonal" size="md" />
+                  <CopyButton text={state.url} label="Copiar link" variant="tonal" size="md" />
                   <a
                     href={state.url}
                     target="_blank"
@@ -219,13 +220,13 @@ export function ShareLinkButton({
               </>
             ) : (
               <>
-                <Dialog.Title className="text-md font-medium text-ink">Couldn&apos;t make the link</Dialog.Title>
+                <Dialog.Title className="text-md font-medium text-ink">Não foi possível gerar o link</Dialog.Title>
                 <Dialog.Description className="mt-1 text-sm text-ink-2">
-                  Nothing was shared. Try again in a moment.
+                  Nenhuma informação foi compartilhada. Tente novamente em instantes.
                 </Dialog.Description>
                 <div className="mt-5 flex justify-end">
                   <button type="button" onClick={generate} className={buttonClass({ variant: 'tonal' })}>
-                    <RotateCcw /> Try again
+                    <RotateCcw /> Tentar novamente
                   </button>
                 </div>
               </>

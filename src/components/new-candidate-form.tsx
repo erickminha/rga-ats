@@ -1,5 +1,6 @@
 'use client';
 
+import { organization } from '@/lib/i18n/pt-BR/organization';
 import { useActionState } from 'react';
 import { createCandidateAction, type FormState } from '@/app/(app)/actions';
 import { Field, btnPrimary, inputClass, noAutofill } from '@/components/form-controls';
@@ -60,7 +61,7 @@ export function NewCandidateForm({
               { value: 'SOURCED', label: 'Sourced' },
               { value: 'APPLIED', label: 'Applied' },
               { value: 'REFERRED', label: 'Referred' },
-              { value: 'AGENCY', label: 'Agency' },
+              { value: 'AGENCY', label: organization.kinds.AGENCY.title },
               { value: 'INTERNAL', label: 'Internal' },
               { value: 'UNIVERSITY', label: 'University' },
             ]}

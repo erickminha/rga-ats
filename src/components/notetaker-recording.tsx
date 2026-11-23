@@ -1,5 +1,6 @@
 'use client';
 
+import { appLocale } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { notetakerProvider } from '@/lib/notetaker-providers';
 import { LocalTime } from '@/components/local-time';
@@ -130,5 +131,5 @@ export function useLocalFormat(options: Intl.DateTimeFormatOptions = { month: 's
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   return (iso: string) =>
-    mounted ? new Date(iso).toLocaleString(undefined, options) : new Date(iso).toLocaleString('en-US', { ...options, timeZone: 'UTC' });
+    mounted ? new Date(iso).toLocaleString(appLocale, options) : new Date(iso).toLocaleString(appLocale, { ...options, timeZone: 'UTC' });
 }

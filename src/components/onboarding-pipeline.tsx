@@ -26,20 +26,20 @@ export function OnboardingPipeline({ stages }: { stages: React.ComponentProps<ty
   return (
     <>
       <section className={`${surface} p-5`}>
-        <h2 className="mb-1 text-md font-medium">3 · Your hiring pipeline</h2>
-        <p className="mb-4 text-sm text-ink-2">Start from Source&apos;s stages, or bring the ones you use today.</p>
+        <h2 className="mb-1 text-md font-medium">3 · Seu funil de recrutamento</h2>
+        <p className="mb-4 text-sm text-ink-2">Comece com as etapas padrão ou importe as que você já usa.</p>
         <Segmented<From>
           value={from}
           onChange={setFrom}
           items={[
-            { value: 'here', label: 'Set it up here' },
-            { value: 'import', label: 'Import from another ATS' },
+            { value: 'here', label: 'Configurar aqui' },
+            { value: 'import', label: 'Importar de outro ATS' },
           ]}
         />
 
         {importing ? (
           <div className="mt-5">
-            <div role="radiogroup" aria-label="Your current ATS" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div role="radiogroup" aria-label="Seu ATS atual" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {IMPORT_PROVIDERS.map((p) => (
                 <button
                   key={p.id}
@@ -58,14 +58,13 @@ export function OnboardingPipeline({ stages }: { stages: React.ComponentProps<ty
               ))}
             </div>
             <p className="mt-4 text-sm text-ink-2">
-              Your stages will come from {meta.name}. You&apos;ll choose where each one lands, and whether it
-              replaces Source&apos;s starter stages, before any candidates come over.
+              As etapas virão do {meta.name}. Antes de importar candidatos, você pode definir como mapear cada etapa e se deseja substituir as etapas padrão.
             </p>
           </div>
         ) : (
           <div className="mt-5">
             <p className="mb-4 text-sm text-ink-2">
-              Rename, reorder, add, or remove stages to match how you actually interview.
+              Renomeie, reordene, adicione ou remova etapas para refletir seu processo seletivo.
             </p>
             <StageManager stages={stages} />
           </div>
@@ -75,7 +74,7 @@ export function OnboardingPipeline({ stages }: { stages: React.ComponentProps<ty
       <form action={completeOnboardingAction} className="flex justify-end pb-10 pt-4">
         {importing ? <input type="hidden" name="provider" value={meta.id} /> : null}
         <button type="submit" className={btnPrimary}>
-          {importing ? `Finish setup and connect ${meta.name}` : 'Finish setup'}{' '}
+          {importing ? `Concluir e conectar ao ${meta.name}` : 'Concluir configuração'}{' '}
           <span className="t-learn-arrow">→</span>
         </button>
       </form>

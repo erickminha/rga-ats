@@ -1,3 +1,5 @@
+import { jobBoard } from '@/lib/i18n/pt-BR/job-board';
+import { appLocale, appName } from '@/lib/i18n';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, MapPin } from 'lucide-react';
@@ -6,22 +8,9 @@ import { ApplyForm } from '@/components/apply-form';
 import { isSampleSlug } from '@/server/sample-boards';
 import { buttonClass } from '@/components/ui/button';
 
-const WORKPLACE_LABELS: Record<string, string> = {
-  ONSITE: 'On-site',
-  HYBRID: 'Hybrid',
-  REMOTE: 'Remote',
-};
-
-const COMMITMENT_LABELS: Record<string, string> = {
-  FULL_TIME: 'Full-time',
-  PART_TIME: 'Part-time',
-  CONTRACT: 'Contract',
-  INTERNSHIP: 'Internship',
-};
-
 function formatSalary(min: number | null, max: number | null, currency: string | null): string | null {
   if (!min && !max) return null;
-  const fmt = (n: number) => n.toLocaleString();
+  const fmt = (n: number) => n.toLocaleString(appLocale);
   const cur = currency ?? '';
   if (min && max) return `${cur} ${fmt(min)} – ${fmt(max)}`.trim();
   return `${cur} ${fmt(min ?? max ?? 0)}`.trim();
@@ -62,7 +51,7 @@ export default async function PostingPage({
         href={`/careers/${orgSlug}`}
         className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-ink-2 transition-colors duration-[120ms] hover:text-ink"
       >
-        <ArrowLeft size={14} /> All positions
+        <ArrowLeft size={14} /> Todas as vagas
       </Link>
 
       {/* a role's own logo (an agency's client); the organization's is in the header */}
@@ -70,21 +59,21 @@ export default async function PostingPage({
         // eslint-disable-next-line @next/next/no-img-element -- upload via public logo route
         <img
           src={`/api/logo/${posting.logoFileId}`}
-          alt={`${posting.clientCompany?.name ?? org.name} logo`}
+          alt={`Logotipo de ${posting.clientCompany?.name ?? org.name}`}
           className="mb-6 size-12 rounded-card bg-surface object-contain p-1"
         />
       ) : null}
       <h1 className="text-3xl">{posting.title}</h1>
       <p className="mt-2 flex flex-wrap items-center gap-3 text-sm text-ink-2">
-        {posting.clientCompany ? <span>Hiring for {posting.clientCompany.name}</span> : null}
+        {posting.clientCompany ? <span>Recrutamento para {posting.clientCompany.name}</span> : null}
         {posting.department ? <span>{posting.department.name}</span> : null}
         {posting.location ? (
           <span className="flex items-center gap-1">
             <MapPin size={13} /> {posting.location}
           </span>
         ) : null}
-        <span>{WORKPLACE_LABELS[posting.workplaceType]}</span>
-        <span>{COMMITMENT_LABELS[posting.commitment]}</span>
+        <span>{jobBoard.workplace[posting.workplaceType]}</span>
+        <span>{jobBoard.commitment[posting.commitment]}</span>
         {salary ? <span className="tabular-nums">{salary}</span> : null}
       </p>
 
@@ -114,7 +103,7 @@ export default async function PostingPage({
             <div className="py-2">
               <h2 className="text-xl font-medium">This is a sample job board</h2>
               <p className="mt-2 max-w-md text-sm text-ink-2">
-                Applying is off here. It shows what candidates see on a careers page run by Source ATS.
+                Candidaturas estão desativadas nesta demonstração da página de carreiras do {appName}.
               </p>
               <Link href="/" className={buttonClass({ variant: 'primary', size: 'lg', className: 'mt-6' })}>
                 Get your own careers page

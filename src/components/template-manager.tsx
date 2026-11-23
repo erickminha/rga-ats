@@ -19,14 +19,14 @@ function TemplateEditor({
     <form action={saveTemplateAction} className="flex flex-col gap-3 pt-3">
       <input type="hidden" name="templateId" value={template?.id ?? ''} />
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Name">
+        <Field label="Nome">
           <input {...noAutofill} name="name" required defaultValue={template?.name} className={inputClass} />
         </Field>
-        <Field label="Subject">
+        <Field label="Assunto">
           <input {...noAutofill} name="subject" required defaultValue={template?.subject} className={inputClass} />
         </Field>
       </div>
-      <Field label="Body">
+      <Field label="Mensagem">
         <textarea {...noAutofill}
           name="body"
           rows={6}
@@ -37,10 +37,10 @@ function TemplateEditor({
       </Field>
       <div className="flex items-center justify-between gap-4">
         <p className="text-xs text-ink-2">
-          Tokens: {'{{candidate_name}} {{first_name}} {{job_title}} {{company_name}} {{interview_title}} {{interview_time}}'}
+          Campos dinâmicos disponíveis {'{{candidate_name}} {{first_name}} {{job_title}} {{company_name}} {{interview_title}} {{interview_time}}'}
         </p>
         <button type="submit" className={btnTonal} onClick={onDone}>
-          Save
+          Salvar
         </button>
       </div>
     </form>
@@ -72,11 +72,11 @@ export function TemplateManager({ templates }: { templates: Template[] }) {
                 <span className="truncate text-xs text-ink-2">{t.subject}</span>
               </button>
               <button
-                title={`Delete ${t.name}`}
-                aria-label={`Delete ${t.name}`}
+                title={`Excluir ${t.name}`}
+                aria-label={`Excluir ${t.name}`}
                 disabled={pending}
                 onClick={() => {
-                  if (!confirm(`Delete the "${t.name}" template? Automations using it are detached.`)) return;
+                  if (!confirm(`Excluir o modelo “${t.name}”? As automações deixam de usar esse modelo.`)) return;
                   startTransition(() => deleteTemplateAction(t.id));
                 }}
                 className={buttonClass({ variant: 'ghost', size: 'sm', icon: true, className: 'hover:text-critical' })}
@@ -96,7 +96,7 @@ export function TemplateManager({ templates }: { templates: Template[] }) {
       ) : (
         <div className="pt-3 first:pt-0">
           <button onClick={() => setAdding(true)} className={buttonClass({ variant: 'tonal', size: 'sm' })}>
-            <Plus /> New template
+            <Plus /> Novo modelo
           </button>
         </div>
       )}

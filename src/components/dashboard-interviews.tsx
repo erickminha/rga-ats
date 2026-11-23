@@ -1,5 +1,6 @@
 'use client';
 
+import { appLocale } from '@/lib/i18n';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { CalendarDays } from 'lucide-react';
@@ -27,7 +28,7 @@ type DashboardInterview = {
 export function DashboardInterviews({ interviews }: { interviews: DashboardInterview[] }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const locale = mounted ? undefined : 'en-US';
+  const locale = appLocale;
   const timeZone = mounted ? undefined : 'UTC';
 
   if (interviews.length === 0) {

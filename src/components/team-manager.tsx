@@ -15,18 +15,18 @@ import { FormSelect } from '@/components/form-select';
 import { TextSwap } from '@/components/ui/motion';
 
 const ROLES = [
-  { value: 'ADMIN', label: 'Admin' },
-  { value: 'TEAM_MEMBER', label: 'Team member' },
-  { value: 'LIMITED_TEAM_MEMBER', label: 'Limited' },
-  { value: 'INTERVIEWER', label: 'Interviewer' },
+  { value: 'ADMIN', label: 'Administrador' },
+  { value: 'TEAM_MEMBER', label: 'Membro da equipe' },
+  { value: 'LIMITED_TEAM_MEMBER', label: 'Acesso limitado' },
+  { value: 'INTERVIEWER', label: 'Entrevistador' },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
-  SUPER_ADMIN: 'Super admin',
-  ADMIN: 'Admin',
-  TEAM_MEMBER: 'Team member',
-  LIMITED_TEAM_MEMBER: 'Limited',
-  INTERVIEWER: 'Interviewer',
+  SUPER_ADMIN: 'Administrador principal',
+  ADMIN: 'Administrador',
+  TEAM_MEMBER: 'Membro da equipe',
+  LIMITED_TEAM_MEMBER: 'Acesso limitado',
+  INTERVIEWER: 'Entrevistador',
 };
 
 export type MemberItem = {
@@ -61,10 +61,9 @@ export function TeamManager({
       {tempPassword ? (
         <div className="rounded-field bg-positive/10 p-3">
           <p className="text-sm font-medium text-positive">
-            Temporary password — share it securely, shown once. They sign in with it and should
-            change it.
+            A senha temporária é exibida uma única vez. Compartilhe-a de forma segura e oriente a pessoa convidada a alterá-la após entrar.
             {googleSignIn
-              ? ' If that address is on Gmail or Google Workspace, they can use Continue with Google instead.'
+              ? ' Quem usa Gmail ou Google Workspace também pode entrar com o Google.'
               : null}
           </p>
           <code className="mt-1.5 block select-all break-all rounded-field bg-surface px-2 py-1.5 font-mono text-xs">
@@ -106,7 +105,7 @@ export function TeamManager({
                     onClick={() => startTransition(() => setUserActiveAction(m.id, m.deactivated))}
                     className={buttonClass({ variant: 'ghost', size: 'xs' })}
                   >
-                    {m.deactivated ? 'Reactivate' : 'Deactivate'}
+                    {m.deactivated ? 'Reativar' : 'Desativar'}
                   </button>
                 </>
               ) : (
@@ -131,7 +130,7 @@ export function TeamManager({
                   setEmail('');
                   setInviting(false);
                   setError(null);
-                } else setError(result.error ?? 'Failed');
+                } else setError(result.error ?? 'Falha ao enviar convite');
               });
             }}
           >
@@ -139,7 +138,7 @@ export function TeamManager({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="Full name"
+              placeholder="Nome completo"
               className={inputClass}
             />
             <input {...noAutofill}
@@ -147,18 +146,18 @@ export function TeamManager({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="teammate@company.com"
+              placeholder="nome@empresa.com"
               className={inputClass}
             />
             <FormSelect value={role} onChange={setRole} options={ROLES} />
             <button type="submit" disabled={pending} className={btnPrimary}>
-              <TextSwap>{pending ? 'Inviting…' : 'Invite'}</TextSwap>
+              <TextSwap>{pending ? 'Enviando…' : 'Convidar'}</TextSwap>
             </button>
           </form>
         ) : (
           <div className="border-t border-line pt-3">
             <button onClick={() => setInviting(true)} className={btnTonal}>
-              <UserPlus /> Invite teammate
+              <UserPlus /> Convidar para a equipe
             </button>
           </div>
         )
