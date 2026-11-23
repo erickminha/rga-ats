@@ -1,3 +1,4 @@
+import { navigation } from '@/lib/i18n/pt-BR/navigation';
 import { redirect } from 'next/navigation';
 import { signOut } from '@/lib/auth';
 import { getAuthSession, getOrgNav } from '@/lib/session';
@@ -49,7 +50,7 @@ export default async function AppLayout({
     <div className="flex min-h-screen">
       <Sidebar
         user={{ name: session.user.name ?? '', email: session.user.email ?? '' }}
-        org={{ name: org?.name ?? 'Workspace', logoFileId: org?.logoFileId ?? null }}
+        org={{ name: org?.name ?? navigation.workspace, logoFileId: org?.logoFileId ?? null }}
         signOutAction={handleSignOut}
         aiEnabled={aiConfigured()}
       />
@@ -60,7 +61,7 @@ export default async function AppLayout({
           onboardedAt={fetched.onboardedAt ? fetched.onboardedAt.toISOString() : null}
         />
       ) : null}
-      <main className="min-w-0 flex-1 pb-28 md:pb-0">
+      <main className="min-w-0 flex-1 pb-28 max-md:overflow-x-auto md:pb-0">
         {children}
         <footer className="px-6 pb-6 pt-4"><SourceCodeLinks /></footer>
       </main>

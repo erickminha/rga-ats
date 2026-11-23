@@ -1,9 +1,10 @@
+import { navigation } from '@/lib/i18n/pt-BR/navigation';
 import { Suspense } from 'react';
 import { loadDashboardPage } from '@/app/(app)/page-loaders';
 import { PageSkeleton } from '@/components/page-skeleton';
 import { DashboardScreen } from './screen';
 
-export const metadata = { title: 'Dashboard' };
+export const metadata = { title: navigation.dashboard };
 
 async function DashboardContent() {
   return <DashboardScreen data={await loadDashboardPage()} />;
@@ -12,7 +13,7 @@ async function DashboardContent() {
 // The header + skeleton stream immediately; the data follows in the same response.
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<PageSkeleton title="Dashboard" />}>
+    <Suspense fallback={<PageSkeleton title={navigation.dashboard} />}>
       <DashboardContent />
     </Suspense>
   );

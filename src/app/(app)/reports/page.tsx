@@ -1,3 +1,4 @@
+import { navigation } from '@/lib/i18n/pt-BR/navigation';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import { BarChart3 } from 'lucide-react';
 import { db } from '@/lib/db';
@@ -56,7 +57,7 @@ function Panel({
   );
 }
 
-export const metadata = { title: 'Reports' };
+export const metadata = { title: navigation.reports };
 
 export default async function ReportsPage({
   searchParams,

@@ -1,4 +1,5 @@
-import { appLocale } from '@/lib/i18n';
+import { dashboard } from '@/lib/i18n/pt-BR/dashboard';
+import { navigation } from '@/lib/i18n/pt-BR/navigation';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import type { loadDashboardPage } from '@/app/(app)/page-loaders';
@@ -13,36 +14,30 @@ import { Bot } from '@/components/ui/bot';
 export function DashboardScreen({ data }: { data: Awaited<ReturnType<typeof loadDashboardPage>> }) {
   const now = new Date();
   const { upcomingCount, contactCount } = data;
-  const count = (n: number) => n.toLocaleString(appLocale);
 
   const steps = [
     {
-      label: 'Post your first role',
-      detail: 'Draft it, publish it to your careers page',
+      ...dashboard.onboarding.posting,
       done: data.postingCount > 0,
       href: '/postings/new',
     },
     {
-      label: 'Add a candidate',
-      detail: 'Import, apply, or add one by hand',
+      ...dashboard.onboarding.candidate,
       done: data.contactCount > 0,
       href: '/contacts/new',
     },
     {
-      label: 'Schedule an interview',
-      detail: 'Invites go out with calendar files',
+      ...dashboard.onboarding.interview,
       done: data.interviews.length > 0,
       href: '/interviews',
     },
     {
-      label: 'Attach a transcript',
-      detail: 'Paste one in, or push from Walkie or Tactiq via the API',
+      ...dashboard.onboarding.transcript,
       done: data.transcriptCount > 0,
       href: '/search',
     },
     {
-      label: 'Make it yours',
-      detail: 'Upload your logo',
+      ...dashboard.onboarding.branding,
       done: !!data.logoFileId,
       href: '/settings',
     },
@@ -55,21 +50,21 @@ export function DashboardScreen({ data }: { data: Awaited<ReturnType<typeof load
           // eslint-disable-next-line @next/next/no-img-element -- org-uploaded logo via internal route
           <img
             src={`/api/logo/${data.logoFileId}`}
-            alt={data.orgName ? `${data.orgName} logo` : 'Workspace logo'}
+            alt={data.orgName ? dashboard.logo(data.orgName) : dashboard.workspaceLogo}
             className="size-9 shrink-0 rounded-field bg-surface object-contain p-1"
           />
         ) : null}
         <div className="min-w-0">
           <h1 className="text-xl font-medium text-ink">
-            Welcome back, {data.firstName}.
+            {dashboard.greeting(data.firstName)}
           </h1>
-          <p className="mt-1 truncate text-sm text-ink-2">
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-ink-2">
             <LocalTime
               date={now.toISOString()}
               options={{ weekday: 'long', month: 'long', day: 'numeric' }}
             />
-            {` · ${count(upcomingCount)} upcoming interview${upcomingCount === 1 ? '' : 's'}`}
-            {` · ${count(contactCount)} candidate${contactCount === 1 ? '' : 's'} in your network`}
+            <span>{dashboard.upcoming(upcomingCount)}</span>
+            <span>{dashboard.candidateCount(contactCount)}</span>
           </p>
         </div>
       </header>
@@ -86,8 +81,8 @@ export function DashboardScreen({ data }: { data: Awaited<ReturnType<typeof load
               <input {...noAutofill}
                 type="search"
                 name="q"
-                aria-label="Search"
-                placeholder="Search candidates, roles, transcripts…"
+                aria-label={navigation.search}
+                placeholder={dashboard.searchPlaceholder}
                 className={`${inputClass} pl-9`}
               />
             </div>
@@ -103,16 +98,15 @@ export function DashboardScreen({ data }: { data: Awaited<ReturnType<typeof load
           <OnboardingCard steps={steps} />
           {data.aiEnabled ? (
             <div className={`${surface} p-5`}>
-              <h2 className="text-md font-medium text-ink">Ask your corpus</h2>
+              <h2 className="text-md font-medium text-ink">{dashboard.ai.title}</h2>
               <p className="mt-1.5 text-sm text-ink-2">
-                Every transcript, resume, and note is searchable — ask questions and get answers
-                with candidates cited.
+                {dashboard.ai.description}
               </p>
               <Link
                 href="/search"
                 className={buttonClass({ variant: 'tonal', size: 'sm', className: 'mt-4' })}
               >
-                <Bot size={20} /> Open Ask AI{' '}
+                <Bot size={20} /> {dashboard.ai.open}{' '}
                 <span className="t-learn-arrow text-ink-3">→</span>
               </Link>
             </div>

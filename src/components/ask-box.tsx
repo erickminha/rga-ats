@@ -1,5 +1,6 @@
 'use client';
 
+import { askError, navigation, searchBox } from '@/lib/i18n/pt-BR/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -20,27 +21,16 @@ import { cn } from '@/lib/utils';
  * search on /search. With AI off it's the keyword search alone.
  */
 
-const SUGGESTIONS = [
-  'Who has led a design system migration?',
-  'Which candidates mentioned remote work in interviews?',
-  'Who has hiring-manager experience at a startup?',
-];
-
-const THINKING = [
-  'Reading interview transcripts…',
-  'Searching resumes and notes…',
-  'Weighing the evidence…',
-  'Citing candidates…',
-];
-
 export function AskBox({
   open,
   onOpenChange,
   aiEnabled,
+  onCloseAutoFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   aiEnabled: boolean;
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   const router = useRouter();
   const [question, setQuestion] = useState('');
@@ -73,7 +63,7 @@ export function AskBox({
     startTransition(async () => {
       const res = await askCorpusAction(text);
       if ('error' in res) {
-        setError(res.error);
+        setError(askError(res.error));
         setResult(null);
       } else {
         setResult(res);
@@ -88,9 +78,10 @@ export function AskBox({
         <Dialog.Overlay className="dialog-overlay fixed inset-0 z-[310] bg-ink/15" />
         <Dialog.Content
           aria-describedby={undefined}
+          onCloseAutoFocus={onCloseAutoFocus}
           className="dialog-animate fixed inset-x-0 top-[12vh] z-[311] mx-auto flex max-h-[76vh] w-[min(44rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-dialog bg-surface shadow-float"
         >
-          <Dialog.Title className="sr-only">{aiEnabled ? 'Ask' : 'Search'}</Dialog.Title>
+          <Dialog.Title className="sr-only">{aiEnabled ? searchBox.ask : navigation.search}</Dialog.Title>
 
           <form
             className="flex items-start gap-3 p-4"
@@ -119,18 +110,14 @@ export function AskBox({
                   ask();
                 }
               }}
-              placeholder={
-                aiEnabled
-                  ? 'Ask about your candidates, or search for anyone…'
-                  : 'Search candidates, resumes, notes and postings…'
-              }
-              aria-label={aiEnabled ? 'Ask a question' : 'Search'}
+              placeholder={aiEnabled ? searchBox.aiPlaceholder : searchBox.placeholder}
+              aria-label={aiEnabled ? searchBox.label : searchBox.search}
               className="min-h-8 flex-1 resize-none bg-transparent py-1 text-md leading-6 text-ink outline-none placeholder:text-ink-3"
             />
             <button
               type="submit"
               disabled={!q || pending}
-              aria-label={aiEnabled ? 'Ask' : 'Search'}
+              aria-label={aiEnabled ? searchBox.ask : searchBox.search}
               className={buttonClass({ variant: 'primary', size: 'md', icon: true, className: 'shrink-0' })}
             >
               <ArrowUp />
@@ -147,18 +134,18 @@ export function AskBox({
               >
                 <Search size={16} className="shrink-0 text-ink-3" />
                 <span className="min-w-0 flex-1 truncate">
-                  Search for <span className="font-medium">“{q}”</span>
+                  {searchBox.searchFor}{' '}<span className="font-medium">“{q}”</span>
                 </span>
-                <span className="text-xs text-ink-3">Names, resumes, notes, postings</span>
+                <span className="text-xs text-ink-3">{searchBox.searchable}</span>
                 <ArrowRight size={14} className="shrink-0 text-ink-3" />
               </button>
             ) : null}
 
-            {error ? <p className="px-5 py-3 text-sm text-critical">{error}</p> : null}
+            {error ? <p role="alert" className="px-5 py-3 text-sm text-critical">{error}</p> : null}
 
             {pending ? (
               <div className="animate-fade-rise px-5 py-4 text-sm">
-                <ThinkingStates lines={THINKING} />
+                <ThinkingStates lines={searchBox.thinking} />
               </div>
             ) : result ? (
               <div className="animate-fade-rise px-5 py-4">
@@ -166,9 +153,9 @@ export function AskBox({
               </div>
             ) : aiEnabled && !q ? (
               <div className="px-5 py-4">
-                <p className="mb-2 text-xs text-ink-2">Try asking</p>
+                <p className="mb-2 text-xs text-ink-2">{searchBox.tryAsking}</p>
                 <div className="flex flex-col items-start gap-1">
-                  {SUGGESTIONS.map((s) => (
+                  {searchBox.suggestions.map((s) => (
                     <button
                       key={s}
                       type="button"
@@ -189,7 +176,7 @@ export function AskBox({
               !aiEnabled && !q && 'border-t-0',
             )}
           >
-            {aiEnabled ? 'Enter to ask · Shift+Enter for a new line · Esc to close' : 'Enter to search · Esc to close'}
+            {aiEnabled ? searchBox.askHint : searchBox.searchHint}
           </p>
         </Dialog.Content>
       </Dialog.Portal>

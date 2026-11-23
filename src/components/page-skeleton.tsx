@@ -1,3 +1,4 @@
+import { navigation } from '@/lib/i18n/pt-BR/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Skel, SkeletonWave } from '@/components/ui/skeleton';
 
@@ -29,6 +30,7 @@ const ROWS: [string, string, string][] = [
 export function PageSkeleton({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div>
+      <span role="status" className="sr-only">{navigation.loadingPage(title)}</span>
       <PageHeader title={title} subtitle={subtitle} />
       <SkeletonWave className="mx-6 mt-4 h-[calc(100dvh-160px)] overflow-hidden pb-10">
         <div className="divide-y divide-line rounded-card bg-surface">
