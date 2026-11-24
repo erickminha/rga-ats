@@ -34,3 +34,21 @@ Crie um grupo manual e insira pessoas pela ficha ou pela seleção em lote no ba
 Na vaga, use **Buscar candidatos no banco de talentos**. Edite a sugestão do cargo e, quando houver requisitos registrados, use-os como palavras-chave. Abra a ficha para conferir o profissional, selecione a versão de currículo e marque as pessoas que deseja incluir. Escolha a etapa inicial e confirme. O sistema cria novas participações, preserva as anteriores e avisa sobre vínculos já existentes. A inclusão não envia e-mails.
 
 O reaproveitamento exige autorização vigente para armazenamento para futuras oportunidades. Registre essa preferência somente depois de confirmá-la com o titular. O descadastro de comunicados continua valendo e não é alterado pelo registro da preferência de armazenamento.
+
+## Avaliação por competências e DISC
+
+Em **Configurações → Contratação → Modelos de avaliação**, a administração pode ajustar, duplicar ou desativar os seis modelos iniciais. Na vaga, abra **Roteiro de avaliação da vaga** e copie um modelo ou as perguntas do scorecard da organização. Adapte o roteiro e a escala da vaga antes das entrevistas.
+
+Na participação, use **Entrevista por competências** para salvar respostas, evidências, notas e aderência aos requisitos da vaga. Use **Não avaliado** quando faltar evidência. A recomendação exige justificativa e pode ser salva em rascunho. Edite as etapas separadamente conforme a decisão da equipe. Use **Comparar finalistas**, na vaga, para comparar somente as pessoas selecionadas.
+
+Ao registrar DISC, informe a escala indicada no relatório e anexe o PDF original. Para usar uma avaliação anterior da mesma pessoa, confira validade, autorização e finalidade. Registre essa confirmação na participação atual. O sistema identifica a origem e mantém o documento na participação original.
+
+## Pareceres, apresentações e retorno do cliente
+
+A administração pode escolher as seções do parecer em **Configurações → Contratação → Modelos de avaliação**. Na participação, abra **Parecer** e use **Preencher campos vazios com dados da participação**. Confira o conteúdo e faça os ajustes no próprio documento. Salve como rascunho ou use **Finalizar e emitir versão**. Abra **Versões emitidas** para visualizar ou baixar o PDF. Cada nova emissão conserva as versões anteriores.
+
+Na vaga, marque os finalistas que serão apresentados. O resumo e o PDF específico para o cliente usam somente os campos profissionais da versão finalizada. Se o cliente puder receber um currículo ou relatório DISC, abra o arquivo para conferência e marque-o individualmente. Use **Revisar apresentação** e confirme a autorização depois de conferir as pessoas, o conteúdo e os documentos. A apresentação pode ser revogada pela equipe e expira conforme a configuração.
+
+Use **Retorno da empresa cliente** para anotar o retorno por finalista. A aprovação registrada pelo cliente permanece no histórico da vaga. Registre Contratação separadamente quando a contratação for efetivada. Os contadores da vaga mostram pendências e apresentações com links vigentes.
+
+A assistência opcional de redação usa a configuração de IA existente e requer seleção e autorização de um trecho sem dados pessoais. Revise a sugestão antes de copiá-la ao parecer. A integração opcional requer suporte à tarefa `opinion-draft` no fornecedor configurado.
