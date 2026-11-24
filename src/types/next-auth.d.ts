@@ -15,6 +15,7 @@ declare module 'next-auth' {
 
   interface User {
     orgId?: string;
+    sessionVersion?: number;
     accessRole?: AccessRole | string;
     orgName?: string;
     orgLogoFileId?: string | null;
@@ -26,6 +27,7 @@ declare module 'next-auth/jwt' {
   interface JWT {
     userId?: string;
     orgId?: string;
+    sessionVersion?: number;
     accessRole?: string;
     orgName?: string;
     orgLogoFileId?: string | null;

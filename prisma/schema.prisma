@@ -177,6 +177,7 @@ model User {
   email         String
   name          String
   passwordHash  String? // null for users who only sign in with Google
+  sessionVersion Int       @default(0)
   googleSub     String? // the Google account ("sub") bound on their first Google sign-in
   bookingUrl    String? // their own booking page (Calendly, Cal.com, Google) for candidates
   accessRole    AccessRole @default(TEAM_MEMBER)

@@ -11,6 +11,7 @@ export type SessionUser = {
   email: string;
   name: string;
   orgId: string;
+  sessionVersion: number;
   accessRole: AccessRole;
   orgName: string;
   orgLogoFileId: string | null;
@@ -22,6 +23,7 @@ export function toSessionUser(user: {
   email: string;
   name: string;
   orgId: string;
+  sessionVersion: number;
   accessRole: AccessRole;
   org: { name: string; logoFileId: string | null; onboardedAt: Date | null };
 }): SessionUser {
@@ -30,6 +32,7 @@ export function toSessionUser(user: {
     email: user.email,
     name: user.name,
     orgId: user.orgId,
+    sessionVersion: user.sessionVersion,
     accessRole: user.accessRole,
     orgName: user.org.name,
     orgLogoFileId: user.org.logoFileId,

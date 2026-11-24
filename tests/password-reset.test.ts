@@ -1,7 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import { NextRequest } from 'next/server';
+import { decode, encode } from 'next-auth/jwt';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@/lib/db';
+import { handlers } from '@/lib/auth';
+import { authConfig } from '@/lib/auth.config';
+import proxy from '@/proxy';
 import { requestPasswordReset, resetPassword, validResetPassword } from '@/server/password-reset';
 import { createOrg } from './fixtures';
 import { fakeSmtp } from './fake-smtp';
@@ -14,6 +19,36 @@ function tokenFrom(mail: string) {
   const match = mail.match(/https:\/\/homolog\.example\.test\/login\/redefinir-senha#token=([A-Za-z0-9_-]{43})/);
   expect(match).toBeTruthy();
   return match![1];
+}
+
+const origin = 'https://homolog.example.test';
+const cookieName = '__Secure-authjs.session-token';
+
+async function credentialsCookie(email: string, password: string) {
+  const csrf = await handlers.GET(new NextRequest(origin + '/api/auth/csrf'));
+  const { csrfToken } = await csrf.json();
+  const cookie = csrf.headers.getSetCookie().map((entry) => entry.split(';')[0]).join('; ');
+  const response = await handlers.POST(new NextRequest(origin + '/api/auth/callback/credentials', {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ email, password, csrfToken }),
+  }));
+  const session = response.headers.getSetCookie().find((entry) => entry.startsWith(cookieName + '='));
+  expect(session).toBeDefined();
+  return session!.split(';')[0];
+}
+
+async function sessionWith(cookie: string) {
+  const response = await handlers.GET(new NextRequest(origin + '/api/auth/session', { headers: { cookie } }));
+  return response.json();
+}
+
+async function visitWith(cookie: string, path: string) {
+  const request = new NextRequest(origin + path, { headers: { cookie } });
+  // NextAuth documents exporting auth as Proxy. Its public type omits
+  // the direct Request overload used by the Next.js proxy runtime.
+  const handleRequest = proxy as unknown as (request: NextRequest) => Promise<Response>;
+  return handleRequest(request);
 }
 
 describe('password policy', () => {
@@ -62,6 +97,40 @@ describe.skipIf(!hasDb)('password recovery with simulated SMTP', () => {
     expect(await bcrypt.compare(newPassword, updated.passwordHash!)).toBe(true);
     expect(await bcrypt.compare(oldPassword, updated.passwordHash!)).toBe(false);
     expect((await db.user.findUniqueOrThrow({ where: { id: google.id } })).passwordHash).toBeNull();
+  });
+
+  it('revokes pre-reset sessions at the auth endpoint and protected routes, including older JWTs', async () => {
+    const user = await account();
+    const other = await account();
+    const cookie = await credentialsCookie(user.email, oldPassword);
+    const parallelSession = await credentialsCookie(user.email, oldPassword);
+    const otherCookie = await credentialsCookie(other.email, oldPassword);
+    const jwt = await decode({ token: cookie.split('=')[1], secret: authConfig.secret, salt: cookieName });
+    expect(jwt?.sessionVersion).toBe(0);
+    const { sessionVersion: _version, ...legacy } = jwt!;
+    const legacyCookie = cookieName + '=' + await encode({ token: legacy, secret: authConfig.secret, salt: cookieName });
+
+    for (const previous of [cookie, parallelSession, legacyCookie]) {
+      expect((await sessionWith(previous)).user.id).toBe(user.id);
+      expect((await visitWith(previous, '/dashboard')).status).toBe(200);
+    }
+
+    await requestPasswordReset(user.email);
+    expect(await resetPassword(tokenFrom(smtp.messages[0]), newPassword)).toBe(true);
+
+    for (const previous of [cookie, parallelSession, legacyCookie]) {
+      expect((await sessionWith(previous))?.user).toBeUndefined();
+      const dashboard = await visitWith(previous, '/dashboard');
+      expect(dashboard.status).toBe(307);
+      expect(new URL(dashboard.headers.get('location')!).pathname).toBe('/login');
+      expect((await visitWith(previous, '/api/lists/pipeline')).status).toBe(401);
+      expect((await visitWith(previous, '/login')).status).toBe(200);
+    }
+    const replacement = await credentialsCookie(user.email, newPassword);
+    expect((await sessionWith(replacement)).user.id).toBe(user.id);
+    expect((await visitWith(replacement, '/dashboard')).status).toBe(200);
+    expect((await sessionWith(otherCookie)).user.id).toBe(other.id);
+    expect((await visitWith(otherCookie, '/dashboard')).status).toBe(200);
   });
 
   it('rejects expiry, token tampering and attempts without a token', async () => {

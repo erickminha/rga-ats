@@ -93,7 +93,7 @@ export async function resetPassword(token: string, password: string): Promise<bo
     if (!consumed.count) return false;
     const updated = await tx.user.updateMany({
       where: { id: reset.userId, deactivatedAt: null, passwordHash: { not: null } },
-      data: { passwordHash },
+      data: { passwordHash, sessionVersion: { increment: 1 } },
     });
     return updated.count === 1;
   });

@@ -65,6 +65,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers,
   callbacks: {
     ...authConfig.callbacks,
+    async jwt({ token, user }) {
+      if (user) {
+        if (!user.id || !user.orgId || user.sessionVersion === undefined) return null;
+        return authConfig.callbacks.jwt({ token, user });
+      }
+      if (!token.userId || !token.orgId) return null;
+
+      // Tokens issued before this field existed belong to version zero.
+      // Check PostgreSQL on each authenticated request so a reset takes
+      // effect even when the original session is used on another instance.
+      const active = await db.user.findUnique({
+        where: {
+          id: token.userId,
+          orgId: token.orgId,
+          deactivatedAt: null,
+          sessionVersion: token.sessionVersion ?? 0,
+        },
+        select: { id: true },
+      });
+      return active ? token : null;
+    },
     async signIn({ user, account, profile }) {
       if (account?.provider === 'google') {
         return googleSignInCallback(user as unknown as Record<string, unknown>, profile);

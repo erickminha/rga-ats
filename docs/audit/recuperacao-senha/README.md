@@ -9,7 +9,7 @@ PostgreSQL e SMTP simulado no computador de teste. O navegador usou uma organiza
 3. Cadastre a nova senha. Confirme que ela permite entrar, que a anterior falha e que o mesmo link não redefine outra vez. [Solicitação](solicitacao.jpg) · [Nova senha](nova-senha.jpg) · [Confirmação](senha-atualizada.jpg)
 4. Abra uma vaga publicada e envie a candidatura fictícia com currículo. Confira no SMTP local a confirmação e a mensagem de acompanhamento. Abra o portal pelo link recebido. O histórico registra o estado do envio e omite o link individual.
 
-Os testes automatizados cobrem expiração, uso único em concorrência, rejeição de conta desativada ou exclusivamente Google, duas contas com senha no mesmo e-mail, limite de três pedidos por endereço por hora e falha do SMTP em produção. O limite compartilhado é de 300 pedidos por hora por banco, sem depender de cabeçalhos informados pelo visitante. Sessões NextAuth já emitidas mantêm a validade original.
+Os testes automatizados cobrem expiração, uso único em concorrência, rejeição de conta desativada ou exclusivamente Google, duas contas com senha no mesmo e-mail, limite de três pedidos por endereço por hora e falha do SMTP em produção. O limite compartilhado é de 300 pedidos por hora por banco, sem depender de cabeçalhos informados pelo visitante. Uma redefinição bem-sucedida revoga as sessões anteriores da conta na próxima requisição. O teste cobre tanto o JWT emitido pelo login real quanto o formato anterior, sem número de versão.
 
 ## Configuração para homologação após auditoria
 
@@ -17,6 +17,8 @@ Os testes automatizados cobrem expiração, uso único em concorrência, rejeiç
 - `EMAIL_FROM` identifica o remetente. O valor planejado é `RGA ATS <notificacoes@consultoriarga.com.br>`. O domínio do remetente precisa estar autorizado na Resend.
 - `AUTH_URL` deve ser a origem pública HTTPS que atende o RGA ATS. Ela serve de base para links de recuperação e acompanhamento enviados por e-mail. Mantenha `AUTH_SECRET` configurado como no restante da aplicação.
 - No serviço `rga-ats` do projeto `rga-ats-homolog`, abra **Editar e implantar nova revisão** e, em **Contêineres → Variáveis e secrets**, adicione uma referência ao segredo existente `apikey_resend`. Use `RESEND_API_KEY` como nome da variável e selecione a versão ativa. A conta de serviço da revisão precisa ter acesso de leitura ao segredo. Não cole o valor da chave na configuração de variáveis em texto.
-- A migração `20261124120000_password_reset` cria as tabelas de tokens e limites. Ela foi aplicada somente em PostgreSQL local. A primeira inicialização de uma revisão aprovada no Cloud Run aplica as migrações pendentes ao banco dessa revisão.
+- A migração `20261124120000_password_reset` cria as tabelas de tokens e limites. A migração `20261124123000_password_reset_session_version` adiciona a versão da sessão à conta. Ambas foram aplicadas somente em PostgreSQL local. A primeira inicialização de uma revisão aprovada no Cloud Run aplica as migrações pendentes ao banco dessa revisão.
+
+A revogação é aplicada nas revisões que executam a verificação de versão. Revisões anteriores que permaneçam acessíveis com o mesmo `AUTH_SECRET` ainda podem aceitar sessões revogadas.
 
 A entrega real via Resend deve ser conferida em homologação depois de conectar o segredo e o remetente. Nesta etapa, a validação de entrega usou exclusivamente o SMTP simulado.
