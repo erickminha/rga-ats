@@ -1,3 +1,4 @@
+import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
@@ -79,15 +80,22 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
       <h2 className="mb-3 font-semibold">Histórico de processos seletivos</h2>
       {person.opportunities.length === 0 && <p className="text-sm">Sem participações cadastradas.</p>}
       <ul className="grid gap-3">
-        {person.opportunities.map((row) => <li key={row.id}>
-          <Link className="underline" href={`/candidates/${row.id}`}>{row.posting?.title ?? 'Participação sem vaga'}</Link>
-          <p className="text-sm">{[
-            row.posting?.clientCompany?.orgId === ctx.orgId ? row.posting.clientCompany.name : null,
-            row.stage.name, row.status === 'HIRED' ? 'Contratação' : row.status === 'ACTIVE' ? 'Em andamento'
-              : [outcomeNames[outcomeCategory(row.archiveReason)], row.archiveReason?.name].filter(Boolean).join(' · '),
-            dateBR(row.createdAt),
-          ].filter(Boolean).join(' · ')}</p>
-        </li>)}
+        {person.opportunities.map((row) => {
+          const imported = row.customFields && typeof row.customFields === 'object' && !Array.isArray(row.customFields)
+            ? textRecord(row.customFields.origemPlanilha) : {};
+          const legacy = !row.posting && !!imported.empresaInformada;
+          const outcome = row.status === 'HIRED' ? 'Contratação' : row.status === 'ARCHIVED'
+            ? [outcomeNames[outcomeCategory(row.archiveReason)], row.archiveReason?.name].filter(Boolean).join(' · ')
+            : legacy ? [imported.statusInformado, imported.candidatoAdmitido ? `Admissão na origem: ${imported.candidatoAdmitido}` : null].filter(Boolean).join(' · ') || 'Histórico importado'
+              : 'Em andamento';
+          return <li key={row.id}>
+            <Link className="underline" href={`/candidates/${row.id}`}>{row.posting?.title ?? imported.cargo ?? 'Participação sem vaga'}</Link>
+            <p className="text-sm">{[
+              row.posting?.clientCompany?.orgId === ctx.orgId ? row.posting.clientCompany.name : imported.empresaInformada,
+              row.stage.name, outcome, dateBR(row.createdAt),
+            ].filter(Boolean).join(' · ')}</p>
+          </li>;
+        })}
       </ul>
     </section>
     <section className="mb-4 rounded-card bg-surface p-4">
