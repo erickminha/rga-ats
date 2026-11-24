@@ -95,9 +95,9 @@ export function Sidebar({
     setPendingHref(null);
   }, [pathname]);
 
-  const isActive = (href: string) => pathname.startsWith(href);
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
   const go = (href: string) => {
-    if (!pathname.startsWith(href)) setPendingHref(href);
+    if (!isActive(href)) setPendingHref(href);
   };
   // The active pill slides to where you're going (transitions.dev "tabs sliding",
   // vertical). It moves on click, before the route resolves, so nav feels instant.

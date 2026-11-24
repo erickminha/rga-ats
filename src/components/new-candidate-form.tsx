@@ -10,9 +10,13 @@ import { TextSwap } from '@/components/ui/motion';
 export function NewCandidateForm({
   stages,
   postings,
+  initialPosting,
+  initialStage,
 }: {
   stages: { id: string; name: string }[];
   postings: { id: string; title: string }[];
+  initialPosting?: string;
+  initialStage?: string;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     createCandidateAction,
@@ -21,7 +25,7 @@ export function NewCandidateForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nome completo">
           <input {...noAutofill} name="name" required placeholder="Ex.: Ana Souza" className={inputClass} />
         </Field>
@@ -36,10 +40,11 @@ export function NewCandidateForm({
         </Field>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Vaga">
           <FormSelect
             name="postingId"
+            defaultValue={initialPosting ?? ''}
             options={[
               { value: '', label: 'Sem vaga vinculada' },
               ...postings.map((p) => ({ value: p.id, label: p.title })),
@@ -49,7 +54,7 @@ export function NewCandidateForm({
         <Field label="Etapa">
           <FormSelect
             name="stageId"
-            defaultValue={stages[0]?.id}
+            defaultValue={initialStage ?? stages[0]?.id}
             options={stages.map((s) => ({ value: s.id, label: s.name }))}
           />
         </Field>

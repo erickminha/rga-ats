@@ -471,7 +471,7 @@ export function PipelineList({
         <Segmented
           className="mb-4 w-full"
           size="sm"
-          value={nav.input.status === 'archived' ? "encerrados" : 'active'}
+          value={nav.input.status === 'archived' ? 'archived' : 'active'}
           items={[
             {
               value: 'active',
@@ -800,7 +800,7 @@ export function PipelineList({
                 </th>
                 {[
                   "Candidato / cargo de interesse",
-                  'Perfis',
+                  'Contatos',
                   'Empresa',
                   'Localidade',
                   "Etapa",
@@ -1014,7 +1014,7 @@ function PipelineRowView({
           <Avatar name={r.name} seed={r.contactId} size={28} />
           <span className="min-w-0 flex-1">
             <span className="block truncate font-medium hover:underline" title={r.name}>{r.name}</span>
-            <span className="block truncate text-xs text-ink-2" title={role ?? undefined}>{role ?? "Cargo de interesse não informado"}</span>
+            <span className="block truncate text-xs text-ink-2" title={role ?? undefined}>{role || "Cargo de interesse não informado"}</span>
           </span>
         </CandidateLink>
       </td>
@@ -1026,14 +1026,13 @@ function PipelineRowView({
             </a>
           ) : null}
           {r.phone ? (
-            <span title={r.phone}>
-              <Phone size={14} />
-            </span>
+            <a href={`tel:${r.phone.replace(/[^+\\d]/g, '')}`} aria-label={`Ligar para ${r.name}`} title={r.phone} className="hover:text-brand"><Phone size={14} /></a>
           ) : null}
           {r.link ? (
             <a
               href={r.link.startsWith('http') ? r.link : `https://${r.link}`}
               target="_blank"
+              rel="noopener noreferrer"
               title={r.link}
               className="hover:text-ink"
             >

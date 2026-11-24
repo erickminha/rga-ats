@@ -71,7 +71,7 @@ export default async function TalentSearchPage({ searchParams }: { searchParams:
     {result.rows.map((row) => {
       const selected = postingId && row.eligible && !linked.has(row.id);
       const profile = readCareerProfile(row.careerProfile);
-      return <article className="grid gap-2 rounded-card bg-surface p-4" key={row.id}>
+      return <article className="rga-card grid gap-2 p-4" key={row.id}>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h2 className="font-semibold"><Link className="underline" href={`/contacts/${row.id}`}>{row.name}</Link></h2>
           {selected && <label className="text-sm"><input type="checkbox" name="person" value={row.id} /> Selecionar para a vaga</label>}
@@ -100,7 +100,7 @@ export default async function TalentSearchPage({ searchParams }: { searchParams:
       <Link className="underline" href="/contacts">Banco de talentos</Link>
       {posting && <Link className="underline" href={`/postings/${posting.id}`}>Voltar para a vaga</Link>}
       {fromPipeline && <Link className="underline" href={pipelineHref}>Voltar ao funil</Link>}
-      {posting && <Link className="underline" href="/contacts/new?mode=application">Cadastrar novo candidato</Link>}
+      {posting && <Link className="underline" href={`/contacts/new?${new URLSearchParams({ mode: 'application', posting: posting.id, ...(initialStage ? { stage: initialStage } : {}) })}`}>Cadastrar novo candidato</Link>}
     </nav>
     {indicators && <section className="grid gap-4 rounded-card bg-surface p-4">
       <h2 className="font-semibold">Indicadores do banco de talentos</h2>
@@ -147,7 +147,7 @@ export default async function TalentSearchPage({ searchParams }: { searchParams:
       <button className={btnTonal}>Buscar profissionais</button>
     </form>
     {'error' in result && <p role="alert">{result.error}</p>}
-    {postingId ? <TalentReuseForm postingId={postingId} stages={stages} initialStage={initialStage}>{results}</TalentReuseForm> : results}
+    {postingId ? <TalentReuseForm key={`${postingId}:${initialStage ?? ''}:${JSON.stringify(filters)}:${raw.pool ?? ''}:${raw.after ?? ''}`} postingId={postingId} stages={stages} initialStage={initialStage}>{results}</TalentReuseForm> : results}
     {result.next && <Link className="justify-self-start underline" href={`/contacts/busca?${next.toString()}`}>Próxima página</Link>}
     {!postingId && <TalentGroupEditor filters={filters} />}
     {!postingId && result.pool && <TalentGroupEditor id={result.pool.id} name={result.pool.name} dynamic={result.pool.kind === 'DYNAMIC'} filters={filters} />}

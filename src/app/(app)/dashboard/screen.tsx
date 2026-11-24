@@ -13,7 +13,7 @@ export function DashboardScreen({ data }: { data: Awaited<ReturnType<typeof load
   const metrics = [
     { label: 'Vagas publicadas ou internas', value: data.activePostingCount, hint: `${number.format(data.postingCount)} cadastradas no total`, href: '/postings', icon: Briefcase, color: '#116da9', bg: '#e7f4fc' },
     { label: 'Banco de talentos', value: data.contactCount, hint: 'Profissionais cadastrados', href: '/contacts', icon: Users, color: '#6c336e', bg: '#f4eaf5' },
-    { label: 'Participações ativas', value: data.activeCount, hint: 'Em acompanhamento no funil', href: '/pipeline', icon: Kanban, color: '#116da9', bg: '#e7f4fc' },
+    { label: 'Participações no funil', value: data.activeCount, hint: 'Ativas e contratadas, exceto adiadas', href: '/pipeline', icon: Kanban, color: '#116da9', bg: '#e7f4fc' },
     { label: 'Entrevistas futuras', value: data.upcomingCount, hint: 'Agendadas e não canceladas', href: '/interviews', icon: CalendarDays, color: '#80580b', bg: '#fff5d2' },
   ];
   const quick = [
@@ -52,7 +52,7 @@ export function DashboardScreen({ data }: { data: Awaited<ReturnType<typeof load
       <div className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
         <section className="rga-card min-w-0 p-5">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-            <div><h2 className="text-lg font-semibold">Funil de recrutamento</h2><p className="mt-1 text-xs text-ink-2">Participações ativas por etapa</p></div>
+            <div><h2 className="text-lg font-semibold">Funil de recrutamento</h2><p className="mt-1 text-xs text-ink-2">Participações visíveis por etapa</p></div>
             <Link href="/pipeline" className={buttonClass({ variant: 'secondary', size: 'sm' })}>Abrir funil <ArrowUpRight /></Link>
           </div>
           {data.stageSummary.length ? <div className="grid gap-3">

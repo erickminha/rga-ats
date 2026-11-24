@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { MapPin, Mail, Phone } from 'lucide-react';
 import type { StageType } from '@prisma/client';
 import { moveStageAction } from '@/app/(app)/actions';
+import { CandidateLink } from '@/components/candidate-link';
 import { StageSelect } from '@/components/stage-select';
 import type { PipelineRow } from '@/lib/list-types';
 import { confirmStageMovement } from '@/lib/stage-movement';
@@ -37,7 +38,7 @@ export function RecruitingBoard({ stages, query }: { stages: BoardStage[]; query
           {stage.rows.length === 0 && <p className="text-sm text-ink-2">Nenhuma participação</p>}
           {stage.rows.map((row) => <div key={row.id} className="rga-stage-card rounded-xl p-3"
             draggable={stage.type !== 'HIRED'} onDragStart={(event) => event.dataTransfer.setData('text/plain', row.id)}>
-            <Link className="block break-words text-sm font-bold hover:text-brand hover:underline" href={`/candidates/${row.id}`}>{row.name}</Link>
+            <CandidateLink id={row.id} lazy className="block break-words text-sm font-bold hover:text-brand hover:underline">{row.name}</CandidateLink>
             <p className="mb-2 break-words text-xs text-ink-2">{row.headline || "Cargo de interesse não informado"}</p>
             {row.location && <p className="mb-2 flex items-start gap-1 text-xs text-ink-2"><MapPin size={13} className="shrink-0" />{row.location}</p>}
             {(row.phone || row.email) && <div className="mb-3 flex flex-wrap gap-2 text-xs text-ink-2">

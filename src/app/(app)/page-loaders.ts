@@ -74,7 +74,7 @@ async function dashboardInterviews(orgId: string) {
 export async function loadDashboardPage() {
   const ctx = await requireSession();
   const session = await getAuthSession();
-  const [interviews, org, postingCount, pendingApprovals, contactCount, transcriptCount, upcomingCount, activePostingCount, pipelineStages, pipelineTotals, clientCount] =
+  const [interviews, org, postingCount, pendingApprovals, contactCount, transcriptCount, upcomingCount, activePostingCount, pipelineStages, pipelineTotals] =
     await Promise.all([
       dashboardInterviews(ctx.orgId),
       session?.user.orgName != null
@@ -92,15 +92,13 @@ export async function loadDashboardPage() {
       }),
       db.posting.count({ where: { orgId: ctx.orgId, state: { in: ['PUBLISHED', 'INTERNAL'] } } }),
       db.stage.findMany({ where: { orgId: ctx.orgId }, orderBy: { order: 'asc' }, select: { id: true, name: true } }),
-      db.opportunity.groupBy({ by: ['stageId'], where: { orgId: ctx.orgId, status: 'ACTIVE', contact: { isAnonymized: false } }, _count: { _all: true } }),
-      db.clientCompany.count({ where: { orgId: ctx.orgId } }),
+      cachedPipelineCounts({ orgId: ctx.orgId, view: 'active' }),
     ]);
 
   return {
     activePostingCount,
-    clientCount,
-    activeCount: pipelineTotals.reduce((total, stage) => total + stage._count._all, 0),
-    stageSummary: pipelineStages.map((stage) => ({ ...stage, count: pipelineTotals.find((row) => row.stageId === stage.id)?._count._all ?? 0 })),
+    activeCount: pipelineTotals.total,
+    stageSummary: pipelineStages.map((stage) => ({ ...stage, count: pipelineTotals.counts[stage.id] ?? 0 })),
     firstName: (session?.user.name ?? '').trim().split(/\s+/)[0],
     orgName: org?.name ?? '',
     logoFileId: org?.logoFileId ?? null,
@@ -196,6 +194,7 @@ export async function loadPipelinePage(input: PipelineInput) {
     recruitingPostings: recruitingPostings.map((posting) => ({ id: posting.id, title: posting.title, client: posting.clientCompany?.name ?? null })),
     canAddCandidate: canManageRecruiting(ctx),
     board,
+    boardPostings: meta.postings.map((posting) => ({ id: posting.id, title: posting.title, clientId: posting.clientCompanyId, client: posting.clientName })),
     reason: f.reasonId ?? '',
     archiveReasons: meta.archiveReasons,
     clients: meta.clients,
