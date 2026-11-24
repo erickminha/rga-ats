@@ -26,3 +26,7 @@ Conferir 467 linhas de Candidatos (cabeçalho 5) e acompanhamento de vagas na Ge
 - Testes com dados fictícios em banco isolado; não executar testes destrutivos no Neon homolog. Backup antes de carga/migração; preview, relatório de diferenças e confirmação explícita para mutações reais.
 - Testar duplicidade, idempotência, revogação, retenção, isolamento de org, permissões, currículo, falhas de rede e retomada. Contagens conciliadas antes/depois.
 - PRs pequenos, testes e build comprovados, validação autenticada desktop/mobile. Homologação somente, sem produção. Não iniciar outros módulos sem fechar estes pontos. Documentar pendências e evidências, sem dados pessoais.
+
+
+## Revisão obrigatória de escopo
+O módulo 5 não encerra a entrega operacional. Leia também `docs/rga-plano-revisado.md`, que acrescenta a central de DISC/parecer, rotina de vagas e divulgação, propostas, financeiro, garantia e pós-admissão, além do aceite ponta a ponta. O plano revisado prevalece para o fechamento do escopo.
