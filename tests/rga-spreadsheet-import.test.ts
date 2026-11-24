@@ -128,6 +128,25 @@ describe.skipIf(!hasDb)('RGA spreadsheet import', () => {
     expect((await previewRgaImport(ctx, good)).report).toMatchObject({ duplicates: 1 });
   });
 
+  it('imports talent without a vacancy into a standalone profile and preserves original metadata', async () => {
+    const { ctx } = await agency();
+    await db.stage.deleteMany({ where: { orgId: ctx.orgId } });
+    const file = buildFile('talent', 'Nome;Email;Pretensão;UF;Experiência;Obs\nPessoa Fictícia;pessoa@example.invalid;3.500,00;AM;Manutenção industrial;Registro fictício', {
+      name: '0', email: '1', salary: '2', state: '3', experience: '4', notes: '5',
+    });
+    const preview = await previewRgaImport(ctx, file);
+    expect(preview.report).toMatchObject({ created: 1, errors: 0 });
+    await confirmRgaImport(ctx, file, preview.ticket);
+    expect(await db.contact.findFirst({ where: { orgId: ctx.orgId } })).toMatchObject({
+      salaryExpectation: 350000, careerProfile: { state: 'AM', experience: 'Manutenção industrial' },
+    });
+    expect(await db.opportunity.count({ where: { orgId: ctx.orgId } })).toBe(0);
+    expect(await db.importRef.findFirst({ where: { orgId: ctx.orgId, kind: 'contact' } })).toMatchObject({
+      snapshot: { origemPlanilha: { observacao: 'Registro fictício' } },
+    });
+    expect((await previewRgaImport(ctx, file)).report).toMatchObject({ duplicates: 1 });
+  });
+
   it('keeps separate historical selections for one contact and reimports them by origin evidence', async () => {
     const { ctx } = await agency();
     const orgId = ctx.orgId;

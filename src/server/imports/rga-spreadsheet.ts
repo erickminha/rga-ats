@@ -1,3 +1,4 @@
+import { readCareerProfile } from '@/lib/talent-profile';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { Prisma, type Contact, type ClientCompany, type Posting } from '@prisma/client';
 import { db } from '@/lib/db';
@@ -157,11 +158,11 @@ function recordId(ctx: SessionContext, fileKey: string, row: number, kind: strin
   return `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`;
 }
 
-type ContactMatch = Pick<Contact, 'id' | 'name' | 'emails' | 'phones' | 'headline' | 'location' | 'isAnonymized'>;
+type ContactMatch = Pick<Contact, 'id' | 'name' | 'emails' | 'phones' | 'headline' | 'location' | 'isAnonymized' | 'careerProfile' | 'salaryExpectation'>;
 type JobMatch = Pick<Posting, 'id' | 'title' | 'location' | 'clientCompanyId' | 'content' | 'salaryMin' | 'salaryMax' | 'salaryCurrency'>;
 type Counts = 'created' | 'updated' | 'duplicates';
 type DataFields = Record<string, string>;
-type Ref = Pick<Prisma.ImportRefCreateManyInput, 'kind' | 'externalId' | 'internalId' | 'created'>;
+type Ref = Pick<Prisma.ImportRefCreateManyInput, 'kind' | 'externalId' | 'internalId' | 'created' | 'snapshot'>;
 type Writes = ReturnType<typeof emptyWrites>;
 const SELECTION_PREFIX = `${WORK_SOURCE}:selecao:`;
 const SELECTION_ID_PREFIX = `${SELECTION_PREFIX}id:`;
@@ -203,14 +204,13 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
     tx.organization.findUnique({ where: { id: orgId }, select: { kind: true } }),
     tx.clientCompany.findMany({ where: { orgId }, orderBy: { id: 'asc' } }),
     file.kind !== 'company' ? tx.posting.findMany({ where: { orgId }, select: { id: true, title: true, location: true, clientCompanyId: true, content: true, salaryMin: true, salaryMax: true, salaryCurrency: true }, orderBy: { id: 'asc' } }) : [],
-    candidate ? tx.contact.findMany({ where: { orgId }, select: { id: true, name: true, emails: true, phones: true, headline: true, location: true, isAnonymized: true }, orderBy: { id: 'asc' } }) : [],
+    candidate ? tx.contact.findMany({ where: { orgId }, select: { id: true, name: true, emails: true, phones: true, headline: true, location: true, careerProfile: true, salaryExpectation: true, isAnonymized: true }, orderBy: { id: 'asc' } }) : [],
     candidate ? tx.opportunity.findMany({ where: { orgId }, select: { id: true, contactId: true, postingId: true, customFields: file.kind === 'candidate' } }) : [],
     candidate ? tx.stage.findFirst({ where: { orgId, type: { in: ['LEAD', 'APPLICANT'] } }, orderBy: [{ order: 'asc' }, { id: 'asc' }], select: { id: true } }) : null,
     tx.importRef.findMany({ where: { orgId, provider: RGA_IMPORT_PROVIDER }, select: { kind: true, externalId: true, internalId: true } }),
   ]);
   if (!org || (file.kind === 'company' && org.kind !== 'AGENCY')) throw new RgaImportError('A importação de empresas está disponível no espaço de trabalho da agência.');
   const stageId = stage?.id;
-  if (candidate && !stageId) throw new RgaImportError('Crie uma etapa inicial no funil da organização antes de importar candidatos.');
 
   const companyRows = new Map<string, ClientCompany>(companies.map((row) => [row.id, row]));
   const jobRows = new Map<string, JobMatch>(jobs.map((row) => [row.id, row]));
@@ -221,11 +221,11 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
   const write = emptyWrites();
   const seen = new Set<string>();
   const refId = (kind: string, key: string) => refs.get(refKey(kind, key));
-  const setRef = (kind: string, externalId: string, internalId: string, created: boolean) => {
+  const setRef = (kind: string, externalId: string, internalId: string, created: boolean, snapshot?: Prisma.InputJsonObject) => {
     const key = refKey(kind, externalId);
     if (refs.has(key)) return false;
     refs.set(key, internalId);
-    write.refs.push({ kind, externalId, internalId, created });
+    write.refs.push({ kind, externalId, internalId, created, snapshot });
     return true;
   };
 
@@ -413,7 +413,12 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
     const uf = state && brazilianStates.includes(state.toUpperCase() as typeof brazilianStates[number]) ? state.toUpperCase() : state;
     const location = [f.district, f.city, uf].filter(Boolean).join(', ') || null;
     const interest = [f.interest, f.otherInterest].filter(Boolean).join(' · ');
-    const headline = nullable(f.experience) || nullable(interest);
+    const headline = nullable(interest) || nullable(f.experience);
+    const careerProfile = {
+      ...(uf && brazilianStates.includes(uf as typeof brazilianStates[number]) ? { state: uf } : {}),
+      ...(f.experience ? { experience: f.experience.slice(0, 5000) } : {}),
+    };
+    const salaryExpectation = salary !== undefined && Math.round(salary * 100) <= 2_147_483_647 ? Math.round(salary * 100) : null;
     const postingExternal = external(f.postingRef);
     const postingId = postingExternal ? refId('posting', `${WORK_SOURCE}:${postingExternal}`) : undefined;
     if (postingExternal && (!postingId || !jobRows.has(postingId))) throw new RgaImportError('O ID da vaga não foi conciliado. Importe a vaga ou revise a referência antes de tentar novamente.');
@@ -437,6 +442,8 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
     }
 
     const historical = file.kind === 'candidate' && !postingId;
+    const createsOpportunity = historical || !!postingId;
+    if (createsOpportunity && !stageId) throw new RgaImportError('Crie uma etapa inicial antes de importar a participação.');
     const selectionId = file.kind === 'candidate' ? external(f.selectionId) : null;
     const selectionCompany = companyNameKey(f.companyName ?? '');
     const selectionRole = companyNameKey(f.interest ?? '');
@@ -469,7 +476,7 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
         throw new RgaImportError('Há registros divergentes para a mesma seleção. Revise o ID e os dados históricos.');
       }
       existingId = matchedSelection;
-    } else {
+    } else if (createsOpportunity) {
       if (matchedSelection) throw new RgaImportError('Esta seleção já possui histórico sem vaga. Revise o vínculo no ATS antes de importar.');
       const existing = openingByContact.get(opening);
       if ((trackedOpportunity && !existing?.has(trackedOpportunity)) || seen.has(opening)) return 'duplicates';
@@ -478,12 +485,17 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
       existingId = existing?.values().next().value;
     }
     namedContacts.set(id, name);
-    const updates = current ? onlyMissing(current, { headline, location }) : {};
+    const updates = current ? onlyMissing(current, { headline, location, salaryExpectation }) : {};
+    if (current) {
+      const profile = readCareerProfile(current.careerProfile);
+      const missing = Object.entries(careerProfile).filter(([key]) => !profile[key as keyof typeof profile]);
+      if (missing.length) updates.careerProfile = { ...profile, ...Object.fromEntries(missing) };
+    }
     // Preserve recruiter-edited contact details. Fill an absent channel only.
     if (current && email && !current.emails.length) updates.emails = [email];
     if (current && phone && !current.phones.length) updates.phones = [phone];
     if (!current) {
-      const match = { id, name: f.name, emails: email ? [email] : [], phones: phone ? [phone] : [], headline, location, isAnonymized: false };
+      const match = { id, name: f.name, emails: email ? [email] : [], phones: phone ? [phone] : [], headline, location, careerProfile, salaryExpectation, isAnonymized: false };
       write.contactNew.push({ ...match, orgId, ...(date ? { createdAt: date } : {}) });
       contactRows.set(id, match);
       indexContacts(match);
@@ -493,8 +505,9 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
       contactRows.set(id, merged);
       indexContacts(merged);
     }
-    const linked = externalKeys.map((key) => setRef('contact', key, id, !current)).some(Boolean);
+    const linked = externalKeys.map((key) => setRef('contact', key, id, !current, createsOpportunity ? undefined : customFields)).some(Boolean);
     if (ext) originIdsByContact.set(id, externalKeys[0]);
+    if (!createsOpportunity) return !current ? 'created' : linked || Object.keys(updates).length ? 'updated' : 'duplicates';
     const opportunityKeys = historical ? selectionKeys : [opportunityRef];
     if (!existingId) {
       const opportunityId = recordId(ctx, fileKey, row, 'opportunity');
