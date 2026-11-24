@@ -38,7 +38,7 @@ export default async function CareersPage({ params, searchParams }: {
     },
   });
   const isAgency = org.kind === 'AGENCY';
-  const fallbackGroup = isAgency ? 'Other clients' : 'Other roles';
+  const fallbackGroup = isAgency ? 'Outras empresas clientes' : 'Outras vagas';
   const board: BoardPosting[] = postings.map((p) => {
     const department = p.department?.orgId === org.id ? p.department.name : undefined;
     const group = isAgency ? publicClientName(p) : department;

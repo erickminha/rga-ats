@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/primitives';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = { title: 'Your offer' };
+export const metadata = { title: 'Sua proposta' };
 
 /**
  * Public offer letter + e-signature page, reachable only via the offer's
@@ -45,8 +45,8 @@ export default async function OfferPage({ params }: { params: Promise<{ token: s
             : offer.status === 'DECLINED'
               ? "Recusada"
               : expired
-                ? 'Expired'
-                : 'Awaiting your signature'}
+                ? 'Expirada'
+                : 'Aguardando sua assinatura'}
         </Badge>
       </p>
 

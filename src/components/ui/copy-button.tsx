@@ -7,13 +7,13 @@ import { IconSwap, TextSwap } from '@/components/ui/motion';
 
 /**
  * Copy to clipboard with confirmation: the copy icon swaps to a check
- * (transitions.dev "icon swap") and the label to "Copied", then both
+ * (transitions.dev "icon swap") and the label to "Copiado", then both
  * return after a beat. `text` may be a function so callers can build
  * absolute URLs from window.location at click time.
  */
 export function CopyButton({
   text,
-  label = 'Copy',
+  label = 'Copiar',
   variant = 'ghost',
   size = 'xs',
   className,
@@ -40,7 +40,7 @@ export function CopyButton({
       className={buttonClass({ variant, size, className })}
     >
       <IconSwap on={copied} from={<Copy />} to={<Check />} />
-      <TextSwap>{copied ? 'Copied' : label}</TextSwap>
+      <TextSwap>{copied ? 'Copiado' : label}</TextSwap>
     </button>
   );
 }

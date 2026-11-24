@@ -68,7 +68,7 @@ export function OfferSignForm({ token, candidateName }: { token: string; candida
           disabled={pending}
           className={buttonClass({ variant: 'primary', size: 'lg', className: 'mt-2 w-full' })}
         >
-          <TextSwap>{pending ? 'Signing…' : 'Accept & sign'}</TextSwap>
+          <TextSwap>{pending ? 'Assinando…' : 'Aceitar e assinar'}</TextSwap>
         </button>
       </form>
       <form action={declineFormAction} className="mt-2 text-center">
@@ -79,7 +79,7 @@ export function OfferSignForm({ token, candidateName }: { token: string; candida
           disabled={declinePending}
           className={buttonClass({ variant: 'ghost', size: 'sm' })}
         >
-          {declinePending ? 'Recording…' : 'Decline this offer'}
+          {declinePending ? 'Registrando…' : 'Recusar esta proposta'}
         </button>
       </form>
     </div>
