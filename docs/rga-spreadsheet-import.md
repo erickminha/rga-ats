@@ -27,3 +27,9 @@ A conferência consultou metadados e intervalos de cabeçalho. A carga deve usar
 - **Reimportação.** O histórico usa `ImportJob` e a conciliação usa `ImportRef`. Alterações em campos preenchidos, exclusões e fusões ambíguas exigem revisão manual. Preserve os IDs de origem ao corrigir ou renomear registros. Concilie primeiro as referências das vagas e dos clientes. Se uma seleção sem vaga já foi importada com o mesmo ID ou conjunto de empresa, cargo e data, revise o vínculo no ATS antes de reapresentar a seleção com ID de vaga.
 
 A carga real depende de revisar os cabeçalhos e as chaves das abas de vagas e conferir uma prévia com o arquivo liberado pela RGA. As simulações desta entrega usam dados fictícios e PostgreSQL local. A Parte 6 reaproveita os modelos e as migrações existentes.
+
+## Conciliação de autorizações já importadas
+
+Em **Configurações → Dados → Importações → Importar planilha**, selecione **Conciliar aceites do Banco de Talentos**. Mapeie o ID de origem e o termo completo da versão aprovada do formulário. Confira na prévia quantos aceites constam expressamente na fonte e quantos dependem de uma atestação administrativa. Para esta última, use o código do documento aprovado pela RGA, arquivado com a identificação do lote ao qual se aplica. Confira o lote antes de confirmar.
+
+A conciliação exige referência de importação na mesma organização. IDs ausentes, duplicados ou respostas divergentes exigem revisão. Cadastros anonimizados, com bloqueio de retenção ou com consentimento anterior, inclusive revogado, ficam preservados. O histórico associa o responsável, o lote, a linha, o tipo de evidência e a impressão SHA-256 do arquivo. A data gravada em ConsentRecord corresponde ao registro no ATS. O procedimento concede exclusivamente armazenamento do perfil. Para novas cargas, importe primeiro os talentos e depois confira a prévia de conciliação do mesmo arquivo.

@@ -1,5 +1,5 @@
 import { readCareerProfile } from '@/lib/talent-profile';
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Prisma, type Contact, type ClientCompany, type Posting } from '@prisma/client';
 import { db } from '@/lib/db';
 import { brazilianStates, cnpjKey, companyNameKey, parseCompany, parsePhone, validCnpj } from '@/lib/client-company';
@@ -63,6 +63,7 @@ export type RgaSpreadsheet = {
   kind: RgaImportKind;
   headerRow: number;
   mapping: Record<string, unknown>;
+  attestation?: string;
 };
 
 function parseFile(ctx: SessionContext, file: RgaSpreadsheet) {
@@ -83,6 +84,13 @@ function parseFile(ctx: SessionContext, file: RgaSpreadsheet) {
     assignments.push([key, +index]);
   }
   const mapped = (key: string) => assignments.some(([name]) => name === key);
+  if (file.kind === 'consent') {
+    if (!mapped('externalId') || !mapped('acceptance')) throw new RgaImportError('Mapeie o ID de origem e o termo de autorização.');
+    const col = Number(file.mapping.acceptance);
+    const term = rows[file.headerRow - 1][col].trim().replace(/\s+/g, ' ');
+    if (digest(term) !== '20b1ce34706f5790f82e468ebb5df1902dfd3e7264346bdd3f37261ef44512f8') throw new RgaImportError('O termo selecionado difere do termo do Banco de Talentos verificado pela RGA.');
+    if (file.attestation && !/^[a-z0-9][a-z0-9._/-]{2,79}$/i.test(file.attestation)) throw new RgaImportError('Informe somente o código de referência do documento de atestação.');
+  }
   if (file.kind === 'company' && !mapped('name') && !mapped('legalName')) throw new RgaImportError('Mapeie o nome ou a razão social.');
   if (file.kind === 'posting' && (!mapped('title') || !mapped('externalId'))) throw new RgaImportError('Mapeie o título e o ID de origem da vaga.');
   if ((file.kind === 'candidate' || file.kind === 'talent') && (!mapped('name') || !['email', 'phone', 'externalId'].some(mapped))) {
@@ -182,6 +190,7 @@ function selectionEvidence(fields: Prisma.JsonValue | Prisma.InputJsonValue | nu
 
 function emptyWrites() {
   return {
+    grants: [] as { contactId: string; row: number; evidence: string; reference: string }[],
     companyNew: [] as Prisma.ClientCompanyCreateManyInput[],
     companyUpdates: [] as { id: string; data: Prisma.ClientCompanyUpdateManyMutationInput }[],
     postingNew: [] as Prisma.PostingCreateManyInput[],
@@ -194,8 +203,50 @@ function emptyWrites() {
   };
 }
 
+async function planConsents(tx: Prisma.TransactionClient, ctx: SessionContext, file: RgaSpreadsheet, parsed: ReturnType<typeof parseFile>) {
+  const prefix = TALENT_SOURCE + ':id:';
+  const refs = await tx.importRef.findMany({
+    where: { orgId: ctx.orgId, kind: 'contact', provider: RGA_IMPORT_PROVIDER, externalId: { startsWith: prefix } },
+    select: { externalId: true, internalId: true },
+  });
+  const byOrigin = new Map(refs.map(ref => [ref.externalId.slice(prefix.length), ref.internalId]));
+  const eligible = await tx.contact.findMany({
+    where: { orgId: ctx.orgId, id: { in: [...byOrigin.values()] }, isAnonymized: false, retentionHold: false,
+      consents: { none: { purpose: 'PROFILE_STORAGE' } } }, select: { id: true },
+  });
+  const available = new Set(eligible.map(row => row.id));
+  const counts = new Map<string, number>();
+  for (const { fields } of parsed.records) {
+    const contact = byOrigin.get(fields.externalId);
+    if (contact) counts.set(contact, (counts.get(contact) ?? 0) + 1);
+  }
+  const write = emptyWrites();
+  const report: RgaImportReport = { total: parsed.records.length, created: 0, updated: 0, duplicates: 0, errors: 0, issues: [] };
+  for (const { row, fields } of parsed.records) {
+    const contactId = byOrigin.get(fields.externalId);
+    const explicit = fields.acceptance === 'Li as informações acima e concordo.';
+    let message = '';
+    if (!contactId) message = 'ID sem correspondência na importação original.';
+    else if (counts.get(contactId) !== 1) message = 'Mais de uma linha para a mesma pessoa. Revise todas as ocorrências.';
+    else if (!available.has(contactId)) { report.duplicates++; continue; }
+    else if (!explicit && fields.acceptance) message = 'Resposta diferente do aceite reconhecido. Exige revisão.';
+    else if (!explicit && !file.attestation) message = 'Aceite em branco e sem atestação documentada.';
+    else {
+      write.grants.push({ contactId, row, evidence: explicit ? 'SHEET_ACCEPTANCE' : 'ADMIN_ATTESTATION', reference: explicit ? '' : file.attestation! });
+      report.updated++;
+      continue;
+    }
+    report.errors++;
+    if (report.issues.length < 100) report.issues.push({ row, message });
+  }
+  const explicit = write.grants.filter(grant => grant.evidence === 'SHEET_ACCEPTANCE').length;
+  report.consents = { explicit, attested: write.grants.length - explicit };
+  return { write, report };
+}
+
 async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, file: RgaSpreadsheet, parsed: ReturnType<typeof parseFile>) {
   const orgId = ctx.orgId;
+  if (file.kind === 'consent') return planConsents(tx, ctx, file, parsed);
   const fileKey = parsed.key + JSON.stringify(parsed.assignments);
   const xlsx = file.name.toLowerCase().endsWith('.xlsx');
   const candidate = file.kind === 'candidate' || file.kind === 'talent';
@@ -565,6 +616,18 @@ async function writeImport(tx: Prisma.TransactionClient, ctx: SessionContext, fi
     options: { kind: file.kind }, stats: { rga: report }, issueCount: report.errors,
     createdById: ctx.userId, finishedAt: new Date(),
   }, select: { id: true } });
+  if (write.grants.length) {
+    const fileSha256 = digest(file.data);
+    const grants = write.grants.map(grant => ({ ...grant, consentId: randomUUID() }));
+    await tx.consentRecord.createMany({ data: grants.map(grant => ({
+      ...org, id: grant.consentId, contactId: grant.contactId, purpose: 'PROFILE_STORAGE', policyVersion: 'rga-formulario-talentos-v1',
+    })) });
+    await tx.event.createMany({ data: grants.map(grant => ({
+      ...org, ...actorOf(ctx), verb: 'consent.reconciled', subjectType: 'contact', subjectId: grant.contactId,
+      payload: { consentId: grant.consentId, jobId: job.id, purpose: 'PROFILE_STORAGE', evidence: grant.evidence,
+        reference: grant.reference, row: grant.row, fileSha256 },
+    })) });
+  }
   if (write.companyNew.length) await tx.clientCompany.createMany({ data: write.companyNew });
   for (const { id, data } of write.companyUpdates) await tx.clientCompany.updateMany({ where: { ...org, id }, data });
   if (write.postingNew.length) await tx.posting.createMany({ data: write.postingNew });

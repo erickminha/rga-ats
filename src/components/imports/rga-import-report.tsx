@@ -12,6 +12,7 @@ export function RgaImportReport({ report }: { report: Report }) {
           <dd className="mt-1 text-xl font-medium tabular-nums">{report[key].toLocaleString('pt-BR')}</dd>
         </div>)}
       </dl>
+      {report.consents && <p className="text-sm">Aceites explícitos: {report.consents.explicit.toLocaleString('pt-BR')} · Atestações administrativas: {report.consents.attested.toLocaleString('pt-BR')}</p>}
       {report.errors > 0 ? (
         <section aria-label="Linhas que precisam de revisão" className="grid gap-2">
           <p className="text-sm">Corrija as linhas com erro e envie uma nova prévia.</p>
