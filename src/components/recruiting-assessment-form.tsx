@@ -3,20 +3,17 @@
 import { discDetails, discScale } from '@/lib/competency-assessment';
 import { useState, useTransition } from 'react';
 import { saveAssessmentAction } from '@/app/(app)/recruiting-actions';
-import { discAxes, opinionFields, screeningLabels } from '@/lib/i18n/pt-BR/assessment';
+import { discAxes, screeningLabels } from '@/lib/i18n/pt-BR/assessment';
 import type { AssessmentPart } from '@/server/recruiting-assessment';
 import { btnTonal, inputClass, surface, textareaClass } from '@/components/form-controls';
 
-export function RecruitingAssessmentForm({ id, screening, disc, discComplete, discFileId, previousDiscs, opinion, author, finalized }: {
+export function RecruitingAssessmentForm({ id, screening, disc, discComplete, discFileId, previousDiscs }: {
   id: string;
   screening: Record<string, string>;
   disc: Record<string, string>;
   discComplete: boolean;
   discFileId: string | null;
   previousDiscs?: { id: string; title: string }[];
-  opinion: Record<string, string>;
-  author: string | null;
-  finalized: boolean;
 }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState('');
@@ -24,7 +21,7 @@ export function RecruitingAssessmentForm({ id, screening, disc, discComplete, di
     setMessage('');
     try {
       await saveAssessmentAction(id, part, form);
-      setMessage(part === 'opinion' && form.get('intent') === 'finalize' ? 'Parecer finalizado.' : 'Registro salvo.');
+      setMessage('Registro salvo.');
     } catch {
       setMessage('Não foi possível salvar. Confira os campos. Para anexar o DISC, use um PDF de até 5 MB.');
     }
@@ -92,19 +89,6 @@ export function RecruitingAssessmentForm({ id, screening, disc, discComplete, di
           <button className={btnTonal} disabled={pending}>Reaproveitar resultado sem copiar o PDF</button>
         </form>
       </details>}
-    </details>
-    <details className={`${surface} p-4`}>
-      <summary className="cursor-pointer font-medium">Parecer · {finalized ? 'Finalizado' : 'Rascunho'}</summary>
-      <form className="mt-3 grid gap-3" action={save('opinion')}>
-        {author && <p className="text-sm">Responsável pelo parecer: {author}</p>}
-        {Object.entries(opinionFields).map(([key, label]) => <label key={key} className="grid gap-1 text-sm">{label}
-          <textarea name={key} className={textareaClass} maxLength={4000} defaultValue={opinion[key]} />
-        </label>)}
-        <div className="flex flex-wrap gap-2">
-          <button name="intent" value="draft" className={btnTonal} disabled={pending}>Salvar rascunho</button>
-          <button name="intent" value="finalize" className={btnTonal} disabled={pending}>Finalizar parecer</button>
-        </div>
-      </form>
     </details>
     <p role="status" className="text-sm">{pending ? 'Salvando…' : message}</p>
   </section>;

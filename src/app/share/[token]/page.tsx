@@ -8,7 +8,7 @@ import { ensureSamplePresentation, SAMPLE_PRESENTATION_CODE } from '@/server/sam
 
 /** Share links are for the people they're sent to, never search results. */
 export const dynamic = 'force-dynamic';
-export const metadata = { robots: { index: false, follow: false } };
+export const metadata = { robots: { index: false, follow: false }, referrer: 'no-referrer' };
 import { CandidatePresentation } from '@/components/candidate-presentation';
 import { sectionLabel } from '@/components/form-controls';
 import { DitherBar } from '@/components/ui/dither';
@@ -40,6 +40,9 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
         {presentation.finalists.map((person) => <article key={person.id} className="rounded-card bg-surface p-4">
           <h2 className="font-semibold">{person.name}</h2>
           {person.headline && <p>{person.headline}</p>}
+          {person.opinionPdf && <p><a className="underline" href={`/share/documento/${person.id}/parecer`}>Visualizar parecer em PDF</a></p>}
+          {person.resumeId && <p><a className="underline" href={`/share/documento/${person.id}/curriculo`}>Baixar currículo autorizado</a></p>}
+          {person.discId && <p><a className="underline" href={`/share/documento/${person.id}/disc`}>Baixar relatório DISC autorizado</a></p>}
           {person.opinion && Object.entries(person.opinion).map(([key, value]) => value && <div className="mt-3" key={key}>
             <h3 className="text-sm font-medium">{opinionFields[key as keyof typeof opinionFields]}</h3>
             <p className="whitespace-pre-wrap text-sm">{value}</p>

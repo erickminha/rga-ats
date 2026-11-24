@@ -1,7 +1,8 @@
+import { opinionKeys } from '@/lib/professional-opinion';
 import { discDetails, discScale } from '@/lib/competency-assessment';
 import { db } from '@/lib/db';
 import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
-import { discAxes, opinionFields, screeningLabels } from '@/lib/i18n/pt-BR/assessment';
+import { discAxes, screeningLabels } from '@/lib/i18n/pt-BR/assessment';
 import { lockIdentifiableContact } from '@/server/contact-lock';
 import { actorOf, emitEvent } from '@/server/events';
 import { discardUnlinkedFile, retryPendingFileDeletion, storeFile } from '@/server/storage';
@@ -47,7 +48,7 @@ export async function saveRecruitingAssessment(ctx: SessionContext, opportunityI
       }
     }
   }
-  const opinion = part === 'opinion' ? Object.fromEntries(Object.keys(opinionFields).map((key) => [key, read(form, key)])) : undefined;
+  const opinion = part === 'opinion' ? Object.fromEntries(opinionKeys.filter((key) => form.has(key)).map((key) => [key, read(form, key)])) : undefined;
   const finalize = part === 'opinion' && form.get('intent') === 'finalize';
   if (finalize && !opinion?.recommendation) throw new Error('Informe a recomendação para finalizar o parecer.');
   if (!screening && !disc && !opinion) throw new Error('Registro inválido.');
@@ -90,15 +91,35 @@ export async function saveRecruitingAssessment(ctx: SessionContext, opportunityI
         where: { id: file.id, orgId: ctx.orgId, deletePendingAt: { gt: new Date() } },
         data: { deletePendingAt: null, contactId: opportunity.contactId },
       });
+      const issuedAt = finalize ? new Date() : null;
+      const editedAt = current?.opinionDraftAt?.toISOString() ?? '';
+      if (opinion && (form.has('opinionRevision') && read(form, 'opinionRevision', 50) !== editedAt)) {
+        throw new Error('Atualize a página antes de editar este parecer.');
+      }
       const data = {
         screening,
         disc: sourceDisc ? { ...sourceDisc, sourceOpportunityId: reuseId, reusedAt: new Date().toISOString(), reusedById: ctx.userId,
           reusePurpose: read(form, 'reusePurpose', 500) } : disc && { ...disc, ...discOrigin },
         opinion,
         ...(replace ? { discFileId: file?.id ?? null } : {}),
-        ...(opinion ? { opinionAuthorId: ctx.userId, opinionFinalizedAt: finalize ? new Date() : null } : {}),
+        ...(opinion ? { opinionAuthorId: ctx.userId, opinionFinalizedAt: issuedAt, opinionDraftAt: new Date() } : {}),
       };
       await tx.recruitingAssessment.upsert({ where: { opportunityId }, create: { opportunityId, ...data }, update: data });
+      if (issuedAt && opinion) {
+        const latest = await tx.professionalOpinionVersion.findFirst({ where: { opportunityId }, orderBy: { version: 'desc' }, select: { version: true } });
+        const [identity, author, issuer] = await Promise.all([
+          tx.opportunity.findFirstOrThrow({ where: { id: opportunityId, orgId: ctx.orgId, contactId: opportunity.contactId },
+            select: { contact: { select: { name: true } }, posting: { select: { orgId: true, title: true,
+              clientCompany: { select: { orgId: true, name: true } } } } } }),
+          ctx.userId ? tx.user.findFirst({ where: { id: ctx.userId, orgId: ctx.orgId }, select: { name: true } }) : null,
+          tx.organization.findUnique({ where: { id: ctx.orgId }, select: { name: true } }),
+        ]);
+        const posting = identity.posting?.orgId === ctx.orgId ? identity.posting : null;
+        await tx.professionalOpinionVersion.create({ data: { opportunityId, version: (latest?.version ?? 0) + 1,
+          authorId: ctx.userId, issuedAt, content: { ...opinion, _candidate: identity.contact.name,
+            _posting: posting?.title ?? '', _client: posting?.clientCompany?.orgId === ctx.orgId ? posting.clientCompany.name : '',
+            _author: author?.name ?? '', _organization: issuer?.name ?? '' } } });
+      }
       if (replace && current?.discFileId) await tx.storedFile.updateMany({
         where: { id: current.discFileId, orgId: ctx.orgId },
         data: { deletePendingAt: new Date() },
