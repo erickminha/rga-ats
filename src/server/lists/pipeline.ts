@@ -137,6 +137,8 @@ type RawRow = {
   stageChangedAt: Date;
   name: string;
   headline: string | null;
+  postingTitle: string | null;
+  clientName: string | null;
   location: string | null;
   email: string | null;
   phone: string | null;
@@ -146,12 +148,13 @@ type RawRow = {
 };
 
 /**
- * The row columns both sorts select, from o and c. (The table shows no
- * posting or client, so pages don't join them unless a search needs them.)
+ * Resolve the linked vacancy and its client for the displayed candidates.
  */
 const ROW_COLUMNS = Prisma.sql`
   o.id, o."contactId", o."stageId", o."stageChangedAt",
   c.name, c.headline, c.location,
+  (SELECT title FROM "Posting" WHERE id = o."postingId" AND "orgId" = o."orgId") AS "postingTitle",
+  (SELECT cc2.name FROM "Posting" p2 JOIN "ClientCompany" cc2 ON cc2.id = p2."clientCompanyId" AND cc2."orgId" = o."orgId" WHERE p2.id = o."postingId" AND p2."orgId" = o."orgId") AS "clientName",
   c.emails[1] AS email, c.phones[1] AS phone, c.links[1] AS link`;
 
 function daysSince(ms: number): string {
@@ -166,6 +169,8 @@ function toRow(r: RawRow, now: number): PipelineRow {
     contactId: r.contactId,
     name: r.name,
     headline: r.headline,
+    postingTitle: r.postingTitle,
+    clientName: r.clientName,
     location: r.location,
     email: r.email,
     phone: r.phone,
