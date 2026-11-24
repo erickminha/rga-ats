@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/empty-state';
 import { PipelineFilters } from '@/components/pipeline-filters';
 import { PipelineList } from '@/components/pipeline-list';
 import { PipelineNavProvider } from '@/components/pipeline-nav';
-import { btnPrimary } from '@/components/form-controls';
+import { btnPrimary, inputClass } from '@/components/form-controls';
 
 export function PipelineScreen({ data }: { data: Awaited<ReturnType<typeof loadPipelinePage>> }) {
   const listInput = {
@@ -15,12 +15,15 @@ export function PipelineScreen({ data }: { data: Awaited<ReturnType<typeof loadP
     client: data.clientFilter,
     stage: data.stageFilter,
     q: data.q,
-    status: data.archived ? "encerrados" : '',
+    status: data.archived ? 'archived' : '',
     sort: data.sort,
     reason: data.reason,
   };
 
   const query = new URLSearchParams(Object.entries({ posting: data.postingFilter, client: data.clientFilter, q: data.q }).filter(([, val]) => val)).toString();
+
+  const selectedPosting = data.recruitingPostings.find((posting) => posting.id === data.postingFilter);
+  const addParams = new URLSearchParams({ q: '', ...(selectedPosting ? { posting: selectedPosting.id } : {}), ...(data.stageFilter ? { stage: data.stageFilter } : {}), from: 'pipeline' });
 
   // No key on the list: a filter change updates it in place (focus stays on
   // the tile that was clicked); it resets its own selection and loaded pages.
@@ -34,9 +37,30 @@ export function PipelineScreen({ data }: { data: Awaited<ReturnType<typeof loadP
             <Link href={`/pipeline?${query}${data.board ? '' : '&view=kanban'}`} className="text-sm underline">
               {data.board ? 'Lista' : 'Kanban'}
             </Link>
-            <Link href="/contacts/new?mode=application" className={btnPrimary}>
-              <Plus /> Adicionar candidato
-            </Link>
+            {data.canAddCandidate && (selectedPosting ? (
+              <Link href={`/contacts/busca?${addParams.toString()}`} className={btnPrimary}>
+                <Plus /> Incluir candidato na vaga
+              </Link>
+            ) : (
+              <details className="relative">
+                <summary className={`${btnPrimary} cursor-pointer list-none`}><Plus /> Incluir candidato</summary>
+                <div className="absolute right-0 z-30 mt-2 grid w-72 max-w-[85vw] gap-3 rounded-card border border-line bg-surface p-4 shadow-lg">
+                  {data.recruitingPostings.length ? <form action="/contacts/busca" className="grid gap-2">
+                    <input type="hidden" name="q" value="" />
+                    <input type="hidden" name="from" value="pipeline" />
+                    <input type="hidden" name="stage" value={data.stageFilter} />
+                    <label className="grid gap-1 text-sm">Vaga
+                      <select className={inputClass} name="posting" required defaultValue="">
+                        <option value="" disabled>Selecione a vaga</option>
+                        {data.recruitingPostings.map((posting) => <option key={posting.id} value={posting.id}>{posting.title}{posting.client ? ` — ${posting.client}` : ''}</option>)}
+                      </select>
+                    </label>
+                    <button className={btnPrimary}>Buscar no banco de talentos</button>
+                  </form> : <p className="text-sm">Nenhuma vaga disponível neste filtro.</p>}
+                  <Link href="/contacts/new?mode=application" className="text-sm underline">Cadastrar novo candidato</Link>
+                </div>
+              </details>
+            ))}
           </div>
         </div>
 

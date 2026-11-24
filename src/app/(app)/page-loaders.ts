@@ -153,12 +153,17 @@ export async function loadPipelinePage(input: PipelineInput) {
   const f = pipelineFilterFor(ctx.orgId, input, input.client ? await metaP : null);
   const after = decodeCursor(input.after, sort);
 
-  const [meta, counts, page, hasAny] = await Promise.all([
+  const [meta, counts, page, hasAny, recruitingPostings] = await Promise.all([
     metaP,
     cachedPipelineCounts(f),
     pipelinePage(f, sort, { after }),
     // "Pipeline is empty" means nothing in scope — not "no search results".
     !archived && f.q ? pipelineHasAny(f) : Promise.resolve(null),
+    canManageRecruiting(ctx) ? db.posting.findMany({
+      where: { orgId: ctx.orgId, state: { not: 'CLOSED' }, ...(input.client ? { clientCompanyId: input.client } : {}) },
+      orderBy: { title: 'asc' },
+      select: { id: true, title: true, clientCompany: { select: { name: true } } },
+    }) : Promise.resolve([]),
   ]);
 
   const board = input.view === 'kanban' && !archived ? await Promise.all(meta.stages.map(async (stage) => {
@@ -180,6 +185,8 @@ export async function loadPipelinePage(input: PipelineInput) {
     counts,
     page,
     postingGroups: postingGroupsFor(meta, input.client),
+    recruitingPostings: recruitingPostings.map((posting) => ({ id: posting.id, title: posting.title, client: posting.clientCompany?.name ?? null })),
+    canAddCandidate: canManageRecruiting(ctx),
     board,
     reason: f.reasonId ?? '',
     archiveReasons: meta.archiveReasons,
