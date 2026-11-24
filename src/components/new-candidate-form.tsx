@@ -29,7 +29,7 @@ export function NewCandidateForm({
           <input {...noAutofill} name="email" type="email" placeholder="dana@example.com" className={inputClass} />
         </Field>
         <Field label="Cargo ou área">
-          <input {...noAutofill} name="headline" placeholder="Senior Product Designer" className={inputClass} />
+          <input {...noAutofill} name="headline" placeholder="Designer de Produto Sênior" className={inputClass} />
         </Field>
         <Field label="Localidade">
           <input {...noAutofill} name="location" placeholder="Brooklyn, NY" className={inputClass} />

@@ -322,7 +322,7 @@ export default function SystemPage() {
               <Avatar name={n} size={32} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">{n}</p>
-                <p className="text-xs text-ink-2">Senior Product Designer</p>
+                <p className="text-xs text-ink-2">Designer de Produto Sênior</p>
               </div>
               <span className="flex items-center gap-2 text-xs text-ink-2">
                 <StatusDot tone={i === 0 ? 'caution' : 'neutral'} />

@@ -124,7 +124,7 @@ export function CaseStudiesSection({
           ))}
         </ul>
       ) : !adding ? (
-        <p className="text-sm text-ink-2">Links to their work, shown as thumbnails on their presentation.</p>
+        <p className="text-sm text-ink-2">Links para exemplos do trabalho da pessoa candidata.</p>
       ) : null}
     </section>
   );

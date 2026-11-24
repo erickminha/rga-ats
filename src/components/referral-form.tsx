@@ -35,7 +35,7 @@ export function ReferralForm({
           <input {...noAutofill} name="email" type="email" required placeholder="dana@example.com" className={inputClass} />
         </Field>
         <Field label="Título profissional (opcional)">
-          <input {...noAutofill} name="headline" placeholder="Senior Product Designer" className={inputClass} />
+          <input {...noAutofill} name="headline" placeholder="Designer de Produto Sênior" className={inputClass} />
         </Field>
         <Field label="Vaga">
           <FormSelect
@@ -54,7 +54,7 @@ export function ReferralForm({
         <textarea {...noAutofill}
           name="notes"
           rows={4}
-          placeholder="Worked together at Figment — strong systems thinker, great with recruiting tools."
+          placeholder="Trabalhamos juntos. Tem boa capacidade analítica e conhece ferramentas de recrutamento."
           className={textareaClass}
         />
       </Field>

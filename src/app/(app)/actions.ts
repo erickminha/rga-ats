@@ -278,7 +278,7 @@ export async function createSchedulingLinkAction(
     revalidatePath(`/candidates/${opportunityId}`);
     return { url: capabilityPath('schedule', link.token) };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Could not create link.' };
+    return { error: err instanceof Error ? err.message : 'Não foi possível criar o link.' };
   }
 }
 
@@ -349,7 +349,7 @@ export async function submitFeedbackAction(
       answers,
     });
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Could not submit feedback.' };
+    return { error: err instanceof Error ? err.message : 'Não foi possível enviar a avaliação.' };
   }
 
   revalidatePath(`/candidates/${opportunityId}`);
@@ -472,7 +472,7 @@ export async function sendOfferAction(
     revalidatePath('/dashboard');
     return result;
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Could not send the offer.' };
+    return { error: err instanceof Error ? err.message : 'Não foi possível enviar a proposta.' };
   }
 }
 
@@ -498,7 +498,7 @@ export async function resolveApprovalAction(
     revalidatePath(req.href);
     return {};
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Could not resolve approval.' };
+    return { error: err instanceof Error ? err.message : 'Não foi possível registrar a decisão.' };
   }
 }
 
@@ -523,7 +523,7 @@ export async function submitReferralAction(
     });
     opportunityId = result.opportunityId;
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Could not submit the referral.' };
+    return { error: err instanceof Error ? err.message : 'Não foi possível enviar a indicação.' };
   }
   revalidatePath('/referrals');
   revalidatePath('/pipeline');
@@ -977,7 +977,7 @@ export async function suggestMatchCriteriaAction(postingId: string): Promise<{ c
     where: { id: postingId, orgId: ctx.orgId },
     select: { title: true, location: true, content: true },
   });
-  if (!posting) return { error: 'Posting not found.' };
+  if (!posting) return { error: 'Vaga indisponível.' };
   try {
     return { criteria: await draftMatchCriteria(posting) };
   } catch (error) {
@@ -1085,7 +1085,7 @@ export async function addContactsToPoolAction(
   const pool = await db.talentPool.findFirst({
     where: { id: poolId, orgId: ctx.orgId, kind: 'STATIC' },
   });
-  if (!pool) throw new Error('Talent pool not found');
+  if (!pool) throw new Error('Lista de talentos indisponível');
   const ids = [...new Set(contactIds)];
   const contacts = await db.contact.findMany({
     where: { id: { in: ids.slice(0, POOL_BULK_LIMIT) }, orgId: ctx.orgId },
@@ -1111,7 +1111,7 @@ export async function removeContactsFromPoolAction(
   const pool = await db.talentPool.findFirst({
     where: { id: poolId, orgId: ctx.orgId, kind: 'STATIC' },
   });
-  if (!pool) throw new Error('Talent pool not found');
+  if (!pool) throw new Error('Lista de talentos indisponível');
   const ids = [...new Set(contactIds)];
   await db.talentPool.update({
     where: { id: pool.id },

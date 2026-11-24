@@ -39,8 +39,7 @@ export default async function NewslettersPage() {
       />
       <div className="mx-6 mt-4 flex max-w-3xl flex-col gap-4 pb-8">
         <p className="text-sm text-ink-2">
-          {audience.toLocaleString()} {audience === 1 ? 'candidate' : "candidatos"} can get your next one. People who unsubscribed, whose address bounced or
-          who were anonymized are left out.
+          {audience.toLocaleString()} {audience === 1 ? 'candidate' : "candidatos"} podem receber o próximo comunicado. Pessoas descadastradas, com endereço inválido ou com cadastro anonimizado ficam de fora.
         </p>
         {newsletters.length ? (
           <div className={`${surface} divide-y divide-line`}>

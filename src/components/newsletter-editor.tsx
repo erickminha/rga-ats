@@ -89,7 +89,7 @@ export function NewsletterEditor({
       <div className="flex min-w-0 flex-col gap-6">
         <label className="flex flex-col gap-2">
           <span className={sectionLabel}>Assunto</span>
-          <input {...noAutofill} value={subject} onChange={(e) => edit(setSubject)(e.target.value)} placeholder="New roles at Northwind this month" className={inputClass} />
+          <input {...noAutofill} value={subject} onChange={(e) => edit(setSubject)(e.target.value)} placeholder="Novas vagas deste mês" className={inputClass} />
         </label>
         <label className="flex flex-col gap-2">
           <span className={sectionLabel}>Mensagem</span>

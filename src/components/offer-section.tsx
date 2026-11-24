@@ -122,7 +122,7 @@ export function OfferSection({
         <form action={formAction} className={`${surface} mb-3 flex flex-col gap-3 p-5`}>
           <input type="hidden" name="opportunityId" value={opportunityId} />
           <Field label="Cargo">
-            <input {...noAutofill} name="jobTitle" required placeholder="Senior Product Designer" className={inputClass} />
+            <input {...noAutofill} name="jobTitle" required placeholder="Designer de Produto Sênior" className={inputClass} />
           </Field>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Salário-base">

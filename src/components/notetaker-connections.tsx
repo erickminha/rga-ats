@@ -93,9 +93,7 @@ export function NotetakerConnections({
     <div className="flex flex-col divide-y divide-line">
       <div className="px-4 py-4">
         <p className="max-w-prose text-sm text-ink-2">
-          Connect the notetaker you record interviews with. Every 10 minutes Source looks for meetings that line up with
-          interviews you&apos;re on and attaches their transcripts. Other meetings are skipped, and nothing about them is
-          kept.
+          Conecte o serviço utilizado nas entrevistas. A cada dez minutos, o RGA ATS procura gravações das suas entrevistas para anexar as transcrições correspondentes.
         </p>
         {shown ? (
           <p className="mt-3 flex items-center gap-2 text-sm text-ink">
@@ -125,7 +123,7 @@ export function NotetakerConnections({
 
       {overview ? (
         <div className="px-4 py-4">
-          <p className="text-sm font-medium text-ink">In your organization</p>
+          <p className="text-sm font-medium text-ink">Na organização</p>
           {overview.length ? (
             <dl className="mt-2 flex flex-col gap-1.5">
               {overview.map((row) => (
@@ -155,7 +153,7 @@ export function NotetakerConnections({
               ))}
             </dl>
           ) : (
-            <p className="mt-1 text-sm text-ink-2">Nobody has connected a notetaker yet.</p>
+            <p className="mt-1 text-sm text-ink-2">Nenhum serviço de transcrição conectado.</p>
           )}
         </div>
       ) : null}
@@ -254,7 +252,7 @@ function ProviderRow({
                     }}
                     className={buttonClass({ variant: 'ghost', size: 'sm' })}
                   >
-                    Use an API key
+                    Usar uma chave de API
                   </button>
                 ) : null}
                 <button type="button" disabled={pending} onClick={signIn} className={buttonClass({ variant: 'tonal', size: 'sm' })}>
@@ -313,7 +311,7 @@ function ProviderRow({
               </button>
             </div>
           </div>
-          <p className="text-xs text-ink-2">{meta.apiKey.where} Source checks the key before saving it, and stores it encrypted.</p>
+          <p className="text-xs text-ink-2">{meta.apiKey.where} O RGA ATS valida a chave antes de salvá-la de forma criptografada.</p>
         </form>
       ) : null}
 

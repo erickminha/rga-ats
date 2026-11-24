@@ -127,7 +127,7 @@ function Picker({
           Gravações próximas de <LocalTime date={interview.startAt} />
         </Dialog.Title>
         <Dialog.Description className="mt-1 text-sm text-ink-2">
-          {interview.title} com {candidateName}. From your notetakers, 12 hours either side. Nothing is saved unless you attach one.
+          {interview.title} com {candidateName}. São exibidas gravações de até doze horas antes ou depois. Escolha quais deseja anexar.
         </Dialog.Description>
       </div>
 
@@ -144,7 +144,7 @@ function Picker({
           <div className="py-6">
             <p className="text-sm text-ink">Nenhum serviço de transcrição conectado</p>
             <p className="mt-1 text-sm text-ink-2">
-              Connect Walkie, Fireflies, Fathom or another notetaker in{' '}
+              Conecte Walkie, Fireflies, Fathom ou outro serviço em{' '}
               <Link href="/settings?section=integrations#notetakers" className="text-ink underline-offset-2 hover:underline">
                 Configurações → Integrações
               </Link>
@@ -168,7 +168,7 @@ function Picker({
                     ) : null}
                   </p>
                 ) : !g.meetings.length ? (
-                  <p className="text-sm text-ink-2">No recordings within 12 hours in {g.name}</p>
+                  <p className="text-sm text-ink-2">Nenhuma gravação encontrada no intervalo de doze horas em {g.name}</p>
                 ) : (
                   <div role="radiogroup" aria-label={`Recordings in ${g.name}`} className="flex flex-col gap-1">
                     {g.meetings.map((m) => (
