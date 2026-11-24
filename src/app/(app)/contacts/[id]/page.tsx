@@ -1,4 +1,3 @@
-import { RgaDriveResume } from '@/components/imports/rga-drive-resume';
 import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { updateTalentMembershipAction } from '@/app/(app)/talent-search-actions';
 import { btnTonal, inputClass } from '@/components/form-controls';
@@ -14,6 +13,8 @@ import { TagEditor } from '@/components/tag-editor';
 import { DuplicatesBanner } from '@/components/duplicates-banner';
 import { PrivacyControls } from '@/components/privacy-controls';
 import { findDuplicates } from '@/server/contacts';
+
+import { RgaDriveResume } from '@/components/imports/rga-drive-resume';
 
 export default async function TalentProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requireSession();
