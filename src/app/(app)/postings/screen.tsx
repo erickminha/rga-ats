@@ -35,7 +35,7 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
   const href = (over: Record<string, string>) => {
     const params = new URLSearchParams();
     const merged = {
-      status: data.archived ? 'archived' : '',
+      status: data.archived ? "encerrados" : '',
       state: data.stateFilter,
       q: data.q,
       ...over,
@@ -51,11 +51,11 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
   return (
     <div className="t-reveal flex h-screen flex-col">
       <PageHeader
-        title="Postings"
-        subtitle="Draft, publish, and distribute open roles"
+        title="Vagas"
+        subtitle="Crie e gerencie as vagas do recrutamento"
         actions={data.canEditPostings ? (
           <Link href="/postings/new" className={btnPrimary}>
-            <Plus /> Add new job
+            <Plus /> Criar vaga
           </Link>
         ) : undefined}
       />
@@ -67,10 +67,10 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
           ) : null}
           <Segmented
             size="sm"
-            value={data.archived ? 'archived' : 'active'}
+            value={data.archived ? "encerrados" : 'active'}
             items={[
-              { value: 'active', label: 'Active', href: href({ status: '', state: '' }) },
-              { value: 'archived', label: 'Archived', href: href({ status: 'archived', state: '' }) },
+              { value: 'active', label: "Ativos", href: href({ status: '', state: '' }) },
+              { value: 'archived', label: "Encerrados", href: href({ status: 'archived', state: '' }) },
             ]}
           />
           {!data.archived
@@ -92,8 +92,8 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
               type="search"
               name="q"
               defaultValue={data.q}
-              placeholder="Search roles, clients, locations…"
-              aria-label="Search postings"
+              placeholder="Buscar vagas, clientes e localidades…"
+              aria-label="Buscar vagas"
               className={`${inputClass} pl-9`}
             />
           </form>
@@ -173,7 +173,7 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
                               target="_blank"
                               className={buttonClass({ variant: 'ghost', size: 'xs' })}
                             >
-                              <Eye /> View
+                              <Eye /> Visualização
                             </a>
                           ) : (
                             <span className="text-ink-3">—</span>
@@ -210,7 +210,7 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
 
         {!data.archived && data.drafts.length ? (
           <section className="mt-8">
-            <SectionHeader title="Drafts" />
+            <SectionHeader title="Rascunhos" />
             <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3">
               {data.drafts.map((d) => {
                 const state = STATE_BADGES[stateOf(d.id)] ?? STATE_BADGES.DRAFT;
@@ -222,7 +222,7 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
                         <Badge tone={state.tone}>{state.label}</Badge>
                       </div>
                       <h3 className="mt-6 truncate text-md font-medium">{d.title}</h3>
-                      <p className="mt-1 text-sm text-ink-2">Not yet published</p>
+                      <p className="mt-1 text-sm text-ink-2">Aguardando publicação</p>
                     </Card>
                   </Link>
                 );

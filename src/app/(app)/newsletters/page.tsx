@@ -12,7 +12,7 @@ import { countAudience } from '@/server/newsletters';
 
 export const metadata = { title: navigation.newsletters };
 
-const SUBTITLE = 'One email about your open roles, to every candidate';
+const SUBTITLE = "Comunicados sobre vagas abertas para candidatos";
 
 export default async function NewslettersPage() {
   const ctx = await requireSession();
@@ -29,17 +29,17 @@ export default async function NewslettersPage() {
   return (
     <div className="t-reveal">
       <PageHeader
-        title="Newsletters"
+        title="Comunicados"
         subtitle={SUBTITLE}
         actions={
           <Link href="/newsletters/new" className={btnPrimary}>
-            <Plus /> New newsletter
+            <Plus /> Novo comunicado
           </Link>
         }
       />
       <div className="mx-6 mt-4 flex max-w-3xl flex-col gap-4 pb-8">
         <p className="text-sm text-ink-2">
-          {audience.toLocaleString()} {audience === 1 ? 'candidate' : 'candidates'} can get your next one. People who unsubscribed, whose address bounced or
+          {audience.toLocaleString()} {audience === 1 ? 'candidate' : "candidatos"} can get your next one. People who unsubscribed, whose address bounced or
           who were anonymized are left out.
         </p>
         {newsletters.length ? (
@@ -53,14 +53,14 @@ export default async function NewslettersPage() {
                 <span className="min-w-0 truncate text-ink">{n.subject}</span>
                 <span className="flex shrink-0 items-center gap-2 text-xs text-ink-2">
                   {n.status === 'DRAFT' ? (
-                    <Badge>Draft</Badge>
+                    <Badge>Rascunho</Badge>
                   ) : n.status === 'SENDING' ? (
                     <>
-                      <StatusDot tone="caution" /> Sending · {n.sentCount.toLocaleString()} of {n.recipientCount.toLocaleString()}
+                      <StatusDot tone="caution" /> Enviando · {n.sentCount.toLocaleString()} de {n.recipientCount.toLocaleString()}
                     </>
                   ) : (
                     <>
-                      <StatusDot tone="positive" /> Sent to {n.sentCount.toLocaleString()}
+                      <StatusDot tone="positive" /> Enviado para {n.sentCount.toLocaleString()}
                       {n.sentAt ? (
                         <>
                           {' · '}
@@ -76,8 +76,8 @@ export default async function NewslettersPage() {
         ) : (
           <EmptyState
             icon={Newspaper}
-            title="No newsletters yet"
-            description="Tell your candidates about new roles: write a short note, pick the roles to feature, and send it to everyone at once."
+            title="Nenhum comunicado cadastrado"
+            description="Escreva uma mensagem e selecione as vagas que deseja divulgar no comunicado."
           />
         )}
       </div>

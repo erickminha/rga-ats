@@ -24,7 +24,7 @@ export function InterviewsScreen({ data }: { data: Awaited<ReturnType<typeof loa
     <Link
       key={iv.id}
       href={`/interviews/${iv.id}`}
-      title="Open interview kit"
+      title="Abrir ficha da entrevista"
       className="flex min-h-16 items-center justify-between gap-4 px-4 py-3 transition-colors duration-[120ms] hover:bg-muted/60"
     >
       <div className="flex min-w-0 items-center gap-3">
@@ -35,7 +35,7 @@ export function InterviewsScreen({ data }: { data: Awaited<ReturnType<typeof loa
             <span className="ml-2 font-normal text-ink-2">{iv.title}</span>
           </p>
           <p className="mt-0.5 truncate text-xs text-ink-2">
-            {iv.postingTitle ?? 'General'}
+            {iv.postingTitle ?? "Geral"}
             {iv.panelistNames.length ? ` · with ${iv.panelistNames.join(', ')}` : ''}
             {iv.location ? ` · ${iv.location}` : ''}
           </p>
@@ -64,18 +64,18 @@ export function InterviewsScreen({ data }: { data: Awaited<ReturnType<typeof loa
         <div className="mx-6 mt-4 flex flex-col gap-8 pb-8">
           <NotetakerSuggestions meetings={suggested} />
           <section>
-            <SectionHeader title="Upcoming" />
+            <SectionHeader title="Próximas" />
             {upcoming.length ? (
               <div className={`${surface} divide-y divide-line overflow-hidden`}>
                 {upcoming.map(renderRow)}
               </div>
             ) : (
-              <p className="text-sm text-ink-2">Nothing scheduled.</p>
+              <p className="text-sm text-ink-2">Nenhuma entrevista agendada.</p>
             )}
           </section>
           {past.length ? (
             <section>
-              <SectionHeader title="Recent" />
+              <SectionHeader title="Recentes" />
               <div className={`${surface} divide-y divide-line overflow-hidden`}>
                 {past.map(renderRow)}
               </div>

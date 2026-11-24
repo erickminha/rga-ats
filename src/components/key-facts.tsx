@@ -19,7 +19,7 @@ export function KeyFactsSection({ facts }: { facts: KeyFact[] }) {
   );
   return (
     <section>
-      <SectionHeader title="Key facts" />
+      <SectionHeader title="Informações principais" />
       <dl className={`${surface} divide-y divide-line`}>
         {facts.map((f) => (
           <div key={f.key} className="px-4 py-3">
@@ -30,7 +30,7 @@ export function KeyFactsSection({ facts }: { facts: KeyFact[] }) {
         ))}
       </dl>
       <p className="mt-2 px-1 text-xs text-ink-3">
-        {single ? <>As the candidate said it in {source(facts[0])}</> : 'As the candidate said it in interviews.'}
+        {single ? <>Conforme a pessoa relatou em {source(facts[0])}</> : 'As the candidate said it in interviews.'}
       </p>
     </section>
   );

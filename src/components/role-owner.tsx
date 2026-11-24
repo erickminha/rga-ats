@@ -35,7 +35,7 @@ export function RoleOwner({
     <Dropdown
       compact
       onSurface
-      label={current ? 'Change' : 'Assign'}
+      label={current ? "Alterar" : 'Assign'}
       showSelectedInTrigger={false}
       value={current?.id ?? ''}
       options={[
@@ -73,7 +73,7 @@ export function RoleOwner({
           </div>
         </>
       ) : (
-        <p className="flex-1 text-sm text-ink-2">No recruiter yet</p>
+        <p className="flex-1 text-sm text-ink-2">Sem recrutador responsável</p>
       )}
       {picker}
     </div>

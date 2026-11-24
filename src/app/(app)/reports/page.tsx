@@ -25,12 +25,12 @@ import { cn, firstParams, type SearchParams } from '@/lib/utils';
 import { DitherBar, DitherColumns } from '@/components/ui/dither';
 
 const ORIGIN_LABELS: Record<string, string> = {
-  APPLIED: 'Applied',
-  SOURCED: 'Sourced',
-  REFERRED: 'Referred',
+  APPLIED: "Candidatura",
+  SOURCED: "Prospecção",
+  REFERRED: "Indicação",
   AGENCY: organization.kinds.AGENCY.title,
-  INTERNAL: 'Internal',
-  UNIVERSITY: 'University',
+  INTERNAL: "Interna",
+  UNIVERSITY: "Universidade",
 };
 
 // Dithered ink bar (docs/09 §11)
@@ -155,11 +155,11 @@ export default async function ReportsPage({
   if (totalOpportunities === 0) {
     return (
       <div>
-        <PageHeader title="Reports" subtitle="Funnel, sources, and outcomes" />
+        <PageHeader title="Relatórios" subtitle="Funil, origens e resultados" />
         <EmptyState
           icon={BarChart3}
-          title="No data to report on"
-          description="Reports build automatically from the event stream as candidates move through your pipeline."
+          title="Nenhum dado para o relatório"
+          description="Os relatórios são atualizados conforme as candidaturas avançam pelo funil."
         />
       </div>
     );
@@ -188,16 +188,16 @@ export default async function ReportsPage({
   const reasonsById = new Map(archiveReasons.map((reason) => [reason.id, reason]));
   for (const group of archiveCounts) archiveCategories[outcomeCategory(reasonsById.get(group.archiveReasonId ?? ''))] += group._count;
   const stats = [
-    { label: 'Candidates', value: String(totalOpportunities) },
-    { label: 'In process', value: String(totalOpportunities - hired - archived) },
-    { label: 'Hired', value: String(hired) },
+    { label: "Candidatos", value: String(totalOpportunities) },
+    { label: "Em andamento", value: String(totalOpportunities - hired - archived) },
+    { label: "Contratados", value: String(hired) },
     ...Object.entries(archiveCategories).map(([key, count]) => ({
       label: outcomeNames[key as keyof typeof outcomeNames], value: count.toLocaleString('pt-BR'),
     })),
-    { label: 'Open roles', value: String(openPostings) },
-    { label: 'Avg days to hire', value: avgDaysToHire !== null ? String(avgDaysToHire) : '—' },
-    { label: 'Offers out', value: String(offerTotal) },
-    { label: 'Offer acceptance', value: acceptanceRate !== null ? `${acceptanceRate}%` : '—' },
+    { label: "Vagas abertas", value: String(openPostings) },
+    { label: "Média de dias até contratação", value: avgDaysToHire !== null ? String(avgDaysToHire) : '—' },
+    { label: "Propostas enviadas", value: String(offerTotal) },
+    { label: "Aceite de propostas", value: acceptanceRate !== null ? `${acceptanceRate}%` : '—' },
   ];
 
   const dimLabel = { posting: 'Posting', department: 'Department', owner: 'Owner' } as const;
@@ -205,12 +205,12 @@ export default async function ReportsPage({
   return (
     <div>
       <PageHeader
-        title="Reports"
-        subtitle="Funnel, sources, and outcomes"
+        title="Relatórios"
+        subtitle="Funil, origens e resultados"
         actions={
           <>
             <a href="/reports/builder" className={btnSecondary}>
-              Report builder
+              Criar relatório
             </a>
             {isAdmin ? <a href="/api/reports/export" className={btnSecondary}>
               Exportar CSV
@@ -237,7 +237,7 @@ export default async function ReportsPage({
           ))}
         </div>
 
-        <Panel title="Active pipeline by stage">
+        <Panel title="Candidatos ativos por etapa">
           <div className="flex flex-col gap-3">
             {stageData.map((s) => (
               <div key={s.name} className="grid grid-cols-[140px_1fr_32px] items-center gap-3">
@@ -249,7 +249,7 @@ export default async function ReportsPage({
           </div>
         </Panel>
 
-        <Panel title="Stage pass-through">
+        <Panel title="Conversão entre etapas">
           <div className="flex flex-col gap-3">
             {funnel.map((f) => (
               <div key={f.name} className="grid grid-cols-[140px_1fr_120px] items-center gap-3">
@@ -263,13 +263,12 @@ export default async function ReportsPage({
             ))}
           </div>
           <p className="mt-4 text-xs text-ink-2">
-            Candidates who ever reached each stage; the percentage is conversion from the
-            previous stage.
+            Candidatos que chegaram a cada etapa e percentual de conversão em relação à anterior.
           </p>
         </Panel>
 
         <div className="grid gap-x-3 gap-y-8 md:grid-cols-2">
-          <Panel title="Time in stage">
+          <Panel title="Tempo na etapa">
             {dwell.some((d) => (d.avgDays ?? 0) > 0) ? (
               <DitherColumns
                 className="mb-5"
@@ -290,51 +289,51 @@ export default async function ReportsPage({
             </div>
           </Panel>
 
-          <Panel title="Velocity by posting">
+          <Panel title="Tempo de recrutamento por vaga">
             <div className="flex flex-col gap-2.5">
               {velocity.slice(0, 8).map((v) => (
                 <div key={v.posting} className="flex items-center justify-between gap-3 text-sm">
                   <span className="truncate">{v.posting}</span>
                   <span className="shrink-0 text-xs text-ink-2 tabular-nums">
-                    {v.active} active · {v.hired} hired
+                    {v.active} ativos · {v.hired} contratados
                     {v.avgDaysToHire !== null ? ` · ${v.avgDaysToHire}d to hire` : ''}
                   </span>
                 </div>
               ))}
               {velocity.length === 0 ? (
-                <p className="text-sm text-ink-2">No pipeline yet.</p>
+                <p className="text-sm text-ink-2">Nenhuma movimentação registrada.</p>
               ) : null}
             </div>
           </Panel>
         </div>
 
         <div className="grid gap-x-3 gap-y-8 md:grid-cols-2">
-          <Panel title="Recruiter productivity">
+          <Panel title="Atividade por recrutador">
             {recruiters.length ? (
               <div className="flex flex-col gap-2.5">
                 {recruiters.map((r) => (
                   <div key={r.name} className="flex items-center justify-between gap-3 text-sm">
                     <span className="truncate">{r.name}</span>
                     <span className="shrink-0 text-xs text-ink-2 tabular-nums">
-                      {r.active} active · {r.hired} hired · {r.archived} archived
+                      {r.active} ativos · {r.hired} contratados · {r.archived} encerrados
                       {r.avgDaysToHire !== null ? ` · ${r.avgDaysToHire}d to hire` : ''}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-ink-2">Assign owners on opportunities to track this.</p>
+              <p className="text-sm text-ink-2">Defina responsáveis pelas participações para acompanhar os números.</p>
             )}
           </Panel>
 
-          <Panel title="Interviewer load">
+          <Panel title="Entrevistas por entrevistador">
             {interviewers.length ? (
               <div className="flex flex-col gap-2.5">
                 {interviewers.map((i) => (
                   <div key={i.name} className="flex items-center justify-between gap-3 text-sm">
                     <span className="truncate">{i.name}</span>
                     <span className="shrink-0 text-xs text-ink-2 tabular-nums">
-                      {i.scheduled} interviews · {i.completed} done
+                      {i.scheduled} entrevistas · {i.completed} concluídas
                       {i.feedbackRate !== null ? ` · ${i.feedbackRate}% feedback` : ''}
                       {i.avgRating !== null ? ` · ${i.avgRating} avg` : ''}
                     </span>
@@ -342,7 +341,7 @@ export default async function ReportsPage({
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-ink-2">No interviews scheduled yet.</p>
+              <p className="text-sm text-ink-2">Nenhuma entrevista agendada.</p>
             )}
           </Panel>
         </div>
@@ -391,9 +390,9 @@ export default async function ReportsPage({
         </Panel>
 
         {isAdmin ? (
-          <Panel title="Email digest">
+          <Panel title="Resumo por e-mail">
             <p className="mb-4 text-sm text-ink-2">
-              Headline stats, pass-through, and velocity, delivered on a schedule.
+              Receba indicadores de recrutamento, conversão e tempo por e-mail.
             </p>
             {schedules.length ? (
               <div className="mb-4 flex flex-col divide-y divide-line">
@@ -408,7 +407,7 @@ export default async function ReportsPage({
                         type="submit"
                         className={buttonClass({ variant: 'ghost', size: 'xs', className: 'hover:text-critical' })}
                       >
-                        Remove
+                        Remover
                       </button>
                     </form>
                   </div>
@@ -420,8 +419,8 @@ export default async function ReportsPage({
                 name="cadence"
                 defaultValue="WEEKLY"
                 options={[
-                  { value: 'WEEKLY', label: 'Weekly' },
-                  { value: 'DAILY', label: 'Daily' },
+                  { value: 'WEEKLY', label: "Semanal" },
+                  { value: 'DAILY', label: "Diário" },
                 ]}
                 className="w-28"
               />
@@ -433,14 +432,14 @@ export default async function ReportsPage({
                 className={cn(inputClass, 'min-w-64 flex-1')}
               />
               <button type="submit" className={btnTonal}>
-                Schedule digest
+                Agendar resumo
               </button>
             </form>
           </Panel>
         ) : null}
 
         <div className="grid gap-x-3 gap-y-8 md:grid-cols-2">
-          <Panel title="Candidates by origin">
+          <Panel title="Candidatos por origem">
             <div className="flex flex-col gap-3">
               {originData.map((o) => (
                 <div key={o.name} className="grid grid-cols-[100px_1fr_32px] items-center gap-3">
@@ -453,9 +452,9 @@ export default async function ReportsPage({
           </Panel>
 
           {isAdmin && eeoTotal > 0 ? (
-            <Panel title="EEO representation (aggregate)">
+            <Panel title="Autodeclarações EEO (agregadas)">
               <p className="mb-4 text-xs text-ink-2 tabular-nums">
-                {eeoTotal} voluntary response(s), never linked to candidates.
+                {eeoTotal} respostas voluntárias sem vínculo com os candidatos.
               </p>
               {eeoData ? (
                 <div className="flex flex-col gap-2.5">
@@ -470,13 +469,13 @@ export default async function ReportsPage({
                 </div>
               ) : (
                 <p className="text-sm text-ink-2">
-                  Breakdown appears after {5} responses to protect anonymity.
+                  A distribuição fica visível a partir de {5} respostas para preservar o anonimato.
                 </p>
               )}
             </Panel>
           ) : null}
 
-          <Panel title="Archive reasons">
+          <Panel title="Motivos de encerramento">
             {archiveData.length ? (
               <div className="flex flex-col gap-2.5">
                 {archiveData.map((a) => (
@@ -487,7 +486,7 @@ export default async function ReportsPage({
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-ink-2">No archived candidates yet.</p>
+              <p className="text-sm text-ink-2">Nenhuma participação encerrada.</p>
             )}
           </Panel>
         </div>

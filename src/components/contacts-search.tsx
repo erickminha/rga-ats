@@ -48,8 +48,8 @@ export function ContactsSearch() {
               setDraft({ from: committedQ, value: e.target.value });
               if (hint) setHint(false);
             }}
-            placeholder="Search name or headline…"
-            aria-label="Search contacts"
+            placeholder="Buscar pelo nome ou título profissional…"
+            aria-label="Buscar contatos"
             aria-describedby={hint ? 'contacts-q-hint' : undefined}
             className={`${inputClass} pl-9`}
           />
@@ -61,13 +61,13 @@ export function ContactsSearch() {
             onClick={(e) => nav.go({ tag: '' }, e)}
             className={`${badge} shrink-0 bg-surface text-ink hover:bg-muted`}
           >
-            tag: {nav.input.tag} ×
+            etiqueta: {nav.input.tag} ×
           </Link>
         ) : null}
       </span>
       {hint ? (
         <p id="contacts-q-hint" className="px-1 text-xs text-ink-2">
-          Type at least 2 characters.
+          Digite pelo menos 2 caracteres.
         </p>
       ) : null}
     </form>

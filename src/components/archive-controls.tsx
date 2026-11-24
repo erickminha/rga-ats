@@ -35,10 +35,10 @@ export function CandidateStatusControls({ opportunityId, status, archiveReason, 
           <form className="mt-2 grid gap-2 rounded-field border border-line p-3" action={(form) => submit(() =>
             archiveOpportunityAction(opportunityId, String(form.get('reason')), String(form.get('note') ?? ''))
           )}>
-            <label>Categoria <select value={category} onChange={(event) => setCategory(event.target.value as ArchiveCategory)}>
+            <label>Categoria <select aria-label="Categoria" value={category} onChange={(event) => setCategory(event.target.value as ArchiveCategory)}>
               {Object.entries(outcomeNames).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
             </select></label>
-            <label>Motivo <select key={category} name="reason" required defaultValue="">
+            <label>Motivo <select key={category} aria-label="Motivo" name="reason" required defaultValue="">
               <option value="">Selecione</option>
               {reasons.filter((reason) => reason.category === category).map((reason) => <option key={reason.id} value={reason.id}>{reason.name}</option>)}
             </select></label>

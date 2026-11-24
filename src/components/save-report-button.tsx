@@ -16,7 +16,7 @@ export function SaveReportButton({ config }: { config: Record<string, string> })
   if (saved)
     return (
       <Badge onCanvas tone="positive">
-        Saved
+        Salvo
       </Badge>
     );
 
@@ -35,14 +35,14 @@ export function SaveReportButton({ config }: { config: Record<string, string> })
         value={name}
         onChange={(e) => setName(e.target.value)}
         onBlur={() => setNaming(false)}
-        placeholder="Report name…"
+        placeholder="Nome do relatório…"
         disabled={pending}
         className={cn(inputClass, 'h-8 w-40')}
       />
     </form>
   ) : (
     <button onClick={() => setNaming(true)} className={buttonClass({ variant: 'secondary', size: 'sm' })}>
-      Save report
+      Salvar relatório
     </button>
   );
 }

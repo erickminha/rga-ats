@@ -141,7 +141,7 @@ export function ImportJob({ initial }: { initial: ImportJobView }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             <SiteIcon url={job.domain} size={20} />
-            <h1 className="text-xl font-medium text-ink">Import from {job.providerName}</h1>
+            <h1 className="text-xl font-medium text-ink">Importar de {job.providerName}</h1>
           </div>
           <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-ink-2">
             <StatusDot tone={status.tone} className={cn(running && 'animate-pulse')} />
@@ -155,7 +155,7 @@ export function ImportJob({ initial }: { initial: ImportJobView }) {
         </div>
         {isOpen(job.status) ? (
           <button type="button" onClick={cancel} disabled={canceling} className={buttonClass({ variant: 'secondary' })}>
-            <BusyLabel busy={canceling}>Cancel import</BusyLabel>
+            <BusyLabel busy={canceling}>Cancelar importação</BusyLabel>
           </button>
         ) : null}
       </header>
@@ -199,30 +199,29 @@ function StatusNote({ job, cancelError }: { job: ImportJobView; cancelError: str
 
       {job.status === 'DISCOVERING' ? (
         <p className="max-w-prose text-sm text-ink-2">
-          Reading your stages, archive reasons, and users from {job.providerName}. You&apos;ll choose where
-          each stage goes before any candidates are imported.
+          Lendo etapas, motivos de encerramento e usuários de {job.providerName}. Você poderá revisar as etapas antes de importar candidatos.
         </p>
       ) : null}
 
       {isRunning(job.status) ? (
         <p className="text-xs text-ink-2">
-          It&apos;s safe to close this tab. The import keeps running in the background.
+          A importação continua mesmo se você fechar esta aba.
         </p>
       ) : null}
 
       {job.retrying && isRunning(job.status) ? (
         <p className="flex items-center gap-1.5 text-sm text-ink-2">
-          <StatusDot tone="caution" /> Retrying after a provider error…
+          <StatusDot tone="caution" /> Tentando novamente após falha no provedor…
         </p>
       ) : null}
 
       {job.status === 'SUCCEEDED' ? (
         <Card className="flex flex-col gap-4 p-5">
           <div>
-            <p className="text-md font-medium text-ink">Import complete</p>
+            <p className="text-md font-medium text-ink">Importação concluída</p>
             <p className="mt-1 text-sm text-ink-2">
               {contacts || applications
-                ? `Brought over ${formatCount(contacts)} ${contacts === 1 ? 'candidate' : 'candidates'} and ${formatCount(applications)} ${applications === 1 ? 'application' : 'applications'} from ${job.providerName}.`
+                ? `Brought over ${formatCount(contacts)} ${contacts === 1 ? 'candidate' : "candidatos"} and ${formatCount(applications)} ${applications === 1 ? 'application' : 'applications'} from ${job.providerName}.`
                 : updated
                   ? `Nothing new to add from ${job.providerName}, and ${formatCount(updated)} ${updated === 1 ? 'record' : 'records'} that changed there ${updated === 1 ? 'is' : 'are'} up to date.`
                   : `Nothing new to bring over from ${job.providerName}. Everything was already in Source.`}
@@ -234,10 +233,10 @@ function StatusNote({ job, cancelError }: { job: ImportJobView; cancelError: str
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/contacts" className={buttonClass({ variant: 'primary' })}>
-              Open contacts
+              Abrir banco de talentos
             </Link>
             <Link href="/postings" className={buttonClass({ variant: 'tonal' })}>
-              Open postings
+              Abrir vagas
             </Link>
           </div>
         </Card>
@@ -245,21 +244,20 @@ function StatusNote({ job, cancelError }: { job: ImportJobView; cancelError: str
 
       {job.status === 'FAILED' ? (
         <div className="rounded-card bg-critical/10 p-5">
-          <p className="text-md font-medium text-critical">The import stopped</p>
+          <p className="text-md font-medium text-critical">A importação foi interrompida</p>
           {job.error ? <p className="mt-1 break-words text-sm text-ink">{job.error}</p> : null}
           <p className="mt-3 max-w-prose text-sm text-ink-2">
-            Everything imported before this stays in Source. Fix the problem and start a new import. It skips
-            what&apos;s already here and picks up the rest.
+            Os registros já importados ficam no RGA ATS. Corrija o problema e inicie outra importação para continuar a partir do que falta.
           </p>
           <Link href="/settings/import" className={buttonClass({ variant: 'secondary', className: 'mt-4' })}>
-            Start a new import
+            Iniciar nova importação
           </Link>
         </div>
       ) : null}
 
       {job.status === 'CANCELED' ? (
         <p className="max-w-prose text-sm text-ink-2">
-          This import was canceled. Anything imported before then stays in Source, and a new import skips it.
+          A importação foi cancelada. Uma nova importação preservará e ignorará os registros já importados.
         </p>
       ) : null}
     </div>
@@ -275,7 +273,7 @@ function Counts({ job }: { job: ImportJobView }) {
       .filter(([k]) => match(k))
       .reduce((sum, [, n]) => sum + (Number(n) || 0), 0);
   const tiles = COUNT_KINDS.filter(
-    (k) => k.always || job.created[k.kind] || job.linked[k.kind] || count('updated', k.kind),
+    (k) => k.always || job.created[k.kind] || job.linked[k.kind] || count("atualizados", k.kind),
   );
   // Records an earlier import brought over: updated where they changed at the
   // vendor, left alone where they didn't ("<kind>.existing" is a file, which
@@ -290,15 +288,15 @@ function Counts({ job }: { job: ImportJobView }) {
       <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
         {tiles.map(({ kind, label }) => {
           const linked = job.linked[kind] ?? 0;
-          const changed = count('updated', kind);
+          const changed = count("atualizados", kind);
           return (
             <Card key={kind} className="flex flex-col p-4">
               <span className="text-2xl text-ink tabular-nums">{formatCount(job.created[kind] ?? 0)}</span>
               <span className="mt-1 text-xs text-ink-2">{label}</span>
               {linked ? (
-                <span className="mt-0.5 text-xs text-ink-2 tabular-nums">{formatCount(linked)} matched existing</span>
+                <span className="mt-0.5 text-xs text-ink-2 tabular-nums">{formatCount(linked)} vinculados a registros existentes</span>
               ) : null}
-              {changed ? <span className="mt-0.5 text-xs text-ink-2 tabular-nums">{formatCount(changed)} updated</span> : null}
+              {changed ? <span className="mt-0.5 text-xs text-ink-2 tabular-nums">{formatCount(changed)} atualizados</span> : null}
             </Card>
           );
         })}
@@ -330,7 +328,7 @@ function Phases({ phases }: { phases: ImportJobView['phases'] }) {
 
   return (
     <section>
-      <SectionHeader title="Progress" />
+      <SectionHeader title="Progresso" />
       <Card className="grid gap-6 p-5 sm:grid-cols-2">
         {groups.map(({ group, items }) => (
           <div key={group}>
@@ -344,7 +342,7 @@ function Phases({ phases }: { phases: ImportJobView['phases'] }) {
                 >
                   <span className="grid size-3.5 shrink-0 place-items-center">
                     {p.state === 'done' ? (
-                      <Check size={14} className="text-ink-2" aria-label="Done" />
+                      <Check size={14} className="text-ink-2" aria-label="Concluído" />
                     ) : p.state === 'current' ? (
                       <StatusDot tone="info" className="animate-pulse" />
                     ) : (
@@ -389,7 +387,7 @@ function Issues({ job }: { job: ImportJobView }) {
           ) : null
         }
       />
-      <p className="-mt-1 mb-3 text-xs text-ink-2">None of these stopped the import.</p>
+      <p className="-mt-1 mb-3 text-xs text-ink-2">A importação continuou apesar desses avisos.</p>
       <Card className="divide-y divide-line">
         {shown.map((issue) => (
           <div key={issue.message} className="flex items-start justify-between gap-4 px-4 py-3">
@@ -488,8 +486,7 @@ function MappingReview({
   return (
     <div className="flex flex-col gap-8">
       <p className="max-w-prose text-sm text-ink">
-        Stages from {job.providerName} are grouped by name. Choose where each one lands in Source. Nothing is
-        imported until you start.
+        Etapas de {job.providerName} estão agrupadas pelo nome. Selecione a etapa correspondente no RGA ATS antes de iniciar.
       </p>
 
       <section>
@@ -522,7 +519,7 @@ function MappingReview({
                       }))
                     }
                   >
-                    <option value={CREATE}>Create new stage</option>
+                    <option value={CREATE}>Criar nova etapa</option>
                     {stageGroups.map((g) => (
                       <optgroup key={g.type} label={STAGE_TYPE_LABELS[g.type]}>
                         {g.stages.map((st) => (
@@ -538,7 +535,7 @@ function MappingReview({
                 {creating ? (
                   <div className="flex gap-2">
                     <input {...noAutofill}
-                      aria-label="New stage name"
+                      aria-label="Nome da nova etapa"
                       value={target.create.name}
                       maxLength={80}
                       onChange={(e) =>
@@ -550,7 +547,7 @@ function MappingReview({
                       className={cn(inputClass, 'min-w-0 flex-1')}
                     />
                     <NativeSelect
-                      aria-label="Stage type"
+                      aria-label="Tipo de etapa"
                       value={target.create.type}
                       onChange={(v) =>
                         setStages((prev) => ({
@@ -572,13 +569,13 @@ function MappingReview({
             );
           })}
           {!review.stages.length ? (
-            <p className="px-4 py-4 text-sm text-ink-2">{job.providerName} didn&apos;t return any stages.</p>
+            <p className="px-4 py-4 text-sm text-ink-2">{job.providerName} não retornou etapas.</p>
           ) : null}
         </Card>
         {starters.length ? (
           <Card className="mt-3 flex items-start justify-between gap-6 px-4 py-4">
             <div>
-              <p className="text-sm text-ink">Use {job.providerName}&apos;s pipeline in place of Source&apos;s starter stages</p>
+              <p className="text-sm text-ink">Usar {job.providerName}no lugar do funil inicial do RGA ATS</p>
               <p className="mt-1 text-sm text-ink-2">
                 {replaceStarters
                   ? `Removes ${listNames(starters.map((st) => st.name))}, which no ${job.providerName} stage lands in. You can add stages back any time in Settings.`
@@ -627,9 +624,9 @@ function MappingReview({
                         }))
                       }
                     >
-                      <option value={CREATE}>Create new reason</option>
+                      <option value={CREATE}>Criar motivo</option>
                       {review.existingReasons.length ? (
-                        <optgroup label="Your reasons">
+                        <optgroup label="Motivos existentes">
                           {review.existingReasons.map((er) => (
                             <option key={er.id} value={er.id}>
                               {er.name}
@@ -643,7 +640,7 @@ function MappingReview({
                   {creating ? (
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <input {...noAutofill}
-                        aria-label="New reason name"
+                        aria-label="Nome do novo motivo"
                         value={target.create.name}
                         maxLength={120}
                         onChange={(e) =>
@@ -666,7 +663,7 @@ function MappingReview({
                           }
                           className="size-4 accent-ink dark:[color-scheme:dark]"
                         />
-                        Counts as rejection
+                        Conta como reprovação
                       </label>
                     </div>
                   ) : null}
@@ -679,7 +676,7 @@ function MappingReview({
 
       {users.total ? (
         <section>
-          <SectionHeader title="Teammates" />
+          <SectionHeader title="Membros da equipe" />
           <Card className="px-4 py-4">
             <p className="text-sm text-ink">
               {users.matched === users.total
@@ -689,14 +686,12 @@ function MappingReview({
             {users.matched < users.total ? (
               <>
                 <p className="mt-1 text-sm text-ink-2">
-                  Notes and scorecards by the others will be credited to you, with the original author&apos;s name
-                  kept.
+                  Notas e avaliações sem usuário correspondente ficarão com você e manterão o nome do autor original.
                 </p>
                 {users.unmatchedNames.length ? (
                   <p className="mt-3 text-xs text-ink-2">
-                    Not matched: {users.unmatchedNames.slice(0, 8).join(', ')}
-                    {users.total - users.matched > 8 ? `, and ${formatCount(users.total - users.matched - 8)} more` : ''}.
-                    Invite them to Source first if you want their work credited to them.
+                    Sem correspondência: {users.unmatchedNames.slice(0, 8).join(', ')}
+                    {users.total - users.matched > 8 ? `, and ${formatCount(users.total - users.matched - 8)} more` : ''}. Convide essas pessoas para associar os registros aos respectivos usuários.
                   </p>
                 ) : null}
               </>
@@ -708,7 +703,7 @@ function MappingReview({
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" onClick={confirm} disabled={pending} className={buttonClass({ variant: 'primary' })}>
-            <BusyLabel busy={pending}>Start importing</BusyLabel>
+            <BusyLabel busy={pending}>Iniciar importação</BusyLabel>
           </button>
           {newStages || newReasons || removing ? (
             <p className="text-xs text-ink-2">

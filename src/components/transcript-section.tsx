@@ -57,10 +57,10 @@ export function TranscriptSection({
   return (
     <section>
       <SectionHeader
-        title="Transcripts"
+        title="Transcrições"
         action={
           <button onClick={() => setOpen((v) => !v)} className={btnGhost}>
-            <FileAudio /> {open ? 'Cancel' : 'Add transcript'}
+            <FileAudio /> {open ? "Cancelar" : 'Add transcript'}
           </button>
         }
       />
@@ -69,14 +69,14 @@ export function TranscriptSection({
         <form action={formAction} className={`${surface} mb-3 flex flex-col gap-3 p-5`}>
           <input type="hidden" name="opportunityId" value={opportunityId} />
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Title">
+            <Field label="Título">
               <input {...noAutofill}
                 name="title"
-                placeholder="Phone screen — Google Meet"
+                placeholder="Triagem por telefone · Google Meet"
                 className={inputClass}
               />
             </Field>
-            <Field label="Interview (optional)">
+            <Field label="Entrevista (opcional)">
               <FormSelect
                 name="interviewId"
                 options={[
@@ -86,12 +86,12 @@ export function TranscriptSection({
               />
             </Field>
           </div>
-          <Field label="Transcript text">
+          <Field label="Texto da transcrição">
             <textarea {...noAutofill}
               name="content"
               rows={8}
               required
-              placeholder="Paste the meeting transcript… External tools can also push transcripts automatically via POST /api/v1/transcripts."
+              placeholder="Cole a transcrição. Ferramentas externas podem enviá-la por POST /api/v1/transcripts."
               className={textareaClass}
             />
           </Field>
@@ -103,7 +103,7 @@ export function TranscriptSection({
               </span>
             ) : null}
             <button type="submit" disabled={pending} className={btnPrimary}>
-              <TextSwap>{pending ? 'Saving…' : 'Save transcript'}</TextSwap>
+              <TextSwap>{pending ? "Salvando…" : 'Save transcript'}</TextSwap>
             </button>
           </div>
         </form>
@@ -118,7 +118,7 @@ export function TranscriptSection({
                   <p className="truncate text-sm font-medium">{t.title}</p>
                   <p className="mt-0.5 text-xs text-ink-2">
                     {t.interviewTitle ? `${t.interviewTitle} · ` : ''}
-                    {t.source} · {(t.chars / 1000).toFixed(1)}k chars ·{' '}
+                    {t.source} · {(t.chars / 1000).toFixed(1)}mil caracteres ·{' '}
                     <LocalTime date={t.createdAt} options={{ year: 'numeric', month: 'numeric', day: 'numeric' }} />
                   </p>
                 </div>
@@ -131,8 +131,8 @@ export function TranscriptSection({
                     {expanded === t.id ? 'Collapse' : 'Read'}
                   </button>
                   <button
-                    title="Delete transcript"
-                    aria-label="Delete transcript"
+                    title="Excluir transcrição"
+                    aria-label="Excluir transcrição"
                     disabled={deletePending}
                     onClick={() => {
                       if (!confirm(`Delete transcript "${t.title}"? This cannot be undone.`)) return;
@@ -146,7 +146,7 @@ export function TranscriptSection({
               </div>
               {expanded === t.id && t.insights?.qa.length ? (
                 <div className="mt-4 rounded-field bg-muted px-4 py-3.5">
-                  <p className="mb-3 text-xs font-medium text-ink-2">Questions</p>
+                  <p className="mb-3 text-xs font-medium text-ink-2">Perguntas</p>
                   <QuestionList qa={t.insights.qa} />
                 </div>
               ) : expanded === t.id && !t.insights && aiEnabled ? (
@@ -162,7 +162,7 @@ export function TranscriptSection({
         </div>
       ) : !open ? (
         <p className="text-sm text-ink-2">
-          No transcripts yet. Paste one here, or point your transcription tool at the API.
+          Nenhuma transcrição registrada. Cole o texto aqui ou envie pela API.
         </p>
       ) : null}
     </section>

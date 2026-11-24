@@ -13,10 +13,10 @@ import { orderResults, scoreTone, type CriterionResult, type MatchCriterion } fr
 import { cn } from '@/lib/utils';
 
 const RATING_LABELS: Record<number, string> = {
-  1: 'Strong no',
-  2: 'No',
-  3: 'Yes',
-  4: 'Strong yes',
+  1: "Não recomendo",
+  2: "Não",
+  3: "Sim",
+  4: "Recomendo fortemente",
 };
 
 const RATING_TONES: Record<number, Tone> = {
@@ -63,7 +63,7 @@ export function AiEvaluationSection({
         title={
           <span className="flex items-center gap-2">
             <Bot state={!aiEnabled ? 'sleeping' : pending ? 'working' : 'idle'} size={20} />
-            Candidate match
+            Aderência do candidato
           </span>
         }
         action={
@@ -106,8 +106,7 @@ export function AiEvaluationSection({
 
       {evaluations.length === 0 ? (
         <p className="text-sm text-ink-2">
-          No evaluations yet. AI reads the resume, application note, and scorecards — advisory
-          input only, never a decision.
+          Nenhuma avaliação registrada. Quando habilitada, a IA analisa currículo, apresentação e avaliações como apoio à equipe.
         </p>
       ) : (
         <div className="flex flex-col gap-3">
@@ -121,15 +120,15 @@ export function AiEvaluationSection({
                   {/* How well they meet the role's criteria, then the overall verdict */}
                   {ev.matchScore !== null ? (
                     <div>
-                      <p className="text-xs text-ink-2">Match</p>
+                      <p className="text-xs text-ink-2">Aderência</p>
                       <p className="mt-0.5 text-2xl tabular-nums text-ink">{ev.matchScore}%</p>
                       <p className="mt-3 text-xs tabular-nums text-ink-2">
-                        {ev.criteria.filter((c) => (c.score ?? 0) >= 75).length} of {ev.criteria.length} criteria met
+                        {ev.criteria.filter((c) => (c.score ?? 0) >= 75).length} de {ev.criteria.length} critérios atendidos
                       </p>
                     </div>
                   ) : null}
                   <div>
-                    <p className="text-xs text-ink-2">Recommendation</p>
+                    <p className="text-xs text-ink-2">Recomendação</p>
                     <p className="mt-0.5 flex items-center gap-2 text-2xl text-ink">
                       <StatusDot tone={RATING_TONES[ev.recommendation]} className="size-2" />
                       {RATING_LABELS[ev.recommendation]}
@@ -142,7 +141,7 @@ export function AiEvaluationSection({
                         label={`${RATING_LABELS[ev.recommendation]}, ${ev.recommendation} of 4`}
                       />
                       <span aria-hidden className="shrink-0 text-xs tabular-nums text-ink-2">
-                        {ev.recommendation} of 4
+                        {ev.recommendation} de 4
                       </span>
                     </div>
                   </div>
@@ -159,13 +158,13 @@ export function AiEvaluationSection({
                 <div className="mt-5 flex flex-wrap gap-1.5">
                   {ev.strengths.map((st, i) => (
                     <Badge key={`s${i}`} tone="positive" wrap className="text-ink">
-                      <span className="sr-only">Strength: </span>
+                      <span className="sr-only">Ponto forte: </span>
                       {st}
                     </Badge>
                   ))}
                   {ev.concerns.map((c, i) => (
                     <Badge key={`c${i}`} tone="caution" wrap className="text-ink">
-                      <span className="sr-only">Concern: </span>
+                      <span className="sr-only">Ponto de atenção: </span>
                       {c}
                     </Badge>
                   ))}
@@ -179,7 +178,7 @@ export function AiEvaluationSection({
 
               {ev.questions.length ? (
                 <div className="mt-4">
-                  <p className="mb-1.5 text-xs font-medium text-ink-2">Suggested questions</p>
+                  <p className="mb-1.5 text-xs font-medium text-ink-2">Perguntas sugeridas</p>
                   <ul className="flex list-disc flex-col gap-0.5 pl-4 text-sm">
                     {ev.questions.map((q, i) => (
                       <li key={i}>{q}</li>
@@ -219,7 +218,7 @@ function CriteriaChips({ results }: { results: CriterionResult[] }) {
           >
             <StatusDot tone={scoreTone(r.score)} />
             <span className={r.must ? 'font-medium' : undefined}>{r.label}</span>
-            {r.must ? <span className="sr-only">, must-have</span> : null}
+            {r.must ? <span className="sr-only">, obrigatório</span> : null}
             <span className="tabular-nums text-ink-2">{r.score === null ? '—' : `${r.score}%`}</span>
           </button>
         ))}

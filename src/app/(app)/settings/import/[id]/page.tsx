@@ -43,7 +43,7 @@ export default async function ImportJobPage({ params }: { params: Promise<{ id: 
           href="/settings/import"
           className="inline-flex items-center gap-1.5 text-sm text-ink-2 transition-colors duration-[120ms] hover:text-ink"
         >
-          <ArrowLeft size={14} /> Imports
+          <ArrowLeft size={14} /> Importações
         </Link>
       </div>
       <ImportJob key={job.id} initial={job} />

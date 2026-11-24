@@ -36,14 +36,14 @@ export function AttachRecordingButton({
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         <button type="button" className={buttonClass({ variant: 'tonal', size })}>
-          <FileAudio /> Attach a recording
+          <FileAudio /> Anexar gravação
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay fixed inset-0 z-[300] bg-ink/10" />
         <Dialog.Content className="dialog-animate fixed left-1/2 top-[max(16px,10vh)] z-[300] flex max-h-[min(720px,calc(100dvh-32px))] w-[min(560px,calc(100vw-32px))] -translate-x-1/2 flex-col rounded-dialog bg-surface shadow-float outline-none">
           <Dialog.Close
-            aria-label="Close"
+            aria-label="Fechar"
             className={buttonClass({ variant: 'ghost', size: 'sm', icon: true, className: 'absolute right-3 top-3' })}
           >
             <X />
@@ -106,14 +106,14 @@ function Picker({
       <div className="flex flex-col items-start gap-4 p-6">
         <SuccessCheck size={24} />
         <div>
-          <Dialog.Title className="text-md font-medium text-ink">Attached to {interview.title}</Dialog.Title>
+          <Dialog.Title className="text-md font-medium text-ink">Anexada a {interview.title}</Dialog.Title>
           <Dialog.Description className="mt-1 text-sm text-ink-2">
             {choice.title || 'The recording'} is on {candidateName}&apos;s profile now, with this interview.
           </Dialog.Description>
         </div>
         <div className="flex w-full justify-end">
           <button type="button" onClick={onClose} className={buttonClass({ variant: 'primary' })}>
-            Done
+            Concluído
           </button>
         </div>
       </div>
@@ -124,17 +124,17 @@ function Picker({
     <>
       <div className="px-6 pb-4 pt-6 pr-14">
         <Dialog.Title className="text-md font-medium text-ink">
-          Recordings near <LocalTime date={interview.startAt} />
+          Gravações próximas de <LocalTime date={interview.startAt} />
         </Dialog.Title>
         <Dialog.Description className="mt-1 text-sm text-ink-2">
-          {interview.title} with {candidateName}. From your notetakers, 12 hours either side. Nothing is saved unless you attach one.
+          {interview.title} com {candidateName}. From your notetakers, 12 hours either side. Nothing is saved unless you attach one.
         </Dialog.Description>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-2">
         {!data ? (
           <p role="status" className="py-6 text-sm text-ink-2">
-            Looking for recordings…
+            Buscando gravações…
           </p>
         ) : !data.ok ? (
           <p className="flex items-center gap-2 py-6 text-sm text-ink-2">
@@ -142,11 +142,11 @@ function Picker({
           </p>
         ) : !data.connected ? (
           <div className="py-6">
-            <p className="text-sm text-ink">No notetaker connected</p>
+            <p className="text-sm text-ink">Nenhum serviço de transcrição conectado</p>
             <p className="mt-1 text-sm text-ink-2">
               Connect Walkie, Fireflies, Fathom or another notetaker in{' '}
               <Link href="/settings?section=integrations#notetakers" className="text-ink underline-offset-2 hover:underline">
-                Settings → Integrations
+                Configurações → Integrações
               </Link>
               .
             </p>
@@ -163,7 +163,7 @@ function Picker({
                     <StatusDot tone="critical" /> {g.error}
                     {g.reconnect ? (
                       <Link href="/settings?section=integrations#notetakers" className="text-ink underline-offset-2 hover:underline">
-                        Reconnect
+                        Reconectar
                       </Link>
                     ) : null}
                   </p>
@@ -188,7 +188,7 @@ function Picker({
                           participants={m.participants}
                           showIcon={false}
                           showProvider={false}
-                          after={m.suggested && !m.attached ? <Badge tone="info">Suggested</Badge> : null}
+                          after={m.suggested && !m.attached ? <Badge tone="info">Sugerido</Badge> : null}
                         />
                         {m.attached ? (
                           <p className="mt-1 text-xs text-ink-2">
@@ -216,11 +216,11 @@ function Picker({
         <div className="flex justify-end gap-2">
           <Dialog.Close asChild>
             <button type="button" className={buttonClass({ variant: 'ghost' })}>
-              Cancel
+              Cancelar
             </button>
           </Dialog.Close>
           <button type="button" disabled={!choice || pending} onClick={attach} className={buttonClass({ variant: 'primary' })}>
-            <BusyLabel busy={pending}>Attach</BusyLabel>
+            <BusyLabel busy={pending}>Anexar</BusyLabel>
           </button>
         </div>
       </div>

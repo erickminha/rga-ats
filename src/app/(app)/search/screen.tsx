@@ -18,16 +18,16 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
 
   return (
     <div className="t-reveal">
-      <PageHeader title="Search" subtitle="Contacts, resumes, notes, transcripts, and postings" />
+      <PageHeader title="Buscar" subtitle="Contatos, currículos, anotações, transcrições e vagas" />
 
       <div className="mx-6 mt-2 max-w-3xl">
         {data.aiEnabled ? (
           <>
             <p className={`${sectionLabel} mb-2 flex items-center gap-2`}>
-              <Bot size={20} /> Ask AI — synthesized answers from your corpus
+              <Bot size={20} /> Consultar IA com os registros disponíveis
             </p>
             <AskCorpus />
-            <p className={`${sectionLabel} mb-2`}>Keyword search</p>
+            <p className={`${sectionLabel} mb-2`}>Buscar por palavra-chave</p>
           </>
         ) : null}
         <form method="get" className="mb-8 flex gap-2">
@@ -40,34 +40,34 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
             <input {...noAutofill}
               type="search"
               name="q"
-              aria-label="Keyword search"
+              aria-label="Buscar por palavra-chave"
               defaultValue={data.q}
               autoFocus
-              placeholder="Name, email, tag, resume keyword, note text…"
+              placeholder="Nome, e-mail, etiqueta, palavra do currículo ou anotação…"
               className={`${inputClass} pl-9`}
             />
           </div>
           <button type="submit" className={btnPrimary}>
-            Search
+            Buscar
           </button>
         </form>
 
         {data.q.trim().length >= 2 && total === 0 ? (
           <EmptyState
             icon={Search}
-            title="No matches"
+            title="Nenhum resultado"
             description={`Nothing found for “${data.q}” across contacts, resumes, notes, or postings.`}
           />
         ) : null}
 
         {data.results.contacts.length ? (
           <section className="mb-8">
-            <h2 className={`${sectionLabel} mb-3`}>Candidates</h2>
+            <h2 className={`${sectionLabel} mb-3`}>Candidatos</h2>
             {data.results.more.contacts ? (
               <p className="mb-2 text-xs text-ink-2">
-                Showing the first {data.results.contacts.length} people, by name.{' '}
+                Exibindo os primeiros {data.results.contacts.length} contatos, em ordem alfabética.{' '}
                 <Link href={`/contacts?q=${encodeURIComponent(data.q.trim())}`} className="underline hover:text-ink">
-                  See all name and headline matches in Contacts
+                  Ver todos os nomes e títulos correspondentes no banco de talentos
                 </Link>
               </p>
             ) : null}
@@ -95,7 +95,7 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
         {data.results.transcripts.length ? (
           <section className="mb-8">
             <h2 className={`${sectionLabel} mb-3`}>
-              Transcripts{data.results.more.transcripts ? ` · ${data.results.transcripts.length} most recent matches` : ''}
+              Transcrições{data.results.more.transcripts ? ` · ${data.results.transcripts.length} most recent matches` : ''}
             </h2>
             <div className={`${surface} divide-y divide-line`}>
               {data.results.transcripts.map((t, i) => (
@@ -117,7 +117,7 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
         {data.results.notes.length ? (
           <section className="mb-8">
             <h2 className={`${sectionLabel} mb-3`}>
-              Notes{data.results.more.notes ? ` · ${data.results.notes.length} most recent matches` : ''}
+              Anotações{data.results.more.notes ? ` · ${data.results.notes.length} most recent matches` : ''}
             </h2>
             <div className={`${surface} divide-y divide-line`}>
               {data.results.notes.map((n, i) => (
@@ -137,7 +137,7 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
         {data.results.postings.length ? (
           <section className="mb-8">
             <h2 className={`${sectionLabel} mb-3`}>
-              Postings{data.results.more.postings ? ` · first ${data.results.postings.length}, by title` : ''}
+              Vagas{data.results.more.postings ? ` · first ${data.results.postings.length}, by title` : ''}
             </h2>
             <div className={`${surface} divide-y divide-line`}>
               {data.results.postings.map((p) => (

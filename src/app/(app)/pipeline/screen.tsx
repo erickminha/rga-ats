@@ -15,7 +15,7 @@ export function PipelineScreen({ data }: { data: Awaited<ReturnType<typeof loadP
     client: data.clientFilter,
     stage: data.stageFilter,
     q: data.q,
-    status: data.archived ? 'archived' : '',
+    status: data.archived ? "encerrados" : '',
     sort: data.sort,
     reason: data.reason,
   };

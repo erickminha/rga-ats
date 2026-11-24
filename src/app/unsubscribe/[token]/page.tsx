@@ -4,7 +4,7 @@ import { buttonClass } from '@/components/ui/button';
 import { readUnsubscribeToken } from '@/server/newsletter-email';
 import { unsubscribeAction } from '../actions';
 
-export const metadata = { title: 'Unsubscribe', robots: { index: false, follow: false } };
+export const metadata = { title: "Cancelar inscrição", robots: { index: false, follow: false } };
 
 /**
  * Where a newsletter's unsubscribe link lands. It asks before it acts: link
@@ -51,7 +51,7 @@ export default async function UnsubscribePage({
         {ask ? (
           <form action={unsubscribeAction.bind(null, token)} className="mt-6">
             <button type="submit" className={buttonClass({ variant: 'primary' })}>
-              Unsubscribe
+              Cancelar inscrição
             </button>
           </form>
         ) : null}

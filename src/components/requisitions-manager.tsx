@@ -20,7 +20,7 @@ const STATE_TONES: Record<string, Tone> = {
 };
 
 const STATE_LABELS: Record<string, string> = {
-  OPEN: 'Open',
+  OPEN: "Abrir",
   ON_HOLD: 'On hold',
   CLOSED: 'Closed',
 };
@@ -48,39 +48,39 @@ export function RequisitionsManager({ requisitions }: { requisitions: Requisitio
     <section className="mx-6 mt-8">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h2 className="text-md font-medium text-ink">Requisitions</h2>
+          <h2 className="text-md font-medium text-ink">Requisições</h2>
           <p className="mt-0.5 text-sm text-ink-2">
-            Headcount records — hires on a linked posting fill openings automatically.
+            As contratações em vagas vinculadas são contabilizadas na requisição.
           </p>
         </div>
         <button onClick={() => setOpen((v) => !v)} className={buttonClass({ variant: 'secondary', size: 'sm' })}>
-          <Plus /> {open ? 'Cancel' : 'New requisition'}
+          <Plus /> {open ? "Cancelar" : 'New requisition'}
         </button>
       </div>
 
       {open ? (
         <form action={formAction} className={`${surface} mb-3 flex flex-col gap-4 p-5`}>
           <div className="grid grid-cols-4 gap-3">
-            <Field label="Code">
+            <Field label="Código">
               <input {...noAutofill} name="code" required placeholder="ENG-042" className={inputClass} />
             </Field>
-            <Field label="Title">
+            <Field label="Título">
               <input {...noAutofill} name="title" required placeholder="Staff Engineer" className={inputClass} />
             </Field>
-            <Field label="Openings">
+            <Field label="Posições">
               <input {...noAutofill} name="openings" type="number" min="1" defaultValue="1" className={inputClass} />
             </Field>
-            <Field label="Backfill">
+            <Field label="Reposição">
               <label className="flex h-9 items-center gap-2 text-sm text-ink-2">
                 <Checkbox name="backfill" />
-                Replacing someone
+                Reposição de pessoal
               </label>
             </Field>
           </div>
           {state?.error ? <p className="text-sm text-critical">{state.error}</p> : null}
           <div className="flex justify-end">
             <button type="submit" disabled={pending} className={btnTonal}>
-              <TextSwap>{pending ? 'Creating…' : 'Create requisition'}</TextSwap>
+              <TextSwap>{pending ? "Criando…" : 'Create requisition'}</TextSwap>
             </button>
           </div>
         </form>
@@ -95,10 +95,10 @@ export function RequisitionsManager({ requisitions }: { requisitions: Requisitio
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">
                     <span className="font-mono text-xs text-ink-2">{r.code}</span> {r.title}
-                    {r.backfill ? <span className="ml-1.5 text-xs text-ink-2">(backfill)</span> : null}
+                    {r.backfill ? <span className="ml-1.5 text-xs text-ink-2">(reposição)</span> : null}
                   </p>
                   <p className="mt-0.5 text-xs text-ink-2 tabular-nums">
-                    {r.filled}/{r.openings} filled · {r.postingCount} posting(s)
+                    {r.filled}/{r.openings} preenchidas · {r.postingCount} vagas
                   </p>
                 </div>
               </div>
@@ -124,7 +124,7 @@ export function RequisitionsManager({ requisitions }: { requisitions: Requisitio
           ))}
         </div>
       ) : !open ? (
-        <p className="text-sm text-ink-2">No requisitions yet.</p>
+        <p className="text-sm text-ink-2">Nenhuma requisição cadastrada.</p>
       ) : null}
     </section>
   );

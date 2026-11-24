@@ -48,7 +48,7 @@ function fromInput(value: string): Date | null {
 const toInput = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-const shortDate = (d: Date) => d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+const shortDate = (d: Date) => d.toLocaleDateString('pt-BR', { weekday: 'short', month: 'short', day: 'numeric' });
 
 const itemClass =
   'flex cursor-pointer items-center justify-between gap-3 rounded-field px-3 py-2 text-sm text-ink outline-none data-[highlighted]:bg-muted';
@@ -96,12 +96,12 @@ export function SnoozeControl({
     return (
       <span className={badge}>
         <StatusDot tone="caution" />
-        Snoozed until{' '}
+        Pausado até{' '}
         <LocalTime date={until} options={{ month: 'short', day: 'numeric' }} />
         <button
           type="button"
-          title="Unsnooze"
-          aria-label="Unsnooze"
+          title="Mostrar no funil"
+          aria-label="Mostrar no funil"
           onClick={() => snooze(null)}
           className="-mr-1 flex size-4 cursor-pointer items-center justify-center rounded-full text-ink-3 hover:text-ink"
         >
@@ -125,7 +125,7 @@ export function SnoozeControl({
         <input {...noAutofill}
           ref={inputRef}
           type="date"
-          aria-label="Snooze until"
+          aria-label="Pausar até"
           min={toInput(startOfDay(1))}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -139,12 +139,12 @@ export function SnoozeControl({
           className={cn(inputClass, 'h-6 w-auto px-2 text-xs tabular-nums')}
         />
         <button type="submit" disabled={!valid} className={buttonClass({ variant: 'tonal', size: 'xs' })}>
-          Snooze
+          Pausar exibição
         </button>
         <button
           type="button"
-          aria-label="Cancel"
-          title="Cancel"
+          aria-label="Cancelar"
+          title="Cancelar"
           onClick={() => setPicking(false)}
           className={buttonClass({ variant: 'ghost', size: 'xs', icon: true })}
         >
@@ -161,7 +161,7 @@ export function SnoozeControl({
           type="button"
           className={buttonClass({ variant: 'ghost', size: 'xs', className: 'data-[state=open]:bg-ink/[0.05]' })}
         >
-          <AlarmClock /> Snooze
+          <AlarmClock /> Pausar exibição
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -171,7 +171,7 @@ export function SnoozeControl({
           className="menu-animate z-[350] w-[248px] rounded-card bg-surface p-1 shadow-float"
         >
           <DropdownMenu.Label className="px-3 pb-1 pt-2 text-xs text-ink-2">
-            Hide from the pipeline until…
+            Ocultar do funil até…
           </DropdownMenu.Label>
           {PRESETS.map((p) => {
             const date = startOfDay(p.days);
@@ -190,7 +190,7 @@ export function SnoozeControl({
             }}
             className={itemClass}
           >
-            Pick a date…
+            Selecione uma data…
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>

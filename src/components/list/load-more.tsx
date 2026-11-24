@@ -124,7 +124,7 @@ export function LoadMore({
 
   const of = total === null ? '' : ` of ${fmt(total)}${capped ? '+' : ''}`;
   const label =
-    status === 'loading' ? 'Loading…' : status === 'error' ? "Couldn't load more. Retry" : 'Load 100 more';
+    status === 'loading' ? "Carregando…" : status === 'error' ? "Couldn't load more. Retry" : "Carregar mais 100";
   const cls = buttonClass({ variant: 'secondary', size: 'sm' });
   // aria-disabled, not disabled: a disabled button drops keyboard focus to the page.
   const inactive = disabled || status === 'loading';
@@ -132,7 +132,7 @@ export function LoadMore({
   return (
     <div ref={sentinel} className="flex items-center justify-between gap-3 px-4 py-4">
       <span className="text-xs tabular-nums text-ink-2">
-        Showing {fmt(loaded)}
+        Exibindo {fmt(loaded)}
         {of}
         {paused ? '. Load more, or narrow with search' : ''}
       </span>
@@ -152,7 +152,7 @@ export function LoadMore({
         </button>
       ) : href ? (
         <a href={href} className={cls}>
-          Load 100 more
+          Carregar mais 100
         </a>
       ) : null}
     </div>

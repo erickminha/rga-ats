@@ -110,10 +110,10 @@ export default function SystemPage() {
         <div className="no-scrollbar -mx-4 flex gap-10 overflow-x-auto px-4 pb-8 pt-2">
           <Phone>
             <div className="flex items-center justify-between px-4 pt-14">
-              <Button icon size="md" aria-label="Back">
+              <Button icon size="md" aria-label="Voltar">
                 <ArrowLeft />
               </Button>
-              <Button icon size="md" aria-label="Save">
+              <Button icon size="md" aria-label="Salvar">
                 <Bookmark />
               </Button>
             </div>
@@ -139,7 +139,7 @@ export default function SystemPage() {
           <Phone>
             <div className="flex items-center justify-between px-4 pt-14">
               <Avatar name="Adam P" size={36} />
-              <Button icon size="md" aria-label="Search">
+              <Button icon size="md" aria-label="Buscar">
                 <Search />
               </Button>
             </div>
@@ -153,7 +153,7 @@ export default function SystemPage() {
                   </Chip>
                 ))}
               </div>
-              <SectionHeader title="Open roles" className="mt-10" />
+              <SectionHeader title="Vagas abertas" className="mt-10" />
               <div className="grid grid-cols-2 gap-3">
                 {[
                   ['Founding engineer', 23, 'lavender'],
@@ -169,7 +169,7 @@ export default function SystemPage() {
                 ))}
               </div>
               <div className="mt-4 flex justify-center">
-                <Button size="sm">See more</Button>
+                <Button size="sm">Ver mais</Button>
               </div>
             </div>
             <PhoneNav />
@@ -236,16 +236,16 @@ export default function SystemPage() {
                   <Plus /> {s}
                 </Button>
               ))}
-              <Button variant={v} icon aria-label="Add">
+              <Button variant={v} icon aria-label="Adicionar">
                 <Plus />
               </Button>
             </div>
           ))}
           <Card className="flex flex-wrap items-center gap-3 p-5">
             <span className="w-24 text-xs text-ink-2">on surface</span>
-            <Button variant="primary">Save</Button>
-            <Button variant="tonal">Preview</Button>
-            <Button variant="ghost">Cancel</Button>
+            <Button variant="primary">Salvar</Button>
+            <Button variant="tonal">Prévia</Button>
+            <Button variant="ghost">Cancelar</Button>
           </Card>
         </div>
       </Section>
@@ -253,37 +253,37 @@ export default function SystemPage() {
       <Section id="inputs" title="Fields share the control heights">
         <div className="grid gap-8 md:grid-cols-2">
           <div className="flex flex-col gap-4">
-            <Field label="Full name" hint="As it appears on their resume.">
+            <Field label="Nome completo" hint="As it appears on their resume.">
               <input {...noAutofill} className={inputClass} placeholder="Maya Chen" />
             </Field>
-            <Field label="Notes">
+            <Field label="Anotações">
               <textarea {...noAutofill} className={textareaClass} rows={3} placeholder="What stood out?" />
             </Field>
           </div>
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
-              <input {...noAutofill} className={inputClass} placeholder="Search name, role, location…" />
-              <Button>Filter</Button>
-              <Button variant="primary">Add candidate</Button>
+              <input {...noAutofill} className={inputClass} placeholder="Buscar nome, vaga ou localidade…" />
+              <Button>Filtrar</Button>
+              <Button variant="primary">Adicionar candidato</Button>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Chip selected>All stages</Chip>
-              <Chip>New applicant</Chip>
-              <Chip>Phone screen</Chip>
-              <Chip>On-site</Chip>
+              <Chip selected>Todas as etapas</Chip>
+              <Chip>Nova candidatura</Chip>
+              <Chip>Triagem por telefone</Chip>
+              <Chip>Presencial</Chip>
             </div>
             <Segmented
               value="active"
               items={[
-                { value: 'active', label: 'Active' },
-                { value: 'archived', label: 'Archived' },
+                { value: 'active', label: "Ativos" },
+                { value: 'archived', label: "Encerrados" },
               ]}
             />
             <div className="flex flex-wrap items-center gap-2">
               <Badge onCanvas>7 candidates</Badge>
-              <Badge onCanvas tone="positive">Published</Badge>
+              <Badge onCanvas tone="positive">Publicada</Badge>
               <Badge onCanvas tone="caution">Stalled 9d</Badge>
-              <Badge onCanvas tone="critical">Rejected</Badge>
+              <Badge onCanvas tone="critical">Reprovada</Badge>
               <span className={`${badge} bg-surface`}>badge (class)</span>
             </div>
           </div>
@@ -308,10 +308,10 @@ export default function SystemPage() {
             <Card key={t} interactive className="p-5">
               <div className="flex items-start justify-between">
                 <Orb seed={t} size={40} />
-                <Badge tone={i === 2 ? 'neutral' : 'positive'}>{i === 2 ? 'Draft' : 'Published'}</Badge>
+                <Badge tone={i === 2 ? 'neutral' : 'positive'}>{i === 2 ? "Rascunho" : "Publicada"}</Badge>
               </div>
               <h3 className="mt-6 text-md font-medium">{t}</h3>
-              <p className="mt-1 text-sm text-ink-2">Remote · {12 + i * 9} candidates</p>
+              <p className="mt-1 text-sm text-ink-2">Remote · {12 + i * 9} candidatos</p>
             </Card>
           ))}
         </div>
@@ -329,13 +329,13 @@ export default function SystemPage() {
                 {i === 0 ? '75d in stage' : `${4 + i}d in stage`}
               </span>
               <Button size="sm" variant="tonal">
-                Phone screen
+                Triagem por telefone
               </Button>
             </div>
           ))}
         </Card>
 
-        <EmptyState icon={Briefcase} title="No postings yet" description="Draft a role, publish it, and applicants flow straight into your pipeline." action={<Button variant="primary">New posting</Button>} />
+        <EmptyState icon={Briefcase} title="Nenhuma vaga cadastrada" description="Crie e publique uma vaga para receber candidaturas no funil." action={<Button variant="primary">Nova vaga</Button>} />
       </Section>
     </div>
   );

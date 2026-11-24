@@ -54,7 +54,7 @@ function collections(db: Tx, orgId: string): [string, Batch][] {
     ['archiveReasons', (c) => db.archiveReason.findMany({ where: org, ...page(c) })],
     ['contacts', (c) => db.contact.findMany({ where: org, ...page(c) })],
     ['postings', (c) => db.posting.findMany({ where: org, ...page(c) })],
-    ['opportunities', (c) => db.opportunity.findMany({ where: org, ...page(c) })],
+    ['opportunities', (c) => db.opportunity.findMany({ where: org, include: { recruitingAssessment: { omit: { discFileId: true } } }, ...page(c) })],
     ['stageTransitions', (c) => db.stageTransition.findMany({ where: { opportunity: org }, ...page(c) })],
     [
       'interviews',

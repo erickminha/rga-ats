@@ -10,10 +10,10 @@ import { Avatar } from '@/components/ui/orb';
 import { Badge, Chip, type Tone } from '@/components/ui/primitives';
 
 const REC_LABELS: Record<number, string> = {
-  1: 'Strong no',
-  2: 'No',
-  3: 'Yes',
-  4: 'Strong yes',
+  1: "Não recomendo",
+  2: "Não",
+  3: "Sim",
+  4: "Recomendo fortemente",
 };
 const REC_TONES: Record<number, Tone> = {
   1: 'critical',
@@ -30,8 +30,8 @@ export function ReviewScreen({ data }: { data: Awaited<ReturnType<typeof loadRev
     <div className="t-reveal">
       <div className="flex items-start justify-between pr-6">
         <PageHeader
-          title="Review"
-          subtitle="New applications, evaluated against the role and ranked"
+          title="Revisão"
+          subtitle="Novas candidaturas organizadas por critérios da vaga"
         />
         {data.aiEnabled && data.queueLength ? (
           <div className="mt-6">
@@ -43,7 +43,7 @@ export function ReviewScreen({ data }: { data: Awaited<ReturnType<typeof loadRev
       <div className="mx-6 mt-2 flex flex-col gap-4 pb-10">
         <div className="flex flex-wrap items-center gap-2">
           <Chip href={href('')} selected={!data.postingFilter}>
-            All roles · <span className="tabular-nums">{data.queueLength}</span>
+            Todas as vagas · <span className="tabular-nums">{data.queueLength}</span>
           </Chip>
           {data.postings.map((p) => (
             <Chip key={p.id} href={href(p.id)} selected={data.postingFilter === p.id}>
@@ -52,7 +52,7 @@ export function ReviewScreen({ data }: { data: Awaited<ReturnType<typeof loadRev
           ))}
           {data.aiEnabled && data.unevaluated > 0 ? (
             <span className="ml-2 text-xs text-ink-2">
-              {data.unevaluated} awaiting AI review
+              {data.unevaluated} aguardando análise por IA
             </span>
           ) : null}
         </div>
@@ -60,8 +60,8 @@ export function ReviewScreen({ data }: { data: Awaited<ReturnType<typeof loadRev
         {data.rows.length === 0 ? (
           <EmptyState
             icon={Inbox}
-            title="Review queue is clear"
-            description="New applications land here while they sit in your lead and applicant stages."
+            title="Nenhuma candidatura para revisar"
+            description="Novas candidaturas aparecem aqui nas etapas iniciais."
           />
         ) : (
           <div className={`${surface} divide-y divide-line`}>
@@ -80,7 +80,7 @@ export function ReviewScreen({ data }: { data: Awaited<ReturnType<typeof loadRev
                           {REC_LABELS[ev.recommendation]}
                         </Badge>
                       ) : (
-                        <Badge>Unreviewed</Badge>
+                        <Badge>Sem revisão</Badge>
                       )}
                       {ev && ev.matchScore !== null ? (
                         <Badge className="tabular-nums">{`${ev.matchScore}% match`}</Badge>
@@ -127,14 +127,12 @@ export function ReviewScreen({ data }: { data: Awaited<ReturnType<typeof loadRev
 
         {hidden > 0 ? (
           <p className="text-xs text-ink-2">
-            Showing the top {data.rows.length} of {data.queueLength}. Advance or archive these to
-            bring up the next ones.
+            Exibindo as primeiras {data.rows.length} de {data.queueLength}. Avance ou encerre estas participações para ver as seguintes.
           </p>
         ) : null}
 
         <p className="text-xs text-ink-2">
-          AI reviews are advisory — they read the resume, application note, and role description,
-          and never move a candidate on their own.
+          A análise por IA considera currículo, apresentação e descrição da vaga como apoio. A equipe decide a movimentação.
         </p>
       </div>
     </div>

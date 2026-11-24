@@ -208,13 +208,13 @@ export async function maybeAutoSendSchedulingLink(
 
   const first = opportunity.contact.name.split(' ')[0] || opportunity.contact.name;
   const body = [
-    `Hi ${first},`,
+    `Olá, ${first}!`,
     '',
-    `Please pick a time for your ${link.title} with ${org.name}:`,
+    `Escolha um horário para ${link.title} com ${org.name}:`,
     '',
     `${baseUrl}${capabilityPath('schedule', link.token)}`,
     '',
-    `Times are shown in your local timezone. If none of the slots work, reply to this email and we'll find another time.`,
+    `Os horários aparecem no seu fuso local. Se nenhum servir, responda a este e-mail para combinar outro horário.`,
   ].join('\n');
   await sendEmail({
     orgId: ctx.orgId,
@@ -222,7 +222,7 @@ export async function maybeAutoSendSchedulingLink(
     contactId: opportunity.contactId,
     opportunityId,
     toEmail,
-    subject: `Pick a time for your ${link.title} with ${org.name}`,
+    subject: `Escolha um horário para sua entrevista com ${org.name}`,
     body: 'Mensagem de agendamento com link individual omitido do histórico.',
   }, body);
   return link;

@@ -258,7 +258,7 @@ function ProviderRow({
                   </button>
                 ) : null}
                 <button type="button" disabled={pending} onClick={signIn} className={buttonClass({ variant: 'tonal', size: 'sm' })}>
-                  <BusyLabel busy={busy === 'connect'}>{status === 'NEEDS_RECONNECT' ? 'Reconnect' : 'Connect'}</BusyLabel>
+                  <BusyLabel busy={busy === 'connect'}>{status === 'NEEDS_RECONNECT' ? "Reconectar" : 'Connect'}</BusyLabel>
                 </button>
               </>
             )}
@@ -309,7 +309,7 @@ function ProviderRow({
                 }}
                 className={buttonClass({ variant: 'ghost' })}
               >
-                Cancel
+                Cancelar
               </button>
             </div>
           </div>

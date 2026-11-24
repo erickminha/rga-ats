@@ -19,7 +19,7 @@ export function HighlightsSection({ highlights }: { highlights: Highlight[] }) {
   if (!highlights.length) return null;
   return (
     <section>
-      <SectionHeader title="Highlights" />
+      <SectionHeader title="Destaques" />
       <ul className="flex flex-col gap-2">
         {highlights.map((h) => {
           const Icon = ICON[h.kind];

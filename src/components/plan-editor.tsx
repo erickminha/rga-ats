@@ -44,8 +44,8 @@ export function PlanEditor({ postingId, steps }: { postingId: string; steps: Pla
                 </div>
               </div>
               <button
-                title="Remove step"
-                aria-label="Remove step"
+                title="Remover etapa"
+                aria-label="Remover etapa"
                 disabled={deletePending}
                 onClick={() => {
                   if (!confirm(`Remove "${s.title}" from the interview plan?`)) return;
@@ -67,10 +67,10 @@ export function PlanEditor({ postingId, steps }: { postingId: string; steps: Pla
 
       <form action={formAction} className={`${surface} flex flex-col gap-4 p-5`}>
         <div className="grid grid-cols-[1fr_110px] gap-3">
-          <Field label="Interview step">
-            <input {...noAutofill} name="title" required placeholder="Technical deep-dive" className={inputClass} />
+          <Field label="Etapa da entrevista">
+            <input {...noAutofill} name="title" required placeholder="Entrevista técnica" className={inputClass} />
           </Field>
-          <Field label="Duration (min)">
+          <Field label="Duração (min)">
             <input {...noAutofill}
               name="durationMins"
               type="number"
@@ -81,17 +81,17 @@ export function PlanEditor({ postingId, steps }: { postingId: string; steps: Pla
             />
           </Field>
         </div>
-        <Field label="Focus areas (comma-separated)">
+        <Field label="Temas da entrevista (separados por vírgula)">
           <input {...noAutofill}
             name="focusAreas"
-            placeholder="System design, Communication, Ownership"
+            placeholder="Arquitetura, comunicação, autonomia"
             className={inputClass}
           />
         </Field>
         {state?.error ? <p className="text-sm text-critical">{state.error}</p> : null}
         <div className="flex justify-end">
           <button type="submit" disabled={pending} className={btnPrimary}>
-            <Plus /> Add step
+            <Plus /> Adicionar etapa
           </button>
         </div>
       </form>

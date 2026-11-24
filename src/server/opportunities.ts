@@ -3,7 +3,7 @@ import { lockIdentifiableContact } from '@/server/contact-lock';
 import type { Origin, StageType } from '@prisma/client';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
-import { buildOpportunityVars, sendEmail } from '@/server/email';
+import { buildOpportunityVars, localizedEmailTemplate, sendEmail } from '@/server/email';
 import { maybeAutoSendSchedulingLink } from '@/server/scheduling';
 import { emailPublicOrigin } from '@/lib/base-url';
 import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
@@ -272,8 +272,8 @@ export async function archiveOpportunity(
           opportunityId,
           templateId: template.id,
           toEmail,
-          subject: template.subject,
-          body: template.body,
+          subject: localizedEmailTemplate(template).subject,
+          body: localizedEmailTemplate(template).body,
           vars,
           scheduledAt: new Date(Date.now() + org.autoRejectDelayHours * 3_600_000),
         });

@@ -291,13 +291,13 @@ export async function sendOfferToCandidate(ctx: SessionContext, offerId: string,
   }
 
   const body = [
-    `Hi ${offer.opportunity.contact.name.split(' ')[0]},`,
+    `Olá, ${offer.opportunity.contact.name.split(' ')[0]}!`,
     '',
-    `We're excited to share your offer for ${offer.jobTitle} at ${offer.org.name}.`,
+    `Segue sua proposta para ${offer.jobTitle} em ${offer.org.name}.`,
     '',
-    `Review and sign it here: ${baseUrl}${capabilityPath('offer', offer.token)}`,
+    `Confira e assine a proposta em: ${baseUrl}${capabilityPath('offer', offer.token)}`,
     '',
-    `If anything looks off, just reply to this email.`,
+    `Se tiver dúvidas, responda a este e-mail.`,
   ].join('\n');
   await sendEmail({
     orgId: ctx.orgId,
@@ -305,7 +305,7 @@ export async function sendOfferToCandidate(ctx: SessionContext, offerId: string,
     contactId: offer.opportunity.contactId,
     opportunityId: offer.opportunityId,
     toEmail,
-    subject: `Your offer from ${offer.org.name}`,
+    subject: `Sua proposta de ${offer.org.name}`,
     body: 'Mensagem de proposta com link individual omitido do histórico.',
   }, body);
   return { url: capabilityPath('offer', offer.token) };

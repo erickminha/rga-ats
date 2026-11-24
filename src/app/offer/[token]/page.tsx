@@ -26,7 +26,7 @@ export default async function OfferPage({ params }: { params: Promise<{ token: s
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-14">
       <p className={sectionLabel}>{offer.org.name}</p>
-      <h1 className="mt-2 text-2xl">Offer of employment — {offer.jobTitle}</h1>
+      <h1 className="mt-2 text-2xl">Proposta de contratação · {offer.jobTitle}</h1>
       <p className="mt-3">
         <Badge
           onCanvas
@@ -43,7 +43,7 @@ export default async function OfferPage({ params }: { params: Promise<{ token: s
           {offer.status === 'ACCEPTED'
             ? `Signed${offer.signedAt ? ` ${offer.signedAt.toLocaleDateString()}` : ''}`
             : offer.status === 'DECLINED'
-              ? 'Declined'
+              ? "Recusada"
               : expired
                 ? 'Expired'
                 : 'Awaiting your signature'}
@@ -54,10 +54,10 @@ export default async function OfferPage({ params }: { params: Promise<{ token: s
         {letter}
         {offer.signedName && offer.signedAt ? (
           <div className="mt-8 border-t border-line pt-4">
-            <p className={sectionLabel}>Signed</p>
+            <p className={sectionLabel}>Assinada</p>
             <p className="mt-1 text-xl italic">{offer.signedName}</p>
             <p className="mt-0.5 text-xs text-ink-2">
-              {offer.signedAt.toLocaleString(undefined, {
+              {offer.signedAt.toLocaleString('pt-BR', {
                 month: 'long',
                 day: 'numeric',
                 year: 'numeric',
@@ -75,15 +75,14 @@ export default async function OfferPage({ params }: { params: Promise<{ token: s
         ) : offer.status === 'SENT' && expired ? (
           <div className={`${surface} p-6`}>
             <p className="text-sm text-ink-2">
-              This offer&rsquo;s signature window has passed. Reply to the offer email and the
-              team will refresh it.
+              O prazo para assinatura terminou. Responda ao e-mail da proposta para solicitar outro link.
             </p>
           </div>
         ) : null}
       </div>
 
       <div className="mt-12 flex flex-col items-start gap-2">
-        <p className="text-xs text-ink-2">This page is private to the link holder.</p>
+        <p className="text-xs text-ink-2">Esta página está disponível para quem tem o link.</p>
         <PoweredBySource />
       </div>
     </main>

@@ -2,7 +2,7 @@ import { lockIdentifiableContact } from '@/server/contact-lock';
 import type { InterviewState } from '@prisma/client';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
-import { buildOpportunityVars, sendEmail } from '@/server/email';
+import { buildOpportunityVars, localizedEmailTemplate, sendEmail } from '@/server/email';
 import { buildInterviewIcs } from '@/server/ics';
 import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
 
@@ -112,8 +112,8 @@ export async function sendInterviewConfirmation(input: {
     opportunityId: input.opportunityId,
     templateId: template.id,
     toEmail,
-    subject: template.subject,
-    body: template.body,
+    subject: localizedEmailTemplate(template).subject,
+    body: localizedEmailTemplate(template).body,
     vars,
     attachments: [
       {

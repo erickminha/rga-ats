@@ -1,3 +1,5 @@
+import { RecruitingAssessmentForm } from '@/components/recruiting-assessment-form';
+import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { outcomeCategory, outcomeNames, dateBR } from '@/lib/i18n/pt-BR/recruiting';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import Link from 'next/link';
@@ -45,12 +47,12 @@ import type { OpportunityStatus } from '@prisma/client';
 import { hasUsableNotetaker } from '@/server/notetakers/binding';
 
 const ORIGIN_LABELS: Record<string, string> = {
-  APPLIED: 'Applied',
-  SOURCED: 'Sourced',
-  REFERRED: 'Referred',
+  APPLIED: "Candidatura",
+  SOURCED: "Prospecção",
+  REFERRED: "Indicação",
   AGENCY: organization.kinds.AGENCY.title,
-  INTERNAL: 'Internal',
-  UNIVERSITY: 'University',
+  INTERNAL: "Interna",
+  UNIVERSITY: "Universidade",
 };
 
 /**
@@ -94,7 +96,8 @@ export async function CandidateProfile({ id }: { id: string }) {
       where: { id, orgId: ctx.orgId },
       include: {
         contact: { include: { resumeFile: true, caseStudies: { orderBy: { position: 'asc' } } } },
-        applicationResume: { select: { id: true, deletePendingAt: true } },
+        applicationResume: true,
+        recruitingAssessment: true,
         posting: {
           include: {
             planSteps: { orderBy: { order: 'asc' } },
@@ -203,7 +206,16 @@ export async function CandidateProfile({ id }: { id: string }) {
 
   const addNote = addNoteAction.bind(null, opportunity.id);
   const { contact } = opportunity;
-  const resume = readResumeView(contact.resumeFile?.parsed);
+  const resumeFile = [opportunity.applicationResume, contact.resumeFile].find((file) => file?.orgId === ctx.orgId && !file.deletePendingAt);
+  const resumeText = !resumeFile || resumeFile.id === contact.resumeFileId ? contact.resumeText : null;
+  const resume = readResumeView(resumeFile?.parsed);
+  const assessment = opportunity.recruitingAssessment;
+  const disc = textRecord(assessment?.disc);
+  const discComplete = !!assessment?.disc && typeof assessment.disc === 'object'
+    && !Array.isArray(assessment.disc) && assessment.disc.complete === true;
+  const author = assessment?.opinionAuthorId ? await db.user.findFirst({
+    where: { orgId: ctx.orgId, id: assessment.opinionAuthorId }, select: { name: true },
+  }) : null;
   const background = resume?.summary ?? null;
   // Promotions and long stays from the resume, then the latest evaluation's.
   const highlights = mergeHighlights(
@@ -234,7 +246,7 @@ export async function CandidateProfile({ id }: { id: string }) {
         href="/pipeline"
         className={`${buttonClass({ variant: 'ghost', size: 'sm' })} -ml-3 mb-4`}
       >
-        <ArrowLeft /> Pipeline
+        <ArrowLeft /> Funil de recrutamento
       </Link>
 
       {/* Header: the focal identity — avatar orb, name, a quiet subtitle */}
@@ -288,8 +300,8 @@ export async function CandidateProfile({ id }: { id: string }) {
             {opportunity.source ? ` · ${opportunity.source}` : ''}
           </Badge>
           {networkConsent ? (
-            <span title="Candidate opted in to the talent network">
-              <Badge tone="positive">Network opt-in</Badge>
+            <span title="Candidato autorizou participação na rede de talentos">
+              <Badge tone="positive">Autorização para rede de talentos</Badge>
             </span>
           ) : null}
           <TagEditor contactId={contact.id} tags={contact.tags} />
@@ -297,7 +309,7 @@ export async function CandidateProfile({ id }: { id: string }) {
 
         {coverNote ? (
           <div className="mt-6">
-            <p className="mb-1.5 text-xs font-medium text-ink-2">Application note</p>
+            <p className="mb-1.5 text-xs font-medium text-ink-2">Apresentação da candidatura</p>
             <p className="max-w-prose whitespace-pre-wrap text-sm">{coverNote}</p>
           </div>
         ) : null}
@@ -477,18 +489,18 @@ export async function CandidateProfile({ id }: { id: string }) {
           />
 
           <section>
-            <SectionHeader title="Notes" />
+            <SectionHeader title="Anotações" />
             <form action={addNote} className={`${surface} flex flex-col gap-3 p-4`}>
               <textarea {...noAutofill}
                 name="body"
                 rows={3}
                 required
-                placeholder="Add a note…"
+                placeholder="Adicionar uma anotação…"
                 className={textareaClass}
               />
               <div className="flex justify-end">
                 <button type="submit" className={btnTonal}>
-                  Add note
+                  Adicionar anotação
                 </button>
               </div>
             </form>
@@ -504,7 +516,7 @@ export async function CandidateProfile({ id }: { id: string }) {
                 ))}
               </div>
             ) : (
-              <p className="mt-3 text-sm text-ink-2">No notes yet.</p>
+              <p className="mt-3 text-sm text-ink-2">Nenhuma anotação registrada.</p>
             )}
           </section>
         </div>
@@ -530,19 +542,19 @@ export async function CandidateProfile({ id }: { id: string }) {
               links: contact.links,
             }}
             resume={
-              contact.resumeFile
+              resumeFile
                 ? {
-                    href: `/api/files/${contact.resumeFile.id}`,
+                    href: `/api/files/${resumeFile.id}`,
                     note:
-                      !contact.resumeText && contact.resumeFile.textStatus !== 'OK'
-                        ? textPending(contact.resumeFile)
+                      !resumeText && resumeFile.textStatus !== 'OK'
+                        ? textPending(resumeFile)
                           ? 'Reading this resume…'
-                          : ocrPending(contact.resumeFile)
+                          : ocrPending(resumeFile)
                             ? 'Reading this scanned resume…'
-                            : contact.resumeFile.textStatus === 'EMPTY'
+                            : resumeFile.textStatus === 'EMPTY'
                               ? 'No text could be read from this resume — it may be a scanned image.'
                               : 'The text of this resume couldn’t be read.'
-                        : contact.resumeFile.ocrStatus === 'OK'
+                        : resumeFile.ocrStatus === 'OK'
                           ? 'Read from a scan — may contain errors.'
                           : null,
                   }
@@ -550,22 +562,20 @@ export async function CandidateProfile({ id }: { id: string }) {
             }
           />
 
-          {opportunity.applicationResume && !opportunity.applicationResume.deletePendingAt
-            && opportunity.applicationResume.id !== contact.resumeFileId ? (
-            <Link className="text-sm text-accent underline" href={`/api/files/${opportunity.applicationResume.id}`}>
-              Baixar currículo desta candidatura
-            </Link>
-          ) : null}
+          {!contact.isAnonymized && <RecruitingAssessmentForm key={opportunity.id}
+            id={opportunity.id} screening={textRecord(assessment?.screening)} disc={disc} discComplete={discComplete}
+            discFileId={assessment?.discFileId ?? null} opinion={textRecord(assessment?.opinion)}
+            author={author?.name ?? null} finalized={!!assessment?.opinionFinalizedAt} />}
           {isAdmin(ctx) && !contact.isAnonymized ? (
             <PrivacyControls contactId={contact.id} onHold={contact.retentionHold} />
           ) : null}
 
           <KeyFactsSection facts={keyFacts} />
 
-          {background || contact.resumeText ? (
+          {background || resumeText ? (
             <section>
               <SectionHeader
-                title="Background"
+                title="Histórico profissional"
                 action={background ? <CopyButton text={background} size="sm" className="-my-1.5" /> : null}
               />
               <div className={`${surface} p-5`}>
@@ -573,12 +583,12 @@ export async function CandidateProfile({ id }: { id: string }) {
                   <p className="whitespace-pre-wrap text-sm text-ink">{background}</p>
                 ) : (
                   <p className="whitespace-pre-wrap text-sm text-ink-2">
-                    {contact.resumeText!.slice(0, 600)}
-                    {contact.resumeText!.length > 600 ? '…' : ''}
+                    {resumeText!.slice(0, 600)}
+                    {resumeText!.length > 600 ? '…' : ''}
                   </p>
                 )}
                 <p className="mt-4 text-xs text-ink-3">
-                  {background ? 'Their own summary, from the resume' : 'From the resume'}
+                  {background ? "Resumo apresentado no currículo" : "Informações do currículo"}
                 </p>
               </div>
             </section>
@@ -602,7 +612,7 @@ export async function CandidateProfile({ id }: { id: string }) {
 
           {fieldDefs.length ? (
             <section>
-              <SectionHeader title="Details" />
+              <SectionHeader title="Detalhes" />
               <form action={saveCustomFields} className={`${surface} flex flex-col gap-3 p-5`}>
                 {fieldDefs.map((def) => (
                   <Field key={def.id} label={def.label}>
@@ -627,7 +637,7 @@ export async function CandidateProfile({ id }: { id: string }) {
                 ))}
                 <div className="flex justify-end">
                   <button type="submit" className={btnTonal}>
-                    Save details
+                    Salvar detalhes
                   </button>
                 </div>
               </form>
@@ -668,7 +678,7 @@ export async function CandidateProfile({ id }: { id: string }) {
           />
 
           <section>
-            <SectionHeader title="Activity" />
+            <SectionHeader title="Histórico" />
             <ActivityFeed
               events={events.map((e) => ({
                 actorName: e.actorId ? teammates.find((person) => person.id === e.actorId)?.name ?? 'Usuário da equipe' : null,
@@ -683,7 +693,7 @@ export async function CandidateProfile({ id }: { id: string }) {
                 href={`/api/contacts/${contact.id}/export`}
                 className="mt-3 inline-block text-xs text-ink-2 underline underline-offset-2 hover:text-ink"
               >
-                Download full record (GDPR subject access request)
+                Exportar dados do titular
               </a>
             ) : null}
           </section>
@@ -720,16 +730,16 @@ function ApplicationList({
 }) {
   return (
     <section>
-      <SectionHeader title={applications.length > 1 ? 'Applications' : 'Application'} />
-      <nav aria-label="Applications" className={`${surface} flex flex-col gap-1 p-1.5`}>
+      <SectionHeader title={applications.length > 1 ? "Candidaturas" : "Candidatura"} />
+      <nav aria-label="Candidaturas" className={`${surface} flex flex-col gap-1 p-1.5`}>
         {orderApplications(applications).map((app) => {
-          const added = app.createdAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          const added = dateBR(app.createdAt);
           const summary = (
             <span className="flex min-w-0 items-center gap-3">
               <Orb seed={app.posting?.id ?? app.id} size={24} />
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium text-ink">
-                  {app.posting?.title ?? 'No posting'}
+                  {app.posting?.title ?? "Sem vaga vinculada"}
                   {app.posting?.clientCompany ? (
                     <span className="font-normal text-ink-2"> @ {app.posting.clientCompany.name}</span>
                   ) : null}
@@ -738,7 +748,7 @@ function ApplicationList({
                   {app.status === 'HIRED' ? <StatusDot tone="positive" /> : null}
                   <span className="truncate">
                     {app.status === 'HIRED'
-                      ? 'Hired'
+                      ? "Contratados"
                       : app.status === 'ARCHIVED'
                         ? `Archived${app.archiveReason ? ` · ${app.archiveReason.name}` : ''}`
                         : app.stage.name}
@@ -748,7 +758,7 @@ function ApplicationList({
               </span>
             </span>
           );
-          const title = `${app.origin === 'APPLIED' ? 'Applied' : 'Added'} ${added}`;
+          const title = `${app.origin === 'APPLIED' ? "Candidatura" : 'Added'} ${added}`;
 
           if (app.id !== currentId) {
             return (
@@ -772,7 +782,7 @@ function ApplicationList({
                     href={`/postings/${app.posting.id}`}
                     className={buttonClass({ variant: 'tonal', size: 'xs' })}
                   >
-                    Open posting
+                    Abrir vaga
                   </Link>
                 ) : null}
               </div>
@@ -840,7 +850,7 @@ function RecruiterSection({
   if (!postingId) {
     return (
       <section>
-        <SectionHeader title="Owner" />
+        <SectionHeader title="Responsável" />
         <div className={`${surface} p-1.5`}>
           <div className="flex min-w-0 items-center gap-3 px-3 py-2.5">
             {candidateOwner ? (
@@ -849,7 +859,7 @@ function RecruiterSection({
                 <p className="truncate text-sm font-medium text-ink">{candidateOwner.name}</p>
               </>
             ) : (
-              <p className="text-sm text-ink-2">No owner yet</p>
+              <p className="text-sm text-ink-2">Sem responsável</p>
             )}
           </div>
         </div>
@@ -858,12 +868,12 @@ function RecruiterSection({
   }
   return (
     <section>
-      <SectionHeader title="Recruiter" />
+      <SectionHeader title="Recrutamento" />
       <div className={`${surface} p-1.5`}>
         <RoleOwner postingId={postingId} owner={roleOwner} teammates={teammates} />
       </div>
       {candidateOwner && candidateOwner.id !== roleOwner?.id ? (
-        <p className="mt-2 px-1 text-xs text-ink-2">This candidate is assigned to {candidateOwner.name}.</p>
+        <p className="mt-2 px-1 text-xs text-ink-2">Responsável pela participação {candidateOwner.name}.</p>
       ) : null}
     </section>
   );

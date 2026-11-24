@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
  */
 export function LocalTime({
   date,
-  options = { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
+  options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' },
 }: {
   date: string;
   options?: Intl.DateTimeFormatOptions;
@@ -19,9 +19,10 @@ export function LocalTime({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const d = new Date(date);
+  const format = { ...options, hour12: false };
   return (
     <time dateTime={date} suppressHydrationWarning>
-      {mounted ? d.toLocaleString(appLocale, options) : d.toLocaleString(appLocale, { ...options, timeZone: 'UTC' })}
+      {mounted ? d.toLocaleString(appLocale, format) : d.toLocaleString(appLocale, { ...format, timeZone: 'UTC' })}
     </time>
   );
 }

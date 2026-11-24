@@ -65,10 +65,9 @@ export function MatchCriteriaEditor({
         <Dialog.Overlay className="dialog-overlay fixed inset-0 z-[300] bg-ink/10" />
         <Dialog.Content className="dialog-animate fixed left-1/2 top-[max(16px,12vh)] z-[300] flex max-h-[calc(100dvh-32px)] w-[min(520px,calc(100vw-32px))] -translate-x-1/2 flex-col rounded-dialog bg-surface shadow-float outline-none">
           <div className="px-6 pt-6">
-            <Dialog.Title className="text-md font-medium text-ink">Match criteria</Dialog.Title>
+            <Dialog.Title className="text-md font-medium text-ink">Critérios de aderência</Dialog.Title>
             <Dialog.Description className="mt-1 text-sm text-ink-2">
-              Every candidate for {postingTitle} is scored on these. Must-haves count double. Changes apply to
-              evaluations run from now on.
+              Todos os candidatos para {postingTitle} são avaliados por estes critérios. Os requisitos obrigatórios têm peso duplo nas novas avaliações.
             </Dialog.Description>
           </div>
 
@@ -97,7 +96,7 @@ export function MatchCriteriaEditor({
                     maxLength={MAX_LABEL}
                     autoFocus={i === rows.length - 1 && !r.label}
                     aria-label={`Criterion ${i + 1}`}
-                    placeholder="e.g. Senior-level product design"
+                    placeholder="Ex.: experiência sênior em design de produtos"
                     onChange={(e) => update(r.id, { label: e.target.value })}
                     className={cn(inputClass, 'h-9 min-w-0 flex-1 text-sm')}
                   />
@@ -132,7 +131,7 @@ export function MatchCriteriaEditor({
                   onClick={() => setRows((rs) => [...rs, { id: newId(), label: '', must: false }])}
                   className={buttonClass({ variant: 'ghost', size: 'sm' })}
                 >
-                  <Plus /> Add criterion
+                  <Plus /> Adicionar critério
                 </button>
                 {aiEnabled ? (
                   <button
@@ -156,7 +155,7 @@ export function MatchCriteriaEditor({
                     }
                     className={buttonClass({ variant: 'ghost', size: 'sm' })}
                   >
-                    <Bot size={16} /> Suggest from the job description
+                    <Bot size={16} /> Sugerir com base na descrição da vaga
                   </button>
                 ) : null}
               </div>
@@ -165,9 +164,9 @@ export function MatchCriteriaEditor({
 
           {error ? <p className="px-6 pt-2 text-sm text-critical">{error}</p> : null}
           <div className="flex justify-end gap-2 px-6 pb-6 pt-5">
-            <Dialog.Close className={buttonClass({ variant: 'ghost' })}>Cancel</Dialog.Close>
+            <Dialog.Close className={buttonClass({ variant: 'ghost' })}>Cancelar</Dialog.Close>
             <button type="submit" form="criteria-form" disabled={saving || suggesting} className={buttonClass({ variant: 'primary' })}>
-              {saving ? 'Saving…' : 'Save criteria'}
+              {saving ? "Salvando…" : 'Save criteria'}
             </button>
           </div>
         </Dialog.Content>

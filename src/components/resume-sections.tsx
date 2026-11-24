@@ -66,8 +66,8 @@ export function ExperienceSection({ experience }: { experience: ProfileJob[] }) 
   return (
     <section>
       <SectionHeader
-        title="Experience"
-        action={years ? <span className="text-xs tabular-nums text-ink-2">{years}+ years</span> : null}
+        title="Experiência"
+        action={years ? <span className="text-xs tabular-nums text-ink-2">{years}+ anos</span> : null}
       />
       <div className={`${surface} overflow-hidden`}>
         <ShowMore limit={4} noun={stints.length - 4 === 1 ? 'more company' : 'more companies'} className="divide-y divide-line" buttonClassName="mb-3 ml-3">
@@ -91,7 +91,7 @@ export function EducationSection({ education }: { education: ResumeView['educati
   if (!education.length) return null;
   return (
     <section>
-      <SectionHeader title="Education" action={<LogoAttribution />} />
+      <SectionHeader title="Formação" action={<LogoAttribution />} />
       <div className={`${surface} divide-y divide-line overflow-hidden`}>
         {education.map((e, i) => (
           <div key={i} className="flex gap-3 px-4 py-3.5">
@@ -114,7 +114,7 @@ export function SkillsSection({ skills }: { skills: string[] }) {
   if (!skills.length) return null;
   return (
     <section>
-      <SectionHeader title="Skills" />
+      <SectionHeader title="Competências" />
       <div className={`${surface} p-4`}>
         <ShowMore limit={14} className="flex flex-wrap gap-1.5" buttonClassName="mt-2.5 -ml-2.5">
           {skills.map((s) => (

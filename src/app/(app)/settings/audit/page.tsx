@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 const PAGE_SIZE = 100;
 
 /** Org-wide admin-visible audit trail over the event stream (docs/02 §11). */
-export const metadata = { title: 'Audit log' };
+export const metadata = { title: "Histórico de auditoria" };
 
 export default async function AuditLogPage({
   searchParams,
@@ -47,10 +47,10 @@ export default async function AuditLogPage({
           href="/settings"
           className="inline-flex items-center gap-1.5 text-sm text-ink-2 transition-colors duration-[120ms] hover:text-ink"
         >
-          <ArrowLeft size={14} /> Settings
+          <ArrowLeft size={14} /> Configurações
         </Link>
       </div>
-      <PageHeader title="Audit log" subtitle={`${total.toLocaleString()} events — every action, by everyone, forever`} />
+      <PageHeader title="Histórico de auditoria" subtitle={`${total.toLocaleString()} events — every action, by everyone, forever`} />
 
       <div className="mx-6 mt-4 max-w-5xl pb-8">
         <div className="mb-4 flex items-center gap-2">
@@ -65,19 +65,19 @@ export default async function AuditLogPage({
                 type="search"
                 name="verb"
                 defaultValue={verb}
-                placeholder="Filter by verb: opportunity.stage_changed, email., user.…"
+                placeholder="Filtrar por evento: opportunity.stage_changed, email., user.…"
                 className={cn(inputClass, 'pl-9')}
               />
             </div>
             <button type="submit" className={btnSecondary}>
-              Filter
+              Filtrar
             </button>
           </form>
           <a
             href={`/api/audit/export${verb ? `?verb=${encodeURIComponent(verb)}` : ''}`}
             className={btnSecondary}
           >
-            Export CSV
+            Exportar CSV
           </a>
         </div>
 
@@ -99,7 +99,7 @@ export default async function AuditLogPage({
                   className="border-b border-line transition-colors duration-[120ms] last:border-0 hover:bg-muted/60"
                 >
                   <td className="whitespace-nowrap px-4 py-2.5 text-xs text-ink-2 tabular-nums">
-                    {e.occurredAt.toLocaleString(undefined, {
+                    {e.occurredAt.toLocaleString('pt-BR', {
                       month: 'short',
                       day: 'numeric',
                       hour: 'numeric',
@@ -128,7 +128,7 @@ export default async function AuditLogPage({
 
         <div className="mt-4 flex items-center justify-between text-xs text-ink-2 tabular-nums">
           <span>
-            Page {pageNum + 1} of {Math.max(1, Math.ceil(total / PAGE_SIZE))}
+            Página {pageNum + 1} de {Math.max(1, Math.ceil(total / PAGE_SIZE))}
           </span>
           <span className="flex gap-2">
             {pageNum > 0 ? (
@@ -136,7 +136,7 @@ export default async function AuditLogPage({
                 href={`?verb=${encodeURIComponent(verb)}&page=${pageNum - 1}`}
                 className={buttonClass({ variant: 'secondary', size: 'sm' })}
               >
-                Newer
+                Mais recentes
               </Link>
             ) : null}
             {(pageNum + 1) * PAGE_SIZE < total ? (
@@ -144,7 +144,7 @@ export default async function AuditLogPage({
                 href={`?verb=${encodeURIComponent(verb)}&page=${pageNum + 1}`}
                 className={buttonClass({ variant: 'secondary', size: 'sm' })}
               >
-                Older
+                Mais antigos
               </Link>
             ) : null}
           </span>

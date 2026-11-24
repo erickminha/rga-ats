@@ -315,6 +315,7 @@ model Opportunity {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
+  recruitingAssessment RecruitingAssessment?
   stageTransitions StageTransition[]
   notes            Note[]
   interviews       Interview[]
@@ -335,6 +336,21 @@ model Opportunity {
   @@index([orgId, postingId])
   @@index([contactId])
   @@index([applicationResumeId])
+}
+
+model RecruitingAssessment {
+  opportunityId      String      @id
+  opportunity        Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  screening          Json?
+  disc               Json?
+  discFileId          String?
+  discFile            StoredFile? @relation(fields: [discFileId], references: [id], onDelete: SetNull)
+  opinion             Json?
+  opinionAuthorId     String?
+  opinionFinalizedAt  DateTime?
+  updatedAt           DateTime    @updatedAt
+
+  @@index([discFileId])
 }
 
 // ---------- Pipeline configuration ----------
@@ -1005,6 +1021,7 @@ model StoredFile {
   ocrConfidence Int? // Tesseract's mean word confidence, 0-100
   ocrError      String? // an error code or "<Name>: <message>", never text
 
+  discAssessments RecruitingAssessment[]
   deletePendingAt DateTime?
   applicationResumes Opportunity[] @relation("ApplicationResume")
   @@index([deletePendingAt])
@@ -1295,6 +1312,7 @@ model ShareLink {
   targetId  String // opportunityId, postingId, or clientCompanyId
   expiresAt DateTime
   revokedAt DateTime?
+  selection Json?
   createdAt DateTime     @default(now())
 
   @@index([orgId, scope, targetId])

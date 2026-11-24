@@ -1,8 +1,9 @@
+import { opinionFields } from '@/lib/i18n/pt-BR/assessment';
 import { appLocale } from '@/lib/i18n';
 import { notFound } from 'next/navigation';
 import { PoweredBySource } from '@/components/powered-by';
 import { db } from '@/lib/db';
-import { resolveShare, shareableOpportunity, shareablePosting } from '@/server/share-links';
+import { readShortlistShare, resolveShare, shareableOpportunity, shareablePosting } from '@/server/share-links';
 import { ensureSamplePresentation, SAMPLE_PRESENTATION_CODE } from '@/server/sample-boards';
 
 /** Share links are for the people they're sent to, never search results. */
@@ -27,6 +28,27 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
   const org = await db.organization.findUnique({ where: { id: payload.orgId } });
   if (!org) notFound();
+
+  if (payload.scope === 'shortlist') {
+    const presentation = await readShortlistShare(payload);
+    if (!presentation) notFound();
+    return <main className="mx-auto max-w-3xl px-5 py-10">
+      <p className={sectionLabel}>{org.name} · Apresentação de finalistas</p>
+      <h1 className="my-3 text-2xl font-semibold">{presentation.title}</h1>
+      {presentation.finalists.length === 0 && <p>Nenhum finalista está disponível para consulta.</p>}
+      <div className="grid gap-3">
+        {presentation.finalists.map((person) => <article key={person.id} className="rounded-card bg-surface p-4">
+          <h2 className="font-semibold">{person.name}</h2>
+          {person.headline && <p>{person.headline}</p>}
+          {person.opinion && Object.entries(person.opinion).map(([key, value]) => value && <div className="mt-3" key={key}>
+            <h3 className="text-sm font-medium">{opinionFields[key as keyof typeof opinionFields]}</h3>
+            <p className="whitespace-pre-wrap text-sm">{value}</p>
+          </div>)}
+        </article>)}
+      </div>
+      <PoweredBySource className="mt-8" />
+    </main>;
+  }
 
   if (payload.scope === 'candidate') {
     return (

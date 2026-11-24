@@ -106,7 +106,7 @@ export function ContactCard({
 
   return (
     <section>
-      <SectionHeader title="Contact" />
+      <SectionHeader title="Contato" />
       <div className={cn(surface, 'divide-y divide-line overflow-hidden', pending && 'cursor-progress')}>
         {kinds.flatMap((kind) => {
           const values = valuesOf(optimistic, kind);
@@ -151,13 +151,13 @@ export function ContactCard({
           <>
             <a href={resume.href} target="_blank" className={cn(row, 'transition-colors duration-[120ms] hover:bg-muted/60')}>
               <FileText size={14} className="shrink-0 text-ink-2" />
-              <span className="truncate">Resume</span>
+              <span className="truncate">Currículo</span>
             </a>
             {resume.note ? <p className="px-4 py-3 text-xs text-ink-3">{resume.note}</p> : null}
           </>
         ) : null}
 
-        {empty && !editing ? <p className="px-4 py-3 text-sm text-ink-2">No contact details yet.</p> : null}
+        {empty && !editing ? <p className="px-4 py-3 text-sm text-ink-2">Nenhum dado de contato cadastrado.</p> : null}
 
         {/* What's missing, one quiet row to add each; links can always take another */}
         <div className="flex flex-wrap gap-1 px-2.5 py-2">
@@ -174,7 +174,7 @@ export function ContactCard({
                 }}
                 className={buttonClass({ variant: 'ghost', size: 'xs' })}
               >
-                <Plus /> {k === 'links' && optimistic.links.length ? 'Add another link' : `Add ${LABEL[k]}`}
+                <Plus /> {k === 'links' && optimistic.links.length ? 'Adicionar outro link' : `Adicionar ${LABEL[k]}`}
               </button>
             ))}
         </div>
@@ -207,7 +207,7 @@ function ValueRow({ kind, value, onEdit }: { kind: Kind; value: string; onEdit: 
       <button
         type="button"
         onClick={onEdit}
-        aria-label={`Edit ${LABEL[kind]} ${text}`}
+        aria-label={`Editar ${LABEL[kind]} ${text}`}
         className={buttonClass({
           variant: 'ghost',
           size: 'xs',
@@ -250,7 +250,7 @@ function EditRow({
           ref={ref}
           autoFocus
           defaultValue={initial}
-          aria-label={initial ? `Edit ${LABEL[kind]}` : `Add ${LABEL[kind]}`}
+          aria-label={initial ? `Editar ${LABEL[kind]}` : `Adicionar ${LABEL[kind]}`}
           aria-invalid={error ? true : undefined}
           placeholder={PLACEHOLDER[kind]}
           inputMode={kind === 'emails' ? 'email' : kind === 'phones' ? 'tel' : kind === 'links' ? 'url' : 'text'}
@@ -262,15 +262,15 @@ function EditRow({
           }}
           className={cn(inputClass, 'h-8 min-w-0 flex-1 text-sm')}
         />
-        <button type="submit" aria-label="Save" className={buttonClass({ variant: 'tonal', size: 'sm', icon: true })}>
+        <button type="submit" aria-label="Salvar" className={buttonClass({ variant: 'tonal', size: 'sm', icon: true })}>
           <Check />
         </button>
-        <button type="button" aria-label="Cancel" onClick={onCancel} className={buttonClass({ variant: 'ghost', size: 'sm', icon: true })}>
+        <button type="button" aria-label="Cancelar" onClick={onCancel} className={buttonClass({ variant: 'ghost', size: 'sm', icon: true })}>
           <X />
         </button>
       </div>
       {error ? <p className="px-1 text-xs text-critical">{error}</p> : initial ? (
-        <p className="px-1 text-xs text-ink-3">Clear it and save to remove this {LABEL[kind]}.</p>
+        <p className="px-1 text-xs text-ink-3">Limpe o campo e salve para remover {LABEL[kind]}.</p>
       ) : null}
     </form>
   );

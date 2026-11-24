@@ -32,7 +32,7 @@ export function PipelineFilters({
         />
       ) : null}
       <Dropdown
-        label="Posting"
+        label="Vaga"
         value={nav.input.posting ?? ''}
         allLabel="All postings"
         options={postings.map((p) => ({ value: p.id, label: p.title }))}

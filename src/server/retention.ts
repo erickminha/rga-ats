@@ -29,7 +29,11 @@ async function anonymizeContact(orgId: string, id: string, rule: Prisma.ContactW
     if (await tx.emailMessage.count({
       where: { ...emails, status: 'SCHEDULED', deliveryClaimedAt: { gt: new Date(Date.now() - 30 * 60_000) } },
     })) return false;
+    const assessments = await tx.recruitingAssessment.findMany({
+      where: { opportunityId: { in: ids }, opportunity: { orgId } }, select: { discFileId: true },
+    });
     const attachments = [
+      ...assessments.flatMap(({ discFileId }) => discFileId ? [discFileId] : []),
       ...(contact.resumeFileId ? [contact.resumeFileId] : []),
       ...contact.opportunities.flatMap(({ applicationResumeId }) => applicationResumeId ? [applicationResumeId] : []),
     ];
@@ -67,6 +71,7 @@ async function anonymizeContact(orgId: string, id: string, rule: Prisma.ContactW
       where: { orgId, id: { in: meetings.map((r) => r.id) } },
       data: { title: 'Reunião anonimizada', attendeeNames: [], attendeeEmails: [], transcriptId: null, status: 'DISMISSED' },
     });
+    await tx.recruitingAssessment.deleteMany({ where: { opportunityId: { in: ids }, opportunity: { orgId } } });
     await tx.transcript.deleteMany({ where: byOpportunity });
     await tx.note.deleteMany({ where: byOpportunity });
     await tx.task.deleteMany({ where: byOpportunity });

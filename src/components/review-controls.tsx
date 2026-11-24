@@ -42,13 +42,13 @@ export function BatchEvaluateButton({ postingId }: { postingId?: string }) {
                   ? `Evaluated ${res.evaluated} — ${res.remaining} left, run again`
                   : res.evaluated
                     ? `Evaluated ${res.evaluated}`
-                    : 'Queue is fully evaluated',
+                    : "Todas as candidaturas da fila foram avaliadas",
             );
           })
         }
         className={btnPrimary}
       >
-        <TextSwap>{pending ? 'Reviewing…' : 'Review all with AI'}</TextSwap>
+        <TextSwap>{pending ? "Revisando…" : "Revisar com IA"}</TextSwap>
       </button>
     </span>
   );
@@ -80,19 +80,19 @@ export function ReviewRowActions({
     <span className="flex shrink-0 items-center gap-1">
       {nextStageId ? (
         <button
-          onClick={() => act(() => moveStageAction(opportunityId, nextStageId), 'Advancing the candidate', advanceLeavesQueue)}
+          onClick={() => act(() => moveStageAction(opportunityId, nextStageId), "Avançando a candidatura", advanceLeavesQueue)}
           className={buttonClass({ variant: 'tonal', size: 'xs' })}
           title={nextStageName ? `Move to ${nextStageName}` : undefined}
         >
-          Advance
+          Avançar
         </button>
       ) : null}
       {rejectReasonId ? (
         <button
-          onClick={() => act(() => archiveOpportunityAction(opportunityId, rejectReasonId), 'Archiving the candidate', true)}
+          onClick={() => act(() => archiveOpportunityAction(opportunityId, rejectReasonId), "Encerrando a participação", true)}
           className={buttonClass({ variant: 'ghost', size: 'xs' })}
         >
-          Archive
+          Encerrar participação
         </button>
       ) : null}
     </span>

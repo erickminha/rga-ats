@@ -24,7 +24,7 @@ export function SlotPicker({ token, slots }: { token: string; slots: string[] })
     const map = new Map<string, string[]>();
     for (const iso of slots) {
       const d = new Date(iso);
-      const key = d.toLocaleDateString(undefined, {
+      const key = d.toLocaleDateString('pt-BR', {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
@@ -41,17 +41,17 @@ export function SlotPicker({ token, slots }: { token: string; slots: string[] })
   if (state?.bookedAt) {
     return (
       <div className={`${surface} animate-fade-rise p-6`}>
-        <h2 className="text-md font-medium text-ink">You&rsquo;re booked</h2>
+        <h2 className="text-md font-medium text-ink">Entrevista agendada</h2>
         <p className="mt-2 text-sm text-ink-2">
-          Confirmed for{' '}
-          {new Date(state.bookedAt).toLocaleString(undefined, {
+          Confirmada para{' '}
+          {new Date(state.bookedAt).toLocaleString('pt-BR', {
             weekday: 'long',
             month: 'long',
             day: 'numeric',
             hour: 'numeric',
             minute: '2-digit',
           })}
-          . A confirmation email with a calendar invite is on its way.
+          . Você pode receber a confirmação por e-mail com o convite.
         </p>
       </div>
     );

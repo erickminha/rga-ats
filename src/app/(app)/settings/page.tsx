@@ -1,4 +1,4 @@
-import { saveArchiveReasonAction, seedRgaArchiveReasonsAction } from '@/app/org-actions';
+import { saveArchiveReasonAction, seedRgaArchiveReasonsAction, translateRgaEmailDefaultsAction } from '@/app/org-actions';
 import { outcomeCategory, outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import { settings } from '@/lib/i18n/pt-BR/settings';
@@ -609,6 +609,9 @@ export default async function SettingsPage({
         </Group>
         ) : null}
 
+        {section === 'email' && admin && <form action={translateRgaEmailDefaultsAction}>
+          <button className={btnTonal}>Traduzir modelos padrão de e-mail</button>
+        </form>}
       </div>
       </div>
     </div>

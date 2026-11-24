@@ -61,7 +61,7 @@ export function MotionLab() {
             setTimeout(() => setSaving('idle'), 2200);
           }}
         >
-          <TextSwap>{saving === 'saving' ? 'Saving…' : saving === 'saved' ? 'Saved' : 'Save'}</TextSwap>
+          <TextSwap>{saving === 'saving' ? "Salvando…" : saving === 'saved' ? "Salvo" : "Salvar"}</TextSwap>
         </Button>
       </Demo>
       <Demo name="Tabs sliding">
@@ -69,8 +69,8 @@ export function MotionLab() {
           value={seg}
           onChange={setSeg}
           items={[
-            { value: 'week', label: 'Week' },
-            { value: 'month', label: 'Month' },
+            { value: 'week', label: "Semana" },
+            { value: 'month', label: "Mês" },
             { value: 'quarter', label: 'Quarter' },
           ]}
         />
@@ -91,7 +91,7 @@ export function MotionLab() {
         <Checkbox label="Send the offer letter" defaultChecked />
       </Demo>
       <Demo name="Icon swap">
-        <CopyButton text="https://source.example/careers/demo" label="Copy link" variant="tonal" size="sm" />
+        <CopyButton text="https://source.example/careers/demo" label="Copiar link" variant="tonal" size="sm" />
       </Demo>
       <Demo name="Success check">
         <button type="button" onClick={() => setDone((d) => d + 1)} className="flex items-center gap-2 text-sm">
@@ -160,7 +160,7 @@ export function ChartLab() {
     <div className="grid gap-3 md:grid-cols-2">
       <Card className="p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-xs font-medium text-ink-2">Active pipeline by stage</h3>
+          <h3 className="text-xs font-medium text-ink-2">Candidatos ativos por etapa</h3>
           <Button size="xs" variant="tonal" onClick={() => setBump((b) => b + 1)}>
             Shuffle
           </Button>
@@ -179,14 +179,14 @@ export function ChartLab() {
         </div>
       </Card>
       <Card className="p-5">
-        <h3 className="mb-4 text-xs font-medium text-ink-2">Time in stage</h3>
+        <h3 className="mb-4 text-xs font-medium text-ink-2">Tempo na etapa</h3>
         <DitherColumns
           height={128}
           unit="d"
           data={[
-            { label: 'New applicant', value: 3 },
-            { label: 'Phone screen', value: 6 },
-            { label: 'On-site', value: 11 },
+            { label: "Nova candidatura", value: 3 },
+            { label: "Triagem por telefone", value: 6 },
+            { label: "Presencial", value: 11 },
             { label: 'Offer', value: 4 },
           ]}
         />
@@ -196,13 +196,13 @@ export function ChartLab() {
           <span className="text-md font-medium tabular-nums">62%</span>
         </DitherRing>
         <div>
-          <p className="text-md font-medium">Offer acceptance</p>
+          <p className="text-md font-medium">Aceite de propostas</p>
           <p className="text-sm text-ink-2">5 of 8 offers accepted this quarter</p>
         </div>
       </Card>
       <Card className="p-5">
         <div className="flex items-baseline justify-between">
-          <p className="text-md font-medium">Onboarding</p>
+          <p className="text-md font-medium">Configuração inicial</p>
           <p className="text-lg font-medium tabular-nums">80%</p>
         </div>
         <DitherBar value={80} max={100} height={9} className="mt-3" />

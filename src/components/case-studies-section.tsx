@@ -41,11 +41,11 @@ export function CaseStudiesSection({
   return (
     <section>
       <SectionHeader
-        title="Case studies"
+        title="Portfólio"
         action={
           !adding ? (
             <button type="button" onClick={() => setAdding(true)} className={buttonClass({ variant: 'ghost', size: 'sm', className: '-my-1.5' })}>
-              <Plus /> Add
+              <Plus /> Adicionar
             </button>
           ) : null
         }
@@ -78,8 +78,8 @@ export function CaseStudiesSection({
                 autoFocus
                 required
                 inputMode="url"
-                placeholder="Link to a case study"
-                aria-label="Case study link"
+                placeholder="Link do portfólio"
+                aria-label="Link do trabalho"
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     setAdding(false);
@@ -89,7 +89,7 @@ export function CaseStudiesSection({
                 className={cn(inputClass, 'h-9 min-w-0 flex-1 text-sm')}
               />
               <button type="submit" className={buttonClass({ variant: 'tonal', size: 'md' })}>
-                Add
+                Adicionar
               </button>
             </div>
             {error ? <p className="px-1 text-xs text-critical">{error}</p> : null}

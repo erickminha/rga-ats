@@ -83,27 +83,27 @@ export function PostingStateMenu() {
         isAdmin ? (
           <>
             <button onClick={() => set('PUBLISHED')} className={forwardClass}>
-              Approve &amp; publish
+              Aprovar e publicar
             </button>
             <button onClick={() => set('DRAFT')} className={quietClass}>
-              Reject
+              Reprovar
             </button>
           </>
         ) : (
           <span className="flex items-center gap-1.5 text-xs text-ink-2">
             <StatusDot tone="caution" />
-            Awaiting approval
+            Aguardando aprovação
           </span>
         )
       ) : null}
       {state !== 'PUBLISHED' && state !== 'CLOSED' && state !== 'PENDING_APPROVAL' && (
         <button onClick={() => set('PUBLISHED')} className={forwardClass}>
-          {gated ? 'Request approval' : 'Publish'}
+          {gated ? "Solicitar aprovação" : 'Publish'}
         </button>
       )}
       {state === 'PUBLISHED' && (
         <button onClick={() => set('CLOSED')} className={quietClass}>
-          Close
+          Fechar
         </button>
       )}
       {state === 'CLOSED' && (

@@ -11,7 +11,7 @@ import {
   workspaceOptions,
 } from '@/server/google-auth';
 
-export const metadata = { title: 'Choose a workspace' };
+export const metadata = { title: "Selecione um espaço de trabalho" };
 
 export const dynamic = 'force-dynamic';
 
@@ -32,16 +32,15 @@ export default async function ChooseWorkspacePage() {
 
   return (
     <div>
-      <h1 className="text-xl font-medium">Choose a workspace</h1>
+      <h1 className="text-xl font-medium">Selecione um espaço de trabalho</h1>
       <p className="mb-6 mt-1 text-sm text-ink-2">
         {options.length > 1 ? (
           <>
-            <span className="text-ink">{pending.email}</span> belongs to more than one workspace.
-            Which one do you want to open?
+            <span className="text-ink">{pending.email}</span> pertence a mais de um espaço de trabalho. Qual deseja abrir?
           </>
         ) : (
           <>
-            Continue as <span className="text-ink">{pending.email}</span>.
+            Continuar como <span className="text-ink">{pending.email}</span>.
           </>
         )}
       </p>
@@ -51,9 +50,9 @@ export default async function ChooseWorkspacePage() {
         ))}
       </div>
       <p className="mt-6 text-sm text-ink-2">
-        Not you?{' '}
+        Esta conta é sua?{' '}
         <Link href="/login" className="font-medium text-ink hover:underline">
-          Use a different account
+          Usar outra conta
         </Link>
       </p>
     </div>

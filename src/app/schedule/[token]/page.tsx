@@ -40,19 +40,18 @@ export default async function SchedulePage({ params }: { params: Promise<{ token
       <div className="mt-8">
         {alreadyBooked ? (
           <div className={`${surface} p-8`}>
-            <h2 className="text-md font-medium text-ink">You&rsquo;re booked</h2>
+            <h2 className="text-md font-medium text-ink">Entrevista agendada</h2>
             <p className="mt-2 text-sm text-ink-2">
               {alreadyBooked.startAt
-                ? `This interview is confirmed for ${new Date(alreadyBooked.startAt).toLocaleString(undefined, { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}. A calendar invite is in your inbox.`
+                ? `Sua entrevista está confirmada para ${new Date(alreadyBooked.startAt).toLocaleString('pt-BR', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}. Confira o convite no seu e-mail.`
                 : 'This scheduling link has already been used.'}
             </p>
           </div>
         ) : slots.length === 0 ? (
           <div className={`${surface} p-8`}>
-            <h2 className="text-md font-medium text-ink">No open times</h2>
+            <h2 className="text-md font-medium text-ink">Nenhum horário disponível</h2>
             <p className="mt-2 text-sm text-ink-2">
-              This link&rsquo;s availability window has passed or filled up. Reply to your
-              recruiter&rsquo;s email and they&rsquo;ll send a fresh one.
+              Os horários deste link expiraram ou foram preenchidos. Entre em contato com a equipe para solicitar outro link.
             </p>
           </div>
         ) : (
@@ -61,7 +60,7 @@ export default async function SchedulePage({ params }: { params: Promise<{ token
       </div>
 
       <div className="mt-12 flex flex-col items-start gap-2">
-        <p className="text-xs text-ink-2">Times are shown in your local timezone.</p>
+        <p className="text-xs text-ink-2">Os horários aparecem no seu fuso local.</p>
         <PoweredBySource />
       </div>
     </main>

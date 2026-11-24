@@ -31,7 +31,7 @@ const OPTION_ROWS: { key: Exclude<keyof Options, 'since'>; label: string; hint: 
     hint: 'Turn off to bring only candidates who are still in process.',
   },
   { key: 'activity', label: 'Notes, scorecards, and interviews', hint: 'Original authors and dates are kept.' },
-  { key: 'offers', label: 'Offers', hint: 'Status, salary, and start date.' },
+  { key: 'offers', label: "Propostas", hint: 'Status, salary, and start date.' },
   {
     key: 'files',
     label: 'Resumes and attachments',
@@ -72,7 +72,7 @@ export function NewImport({
   if (!meta) {
     return (
       <section>
-        <SectionHeader title="Choose your current ATS" />
+        <SectionHeader title="Selecione o seu ATS atual" />
         {IMPORT_PROVIDERS.length ? (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
             {IMPORT_PROVIDERS.map((p) => (
@@ -92,13 +92,13 @@ export function NewImport({
           </div>
         ) : (
           <Card className="px-4 py-4">
-            <p className="text-sm text-ink-2">No importers are available on this deployment yet.</p>
+            <p className="text-sm text-ink-2">Nenhum importador está disponível nesta instalação.</p>
           </Card>
         )}
         <p className="mt-3 text-xs text-ink-2">
-          Not listed? Export your candidates to a CSV and use{' '}
+          Se o seu sistema não aparece, exporte os candidatos em CSV e use{' '}
           <Link href="/settings?section=data" className="text-ink underline underline-offset-2">
-            Contact import
+            Importação de contatos
           </Link>
           .
         </p>
@@ -202,10 +202,10 @@ function ConnectForm({
   return (
     <section>
       <SectionHeader
-        title="New import"
+        title="Nova importação"
         action={
           <button type="button" onClick={onChange} disabled={busy} className={buttonClass({ variant: 'ghost', size: 'xs' })}>
-            Choose a different ATS
+            Selecionar outro ATS
           </button>
         }
       />
@@ -215,10 +215,10 @@ function ConnectForm({
             <SiteIcon url={meta.domain} size={20} />
           </span>
           <div className="min-w-0">
-            <h2 className="text-md font-medium text-ink">Import from {meta.name}</h2>
+            <h2 className="text-md font-medium text-ink">Importar de {meta.name}</h2>
             {meta.imports.length ? (
               <p className="mt-1 text-sm text-ink-2">
-                Brings over {new Intl.ListFormat('en', { type: 'conjunction' }).format(meta.imports.map(lowerFirst))}.
+                O que será importado {new Intl.ListFormat('en', { type: 'conjunction' }).format(meta.imports.map(lowerFirst))}.
               </p>
             ) : (
               <p className="mt-1 text-sm text-ink-2">{meta.blurb}</p>
@@ -228,7 +228,7 @@ function ConnectForm({
 
         {meta.steps.length ? (
           <div className="px-5 py-5">
-            <h3 className="text-sm font-medium text-ink">Where to find your key</h3>
+            <h3 className="text-sm font-medium text-ink">Onde encontrar a chave</h3>
             <ol className="mt-3 flex flex-col gap-2.5">
               {meta.steps.map((step, i) => (
                 <li key={i} className="flex gap-3 text-sm text-ink">
@@ -246,7 +246,7 @@ function ConnectForm({
                 rel="noreferrer"
                 className="mt-4 inline-flex items-center gap-1.5 text-sm text-ink-2 underline-offset-2 transition-colors duration-[120ms] hover:text-ink hover:underline"
               >
-                {meta.name} help article <ExternalLink size={13} aria-hidden />
+                {meta.name} artigo de ajuda <ExternalLink size={13} aria-hidden />
               </a>
             ) : null}
           </div>
@@ -275,7 +275,7 @@ function ConnectForm({
 
         {notes.length ? (
           <div className="px-5 py-5">
-            <h3 className="text-sm font-medium text-ink">Good to know</h3>
+            <h3 className="text-sm font-medium text-ink">Informações importantes</h3>
             <ul className="mt-3 flex flex-col gap-2">
               {shownNotes.map((c, i) => (
                 <li key={i} className="flex gap-2.5 text-sm text-ink-2">
@@ -297,8 +297,8 @@ function ConnectForm({
         ) : null}
 
         <fieldset className="px-5 py-5">
-          <legend className="float-left text-sm font-medium text-ink">What to bring over</legend>
-          <p className="clear-left pt-1 text-xs text-ink-2">Candidates, applications, and postings always come across.</p>
+          <legend className="float-left text-sm font-medium text-ink">Dados para importar</legend>
+          <p className="clear-left pt-1 text-xs text-ink-2">A importação sempre inclui candidatos, candidaturas e vagas.</p>
           <div className="mt-4 flex flex-col gap-3">
             {OPTION_ROWS.map((o) => (
               <label key={o.key} className="flex cursor-pointer items-start gap-3">
@@ -317,7 +317,7 @@ function ConnectForm({
           </div>
           <label className="mt-5 flex max-w-xs flex-col gap-1.5">
             <span className="text-sm font-medium text-ink">
-              Only candidates added since <span className="font-normal text-ink-2">(optional)</span>
+              Somente candidatos cadastrados desde <span className="font-normal text-ink-2">(opcional)</span>
             </span>
             <input {...noAutofill}
               type="date"
@@ -326,7 +326,7 @@ function ConnectForm({
               onChange={(e) => setOptions((prev) => ({ ...prev, since: e.target.value }))}
               className={cn(inputClass, 'dark:[color-scheme:dark]', !options.since && 'text-ink-3')}
             />
-            <span className="text-xs text-ink-2">Leave empty to import everyone.</span>
+            <span className="text-xs text-ink-2">Deixe em branco para importar todos.</span>
           </label>
         </fieldset>
 
@@ -338,7 +338,7 @@ function ConnectForm({
               disabled={!complete || busy}
               className={buttonClass({ variant: 'tonal' })}
             >
-              <BusyLabel busy={testing}>Test connection</BusyLabel>
+              <BusyLabel busy={testing}>Testar conexão</BusyLabel>
             </button>
             <button
               type="button"
@@ -352,16 +352,16 @@ function ConnectForm({
           <div aria-live="polite" className="flex flex-col gap-1 empty:hidden">
             {test?.ok ? (
               <p className="flex items-center gap-1.5 text-sm text-positive">
-                <Check size={14} aria-hidden /> Connected to {test.accountName}
+                <Check size={14} aria-hidden /> Conectado a {test.accountName}
               </p>
             ) : test ? (
               <p className="text-sm text-critical">{test.error}</p>
             ) : null}
             {startError ? <p className="text-sm text-critical">{startError}</p> : null}
             {blocked ? (
-              <p className="text-sm text-ink-2">You can start a new import when the current one finishes.</p>
+              <p className="text-sm text-ink-2">Você pode iniciar outra importação quando a atual terminar.</p>
             ) : starting ? (
-              <p className="text-sm text-ink-2">Checking the connection with {meta.name}…</p>
+              <p className="text-sm text-ink-2">Verificando conexão com {meta.name}…</p>
             ) : null}
           </div>
         </div>
@@ -387,7 +387,7 @@ function CredentialInput({
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-sm font-medium text-ink">
         {field.label}
-        {field.optional ? <span className="font-normal text-ink-2"> (optional)</span> : null}
+        {field.optional ? <span className="font-normal text-ink-2"> (opcional)</span> : null}
       </label>
       {field.kind === 'select' ? (
         <NativeSelect id={id} value={value} onChange={onChange} aria-describedby={helpId}>
