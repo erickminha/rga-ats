@@ -1,5 +1,8 @@
 'use server';
 
+import { invalidateLists } from '@/server/lists/cache';
+import { inheritedReasons, isArchiveCategory, outcomeCategory, outcomeDefaults } from '@/lib/i18n/pt-BR/recruiting';
+
 import { groups, logo } from '@/lib/i18n/pt-BR/organization';
 import { revalidatePath } from 'next/cache';
 import { lockPostingForEdit, mayEditPostingDetails } from '@/server/posting-policy';
@@ -553,5 +556,41 @@ export async function archiveScorecardQuestionAction(questionId: string) {
     where: { id: questionId, orgId: ctx.orgId, archivedAt: null },
     data: { archivedAt: new Date() },
   });
+  revalidatePath('/settings');
+}
+
+export async function saveArchiveReasonAction(id: string | null, form: FormData) {
+  const ctx = await requireAdmin();
+  const name = String(form.get('name') ?? '').trim();
+  const raw = String(form.get('category') ?? '');
+  if (!name || name.length > 120 || !isArchiveCategory(raw)) throw new Error('Nome ou categoria inválidos.');
+  const data = { name, category: raw, countsAsRejection: raw === 'REJECTION' };
+  if (id) await db.archiveReason.update({ where: { id, orgId: ctx.orgId }, data });
+  else await db.archiveReason.create({ data: { orgId: ctx.orgId, ...data } });
+  invalidateLists(ctx.orgId);
+  revalidatePath('/settings');
+}
+
+export async function seedRgaArchiveReasonsAction() {
+  const ctx = await requireAdmin();
+  await db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`archive-reasons:${ctx.orgId}`}))`;
+    for (const [old, name, category] of inheritedReasons) {
+      await tx.archiveReason.updateMany({
+        where: { orgId: ctx.orgId, name: old, category: null, countsAsRejection: category === 'REJECTION' },
+        data: { name, category },
+      });
+    }
+    const existing = await tx.archiveReason.findMany({ where: { orgId: ctx.orgId } });
+    for (const category of Object.keys(outcomeDefaults).filter(isArchiveCategory)) {
+      const names = outcomeDefaults[category].filter((name) => !existing.some(
+        (reason) => reason.name === name && outcomeCategory(reason) === category,
+      ));
+      await tx.archiveReason.createMany({
+        data: names.map((name) => ({ orgId: ctx.orgId, name, category, countsAsRejection: category === 'REJECTION' })),
+      });
+    }
+  });
+  invalidateLists(ctx.orgId);
   revalidatePath('/settings');
 }

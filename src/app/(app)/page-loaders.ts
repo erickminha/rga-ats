@@ -122,6 +122,7 @@ export async function loadDashboardPage() {
 }
 
 export type PipelineInput = PipelineParams & {
+  view?: string;
   /** Keyset cursor: render the page after it (Load more without JavaScript). */
   after?: string;
 };
@@ -159,6 +160,10 @@ export async function loadPipelinePage(input: PipelineInput) {
     !archived && f.q ? pipelineHasAny(f) : Promise.resolve(null),
   ]);
 
+  const board = input.view === 'kanban' && !archived ? await Promise.all(meta.stages.map(async (stage) => {
+    const result = await pipelinePage({ ...f, stageId: stage.id }, sort, { limit: 25 });
+    return { ...stage, rows: result.rows, hasMore: result.hasMore };
+  })) : null;
   return {
     empty: !archived && (hasAny === null ? counts.total === 0 : !hasAny),
     archived,
@@ -174,6 +179,8 @@ export async function loadPipelinePage(input: PipelineInput) {
     counts,
     page,
     postingGroups: postingGroupsFor(meta, input.client),
+    board,
+    reason: f.reasonId ?? '',
     archiveReasons: meta.archiveReasons,
     clients: meta.clients,
   };

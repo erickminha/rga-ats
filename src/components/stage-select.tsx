@@ -1,6 +1,8 @@
 'use client';
 
 import { useOptimistic, useState, useTransition } from 'react';
+import type { StageType } from '@prisma/client';
+import { confirmStageMovement } from '@/lib/stage-movement';
 import { ChevronDown } from 'lucide-react';
 import { moveStageAction } from '@/app/(app)/actions';
 import { Dropdown, dropdownTriggerClass } from '@/components/dropdown';
@@ -25,7 +27,7 @@ export function StageSelect({
 }: {
   opportunityId: string;
   currentStageId: string;
-  stages: { id: string; name: string }[];
+  stages: { id: string; name: string; type?: StageType }[];
   /** Set when rendered inside a white surface (table rows) so the pill stays visible. */
   onSurface?: boolean;
   /**
@@ -41,14 +43,14 @@ export function StageSelect({
   const [stageId, setStageId] = useOptimistic(currentStageId);
   const [armed, setArmed] = useState<null | 'pointer' | 'focus' | 'click'>(null);
   const current = stages.find((s) => s.id === stageId);
-  const label = current?.name ?? 'Stage';
+  const label = current?.name ?? 'Etapa';
 
   if (!armed) {
     return (
       <button
         type="button"
         aria-haspopup="menu"
-        aria-label={`Stage: ${label}`}
+        aria-label={`Etapa: ${label}`}
         className={dropdownTriggerClass({ compact: true, onSurface })}
         onPointerEnter={() => setArmed('pointer')}
         onPointerDown={(e) => {
@@ -69,7 +71,7 @@ export function StageSelect({
       compact
       onSurface={onSurface}
       label={label}
-      triggerLabel={`Stage: ${label}`}
+      triggerLabel={`Etapa: ${label}`}
       defaultOpen={armed === 'click'}
       autoFocus={armed !== 'pointer'}
       showSelectedInTrigger={false}
@@ -77,15 +79,20 @@ export function StageSelect({
       options={stages.map((s) => ({ value: s.id, label: s.name }))}
       onSelect={(next) => {
         if (!next || next === stageId) return;
-        const to = stages.find((s) => s.id === next)?.name ?? 'new stage';
+        const target = stages.find((stage) => stage.id === next);
+        const before = stages.findIndex((stage) => stage.id === stageId);
+        const after = stages.findIndex((stage) => stage.id === next);
+        const change = confirmStageMovement(target?.type, before >= 0 && after - before !== 1);
+        if (!change) return;
+        const to = target?.name ?? 'nova etapa';
         runOptimistic(
           startTransition,
           () => {
             setStageId(next);
             onMove?.(next);
           },
-          () => moveStageAction(opportunityId, next),
-          `Moving to ${to}`,
+          () => moveStageAction(opportunityId, next, change),
+          `Movendo para ${to}`,
           onSaved ? () => onSaved(next) : undefined,
         );
       }}

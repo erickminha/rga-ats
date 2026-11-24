@@ -8,7 +8,7 @@ import { limitParam, listJson, listParams } from '@/app/api/lists/params';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const KEYS = ['posting', 'client', 'stage', 'q', 'status', 'sort'] as const;
+const KEYS = ['posting', 'client', 'stage', 'q', 'status', 'sort', 'reason'] as const;
 
 /**
  * One page of the pipeline: the same filters as /pipeline's URL, plus

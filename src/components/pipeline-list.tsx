@@ -659,8 +659,8 @@ export function PipelineList({
             <span className="flex items-center gap-1.5">
               <ArrowRight size={13} className="text-ink-2" />
               <Dropdown
-                label="Move to stage"
-                options={stages.map((s) => ({ value: s.id, label: s.name }))}
+                label="Mover para etapa"
+                options={stages.filter((stage) => stage.type !== 'HIRED').map((s) => ({ value: s.id, label: s.name }))}
                 onSelect={(stageId) => {
                   if (!stageId) return;
                   clear(); // urgent: outside the transition so the bar goes now
@@ -683,7 +683,7 @@ export function PipelineList({
               <span className="flex items-center gap-1.5">
                 <Archive size={13} className="text-ink-2" />
                 <Dropdown
-                  label="Archive as"
+                  label="Encerrar pelo motivo"
                   options={archiveReasons.map((r) => ({
                     value: r.id,
                     label: r.name,

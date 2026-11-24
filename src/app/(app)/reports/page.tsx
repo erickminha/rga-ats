@@ -1,3 +1,4 @@
+import { outcomeCategory, outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
 import { navigation } from '@/lib/i18n/pt-BR/navigation';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import { BarChart3 } from 'lucide-react';
@@ -183,11 +184,16 @@ export default async function ReportsPage({
     }))
     .sort((a, b) => b.count - a.count);
 
+  const archiveCategories = { REJECTION: 0, WITHDRAWAL: 0, ADMINISTRATIVE: 0 };
+  const reasonsById = new Map(archiveReasons.map((reason) => [reason.id, reason]));
+  for (const group of archiveCounts) archiveCategories[outcomeCategory(reasonsById.get(group.archiveReasonId ?? ''))] += group._count;
   const stats = [
     { label: 'Candidates', value: String(totalOpportunities) },
     { label: 'In process', value: String(totalOpportunities - hired - archived) },
     { label: 'Hired', value: String(hired) },
-    { label: 'Archived', value: String(archived) },
+    ...Object.entries(archiveCategories).map(([key, count]) => ({
+      label: outcomeNames[key as keyof typeof outcomeNames], value: count.toLocaleString('pt-BR'),
+    })),
     { label: 'Open roles', value: String(openPostings) },
     { label: 'Avg days to hire', value: avgDaysToHire !== null ? String(avgDaysToHire) : '—' },
     { label: 'Offers out', value: String(offerTotal) },

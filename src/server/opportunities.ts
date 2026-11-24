@@ -1,3 +1,4 @@
+import { dayBR, outcomeCategory } from '@/lib/i18n/pt-BR/recruiting';
 import { lockIdentifiableContact } from '@/server/contact-lock';
 import type { Origin, StageType } from '@prisma/client';
 import { db } from '@/lib/db';
@@ -125,13 +126,27 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
  * each item and expire the list caches once for the whole chunk, since an
  * expired tag also makes a Server Action send back a re-rendered page.
  */
-export type WriteOptions = { invalidate?: boolean };
+export type WriteOptions = { invalidate?: boolean; note?: string; hireDate?: string; requireHireDate?: boolean };
+
+function effectiveHireDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value < '1900-01-01' || value > dayBR()) {
+    throw new Error('Informe uma data de contratação válida até hoje.');
+  }
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw new Error('Data de contratação inválida.');
+  return date;
+}
+
+function movementNote(value: string | undefined) {
+  if (value && value.length > 2000) throw new Error('A observação deve ter até 2.000 caracteres.');
+  return value?.trim() || undefined;
+}
 
 export async function moveStage(
   ctx: SessionContext,
   opportunityId: string,
   toStageId: string,
-  { invalidate = true }: WriteOptions = {},
+  { invalidate = true, hireDate, requireHireDate, note }: WriteOptions = {},
 ) {
   requireRecruitingAccess(ctx);
   const result = await db.$transaction(async (tx) => {
@@ -144,33 +159,33 @@ export async function moveStage(
     if (!toStage) throw new Error('Stage not found');
     if (opportunity.stageId === toStage.id) return { updated: opportunity, toStage: null as { name: string; type: StageType } | null };
 
-    // A hire fills a requisition opening via the posting linkage; the req
-    // auto-closes when the last opening is filled (docs/02 §8).
-    if (toStage.type === 'HIRED' && opportunity.status !== 'HIRED') {
-      await tx.$queryRaw`SELECT id FROM "Contact" WHERE id = ${opportunity.contactId} AND "orgId" = ${ctx.orgId} FOR NO KEY UPDATE`;
-    }
-    if (toStage.type === 'HIRED' && opportunity.status !== 'HIRED' && opportunity.posting?.requisitionId) {
-      const req = await tx.requisition.update({
+    if (!await lockIdentifiableContact(tx, ctx.orgId, opportunity.contactId)) throw new Error('Cadastro anonimizado.');
+    const current = await tx.opportunity.findUniqueOrThrow({ where: { id: opportunity.id }, include: { stage: true } });
+    if (current.stageId === toStage.id) return { updated: current, toStage: null };
+    const hiring = toStage.type === 'HIRED';
+    if (hiring && current.status !== 'ACTIVE') throw new Error('Reabra a participação antes de contratar.');
+    if (hiring && requireHireDate && !hireDate) throw new Error('Confirme a data efetiva da contratação.');
+    if (current.status === 'HIRED') throw new Error('A contratação já foi registrada nesta participação.');
+    const hiredAt = hiring ? effectiveHireDate(hireDate ?? dayBR()) : null;
+    if (hiring && opportunity.posting?.requisitionId) {
+      await tx.requisition.update({
         where: { id: opportunity.posting.requisitionId },
         data: { filled: { increment: 1 } },
       });
-      if (req.filled >= req.openings && req.state === 'OPEN') {
-        await tx.requisition.update({ where: { id: req.id }, data: { state: 'CLOSED' } });
-      }
     }
-
     const updated = await tx.opportunity.update({
       where: { id: opportunity.id },
       data: {
         stageId: toStage.id,
         stageChangedAt: new Date(),
-        status: toStage.type === 'HIRED' ? 'HIRED' : opportunity.status,
+        status: hiring ? 'HIRED' : current.status,
+        ...(hiredAt ? { hiredAt } : {}),
       },
     });
     await tx.stageTransition.create({
       data: {
         opportunityId: opportunity.id,
-        fromStageId: opportunity.stageId,
+        fromStageId: current.stageId,
         toStageId: toStage.id,
         actorId: ctx.userId,
       },
@@ -183,7 +198,9 @@ export async function moveStage(
       subjectId: opportunity.id,
       payload: {
         contactName: opportunity.contact.name,
-        from: opportunity.stage.name,
+        from: current.stage.name,
+        note: movementNote(note),
+        ...(hiredAt ? { hiredAt: hiredAt.toISOString().slice(0, 10), postingId: current.postingId, clientCompanyId: opportunity.posting?.clientCompanyId } : {}),
         to: toStage.name,
       },
     });
@@ -202,15 +219,18 @@ export async function archiveOpportunity(
   ctx: SessionContext,
   opportunityId: string,
   archiveReasonId: string,
-  { invalidate = true }: WriteOptions = {},
+  { invalidate = true, note }: WriteOptions = {},
 ) {
   requireRecruitingAccess(ctx);
   const result = await db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
       where: { id: opportunityId, orgId: ctx.orgId },
-      include: { contact: true },
+      include: { contact: true, stage: true },
     });
-    if (!opportunity) throw new Error('Opportunity not found');
+    if (!opportunity || !await lockIdentifiableContact(tx, ctx.orgId, opportunity.contactId)) throw new Error('Participação indisponível.');
+    const current = await tx.opportunity.findUniqueOrThrow({ where: { id: opportunity.id }, include: { stage: true } });
+    if (current.status === 'ARCHIVED') return { updated: current, countsAsRejection: false };
+    if (current.status === 'HIRED') throw new Error('A contratação já foi registrada nesta participação.');
     const reason = await tx.archiveReason.findFirst({
       where: { id: archiveReasonId, orgId: ctx.orgId },
     });
@@ -226,9 +246,13 @@ export async function archiveOpportunity(
       verb: 'opportunity.archived',
       subjectType: 'opportunity',
       subjectId: opportunity.id,
-      payload: { contactName: opportunity.contact.name, reason: reason.name },
+      payload: {
+        contactName: opportunity.contact.name, reason: reason.name, reasonId: reason.id,
+        category: outcomeCategory(reason), postingId: current.postingId,
+        stageId: current.stageId, stage: current.stage.name, note: movementNote(note),
+      },
     });
-    return { updated, countsAsRejection: reason.countsAsRejection };
+    return { updated, countsAsRejection: outcomeCategory(reason) === 'REJECTION' };
   });
   if (invalidate) invalidatePipelineCounts(ctx.orgId);
 
@@ -260,7 +284,7 @@ export async function archiveOpportunity(
   return result.updated;
 }
 
-export async function unarchiveOpportunity(ctx: SessionContext, opportunityId: string) {
+export async function unarchiveOpportunity(ctx: SessionContext, opportunityId: string, stageId?: string) {
   requireRecruitingAccess(ctx);
   const updated = await db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
@@ -269,10 +293,29 @@ export async function unarchiveOpportunity(ctx: SessionContext, opportunityId: s
     });
     if (!opportunity) throw new Error('Opportunity not found');
 
-    await tx.$queryRaw`SELECT id FROM "Contact" WHERE id = ${opportunity.contactId} AND "orgId" = ${ctx.orgId} FOR NO KEY UPDATE`;
+    if (!await lockIdentifiableContact(tx, ctx.orgId, opportunity.contactId)) throw new Error('Cadastro anonimizado.');
+    const current = await tx.opportunity.findUniqueOrThrow({ where: { id: opportunity.id }, include: { stage: true } });
+    if (current.status !== 'ARCHIVED') return current;
+    const stage = stageId || current.stage.type === 'HIRED' ? await tx.stage.findFirst({
+      where: { orgId: ctx.orgId, type: { not: 'HIRED' }, ...(stageId ? { id: stageId } : {}) },
+      orderBy: { order: 'asc' },
+    }) : current.stage;
+    if (!stage) throw new Error('Selecione uma etapa válida para reabrir.');
+    const changedStage = stage.id !== current.stageId;
     const updated = await tx.opportunity.update({
-      where: { id: opportunity.id, contact: { isAnonymized: false } },
-      data: { status: 'ACTIVE', archiveReasonId: null, archivedAt: null },
+      where: { id: opportunity.id },
+      data: {
+        status: 'ACTIVE', archiveReasonId: null, archivedAt: null, hiredAt: null,
+        ...(changedStage ? { stageId: stage.id, stageChangedAt: new Date() } : {}),
+      },
+    });
+    if (changedStage) await tx.stageTransition.create({
+      data: { opportunityId: current.id, fromStageId: current.stageId, toStageId: stage.id, actorId: ctx.userId },
+    });
+    const org = await tx.organization.findUnique({ where: { id: ctx.orgId }, select: { autoRejectTemplateId: true } });
+    if (org?.autoRejectTemplateId) await tx.emailMessage.updateMany({
+      where: { orgId: ctx.orgId, opportunityId, templateId: org.autoRejectTemplateId, status: 'SCHEDULED', deliveryClaimedAt: null },
+      data: { status: 'CANCELED' },
     });
     await emitEvent(tx, {
       orgId: ctx.orgId,
@@ -280,7 +323,7 @@ export async function unarchiveOpportunity(ctx: SessionContext, opportunityId: s
       verb: 'opportunity.unarchived',
       subjectType: 'opportunity',
       subjectId: opportunity.id,
-      payload: { contactName: opportunity.contact.name },
+      payload: { contactName: opportunity.contact.name, from: current.stage.name, to: stage.name },
     });
     return updated;
   });
