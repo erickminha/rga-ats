@@ -82,7 +82,7 @@ export async function makeOpinionPdf({
   y -= 23;
   const headers = [
     ['Profissional', metadata.candidate], ['Vaga', metadata.posting], ['Empresa cliente', metadata.client],
-    ['Responsável', metadata.author], ['Emissão', issuedAt.toLocaleDateString(appLocale, { timeZone: 'UTC' })], ['Versão', String(version)],
+    ['Responsável', metadata.author], ['Emissão', issuedAt.toLocaleDateString(appLocale, { timeZone: 'America/Sao_Paulo' })], ['Versão', String(version)],
   ];
   for (const [label, value] of headers) if (value) paragraph(label + ': ' + value);
   y -= 12;

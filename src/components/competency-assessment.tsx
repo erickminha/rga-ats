@@ -104,10 +104,10 @@ export function CompareFinalists({ finalists }: { finalists: Comparison[] }) {
         onChange={(event) => setIds(event.target.checked ? [...ids, row.id] : ids.filter((id) => id !== row.id))} /> {row.name}</label>)}
     </div>
     <div className="grid gap-3 sm:grid-cols-2">
-      {finalists.filter((row) => ids.includes(row.id)).map((row) => <article key={row.id} className="grid gap-2 rounded-xl border border-line p-3">
+      {finalists.filter((row) => ids.includes(row.id)).map((row) => <article key={row.id} className="grid content-start gap-2 rounded-xl border border-line p-3">
         <a href={`/candidates/${row.id}`} className="font-medium underline">{row.name}</a>
         <p>{row.headline || 'Cargo não informado'}</p>
-        <p>{row.experience || 'Experiência relevante não registrada'}</p>
+        <p className="line-clamp-4">{row.experience || 'Experiência relevante não registrada'}</p>
         <p>Entrevista: {row.interview || row.review?.completed ? 'Concluída' : 'Pendente'}</p>
         <p>DISC: {row.disc ? 'Concluído' : 'Pendente'}</p>
         <p>Parecer: {row.opinion ? 'Finalizado' : 'Pendente'}</p>

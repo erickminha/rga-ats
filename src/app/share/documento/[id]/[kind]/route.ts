@@ -26,8 +26,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const file = await db.storedFile.findFirst({ where: { id: fileId, orgId: share.orgId, deletePendingAt: null } });
   if (!file) return missing();
   try {
-    return new Response(await openStoredFile(file.key), { headers: { ...fileResponseHeaders(file, 'private, no-store'),
-      'Content-Disposition': 'attachment; filename="' + (kind === 'disc' ? 'relatorio-disc.pdf' : 'curriculo') + '"',
+    const headers = fileResponseHeaders(file, 'private, no-store');
+    return new Response(await openStoredFile(file.key), { headers: { ...headers,
+      'Content-Disposition': headers['Content-Disposition'].replace(/^inline/, 'attachment'),
+      'Content-Length': String(file.size),
       'Referrer-Policy': 'no-referrer', 'X-Robots-Tag': 'noindex, nofollow, noarchive', 'X-Content-Type-Options': 'nosniff' } });
   } catch (error) {
     if (error instanceof StoredFileMissingError) return missing();

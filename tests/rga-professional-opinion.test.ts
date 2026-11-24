@@ -3,6 +3,7 @@ import { extractText } from 'unpdf';
 import { describe, expect, it } from 'vitest';
 import { db } from '@/lib/db';
 import { createPosting, setPostingState } from '@/server/postings';
+import { moveStage } from '@/server/opportunities';
 import { saveRecruitingAssessment } from '@/server/recruiting-assessment';
 import { makeOpinionPdf } from '@/server/opinion-pdf';
 import { eraseCandidateData } from '@/server/retention';
@@ -72,6 +73,11 @@ describe.skipIf(!hasDb)('pareceres e apresentações', () => {
     await revokeRecruitingShares(ctx, 'shortlist', job.id);
     expect(await publicResult()).toBeNull();
     const remaining = await createShortlistShare(ctx, job.id, [row.id], [], { pdf: [row.id] });
+    const hiring = await db.stage.create({ data: { orgId: org.id, name: 'Contratação', type: 'HIRED', order: 20 } });
+    await moveStage(ctx, row.id, hiring.id, { requireHireDate: true, hireDate: '2025-01-15' });
+    expect(await db.opportunity.findUniqueOrThrow({ where: { id: row.id } })).toMatchObject({
+      status: 'HIRED', hiredAt: new Date('2025-01-15T00:00:00.000Z'),
+    });
     await db.opportunity.update({ where: { id: row.id }, data: { status: 'ARCHIVED' } });
     await eraseCandidateData({ ...ctx, accessRole: 'ADMIN' }, contact.id);
     expect(await db.professionalOpinionVersion.count({ where: { opportunityId: row.id } })).toBe(0);
