@@ -99,6 +99,20 @@ async function anonymizeContact(orgId: string, id: string, rule: Prisma.ContactW
     await tx.shareLink.updateMany({
       where: { orgId, scope: 'candidate', targetId: { in: ids }, revokedAt: null }, data: { revokedAt: new Date() },
     });
+    if (ids.length) {
+      await tx.$executeRaw`
+        UPDATE "ShareLink" AS link
+        SET selection = jsonb_set(link.selection, '{candidates}', (
+          SELECT coalesce(jsonb_agg(person), '[]'::jsonb)
+          FROM jsonb_array_elements(link.selection->'candidates') AS person
+          WHERE person->>'id' NOT IN (${Prisma.join(ids)})
+        ))
+        WHERE link."orgId" = ${orgId} AND link.scope = 'shortlist'
+          AND jsonb_typeof(link.selection->'candidates') = 'array'
+          AND EXISTS (SELECT 1 FROM jsonb_array_elements(link.selection->'candidates') AS person
+            WHERE person->>'id' IN (${Prisma.join(ids)}))
+      `;
+    }
     await tx.opportunity.updateMany({
       where: { orgId, id: { in: ids } }, data: { source: null, customFields: Prisma.DbNull, applicationResumeId: null },
     });

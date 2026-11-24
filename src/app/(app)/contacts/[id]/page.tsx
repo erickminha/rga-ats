@@ -1,4 +1,6 @@
 import { textRecord } from '@/lib/i18n/pt-BR/assessment';
+import { updateTalentMembershipAction } from '@/app/(app)/talent-search-actions';
+import { btnTonal, inputClass } from '@/components/form-controls';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
@@ -34,6 +36,9 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
     }),
     findDuplicates(ctx.orgId, person),
   ]);
+  const availableGroups = await db.talentPool.findMany({
+    where: { orgId: ctx.orgId, kind: 'STATIC', members: { none: { id } } }, orderBy: { name: 'asc' }, select: { id: true, name: true },
+  });
   const authors = new Map((await db.user.findMany({
     where: { orgId: ctx.orgId, id: { in: files.flatMap((file) => file.uploadedById ? [file.uploadedById] : []) } },
     select: { id: true, name: true },
@@ -101,7 +106,21 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
     <section className="mb-4 rounded-card bg-surface p-4">
       <h2 className="mb-3 font-semibold">Etiquetas e grupos</h2>
       <TagEditor contactId={id} tags={person.tags} />
-      <p className="mt-2 text-sm">{person.pools.map((pool) => pool.name).join(' · ') || 'Sem grupos manuais.'}</p>
+      {person.pools.length ? <ul className="my-3 grid gap-2 text-sm">
+        {person.pools.map((group) => <li key={group.id} className="flex flex-wrap items-center gap-2">
+          <Link className="underline" href={`/contacts/busca?pool=${group.id}`}>{group.name}</Link>
+          {group.kind === 'STATIC' && <form action={updateTalentMembershipAction.bind(null, id)}>
+            <input type="hidden" name="pool" value={group.id} />
+            <button className="underline" name="operation" value="remove">Retirar do grupo</button>
+          </form>}
+        </li>)}
+      </ul> : <p className="mt-2 text-sm">Sem grupos manuais.</p>}
+      {availableGroups.length > 0 && <form action={updateTalentMembershipAction.bind(null, id)} className="mt-2 flex flex-wrap items-end gap-2">
+        <label className="grid gap-1 text-sm">Adicionar a grupo manual <select name="pool" className={inputClass}>
+          {availableGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+        </select></label>
+        <button className={btnTonal}>Adicionar ao grupo</button>
+      </form>}
     </section>
     <section className="rounded-card bg-surface p-4">
       <h2 className="mb-3 font-semibold">Preferências de armazenamento e contato</h2>

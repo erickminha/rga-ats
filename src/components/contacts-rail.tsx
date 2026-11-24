@@ -22,7 +22,7 @@ export function ContactsRail({
   pools,
   counts,
 }: {
-  pools: { id: string; name: string; kind: 'STATIC' | 'DYNAMIC' }[];
+  pools: { id: string; name: string; kind: 'STATIC' | 'DYNAMIC'; advanced?: boolean }[];
   counts: Promise<Record<string, BoundedCount> | null>;
 }) {
   const nav = useContactsNav();
@@ -58,18 +58,18 @@ export function ContactsRail({
             return (
               <span key={p.id} className="group flex items-center">
                 <Link
-                  href={nav.hrefFor({ pool: p.id })}
+                  href={p.advanced ? `/contacts/busca?pool=${encodeURIComponent(p.id)}` : nav.hrefFor({ pool: p.id })}
                   prefetch={false}
-                  onClick={(e) => nav.go({ pool: p.id }, e)}
-                  onPointerEnter={() => warm(p.id)}
-                  onFocus={() => warm(p.id)}
+                  onClick={p.advanced ? undefined : (e) => nav.go({ pool: p.id }, e)}
+                  onPointerEnter={p.advanced ? undefined : () => warm(p.id)}
+                  onFocus={p.advanced ? undefined : () => warm(p.id)}
                   aria-current={current === p.id ? 'true' : undefined}
                   className={cn(
                     'flex h-8 min-w-0 flex-1 items-center gap-2 rounded-full px-3 text-sm transition-colors duration-[120ms]',
                     current === p.id ? 'bg-surface text-ink' : 'text-ink-2 hover:bg-ink/[0.04] hover:text-ink',
                   )}
                 >
-                  <span className="flex" title={p.kind === 'DYNAMIC' ? 'Saved segment (live filter)' : 'Static pool'}>
+                  <span className="flex" title={p.kind === 'DYNAMIC' ? 'Segmento atualizado pelos filtros' : 'Grupo manual'}>
                     <StatusDot tone={p.kind === 'DYNAMIC' ? 'info' : 'neutral'} />
                   </span>
                   <span className="truncate">{p.name}</span>
@@ -80,7 +80,7 @@ export function ContactsRail({
                 <form action={deleteTalentPoolAction.bind(null, p.id)}>
                   <button
                     type="submit"
-                    aria-label={`Delete ${p.name}`}
+                    aria-label={`Excluir ${p.name}`}
                     className={buttonClass({
                       variant: 'ghost',
                       size: 'xs',

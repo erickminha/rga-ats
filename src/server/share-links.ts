@@ -1,3 +1,4 @@
+import { publicOpinionKeys } from '@/lib/professional-opinion';
 import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { createHash, randomBytes } from 'node:crypto';
 import { actorOf, emitEvent } from '@/server/events';
@@ -97,32 +98,76 @@ const professionalOpinion = (value: unknown) => {
 
 const publicFinalists = (orgId: string, postingId: string) => ({
   ...shareableOpportunity(orgId), postingId, status: 'ACTIVE' as const,
+  contact: { orgId, isAnonymized: false, retentionHold: false },
   stage: { orgId, name: { in: finalistStageNames } },
 });
 
 async function shortlistPosting(orgId: string, postingId: string) {
   return db.posting.findFirst({
     where: { id: postingId, orgId, state: 'PUBLISHED', clientCompany: { orgId, active: true } },
-    select: { id: true, title: true, clientCompanyId: true },
+    select: { id: true, title: true, clientCompanyId: true, clientCompany: { select: { name: true } } },
   });
 }
 
-export async function createShortlistShare(ctx: SessionContext, postingId: string, ids: string[], opinions: string[]) {
+export const safeOpinion = (value: unknown) => {
+  const values = textRecord(value);
+  return Object.fromEntries(publicOpinionKeys.map((key) => [key, values[key] || '']));
+};
+const hash = (value: unknown) => tokenHash(JSON.stringify(value));
+const publicFile = (orgId: string, contactId: string, file: { id: string; orgId: string; contactId: string | null; deletePendingAt: Date | null } | null) =>
+  file?.orgId === orgId && file.contactId === contactId && !file.deletePendingAt ? file.id : undefined;
+export function shortlistReviewFingerprint(value: {
+  name: string; headline: string | null; summary: Record<string, string>;
+  version?: number; resumeId?: string; discId?: string;
+}) {
+  return hash([value.name, value.headline, publicOpinionKeys.map((key) => value.summary[key] ?? ''),
+    value.version ?? null, value.resumeId ?? null, value.discId ?? null]);
+}
+
+const selectionForShortlist = {
+  id: true, contactId: true, contact: { select: { name: true, headline: true } },
+  applicationResume: { select: { id: true, orgId: true, contactId: true, deletePendingAt: true } },
+  recruitingAssessment: { select: { opinion: true, opinionFinalizedAt: true,
+    opinionVersions: { orderBy: { version: 'desc' as const }, take: 1, select: { version: true, issuedAt: true } },
+    discFile: { select: { id: true, orgId: true, contactId: true, deletePendingAt: true } },
+  } },
+} as const;
+
+export async function createShortlistShare(ctx: SessionContext, postingId: string, ids: string[], opinions: string[],
+  documents: { pdf?: string[]; resumes?: string[]; discs?: string[]; reviewed?: Map<string, string> } = {}) {
   if (!canManageRecruiting(ctx)) throw new Error('Seu perfil não pode apresentar finalistas.');
-  if (!ids.length || ids.length > 30 || new Set(ids).size !== ids.length || opinions.some((id) => !ids.includes(id))) {
-    throw new Error('Selecione de um a 30 finalistas e confira os pareceres.');
+  const { pdf = [], resumes = [], discs = [] } = documents;
+  if (!ids.length || ids.length > 30 || new Set(ids).size !== ids.length ||
+    [...opinions, ...pdf, ...resumes, ...discs].some((id) => !ids.includes(id))) {
+    throw new Error('Selecione de um a 30 finalistas e confira os documentos.');
   }
   const posting = await shortlistPosting(ctx.orgId, postingId);
   if (!posting?.clientCompanyId) throw new Error('Vincule uma empresa ativa a uma vaga publicada.');
   const rows = await db.opportunity.findMany({
     where: { ...publicFinalists(ctx.orgId, postingId), id: { in: ids } },
-    select: { id: true, recruitingAssessment: { select: { opinion: true, opinionFinalizedAt: true } } },
+    select: selectionForShortlist,
   });
   if (rows.length !== ids.length) throw new Error('A seleção contém uma participação indisponível para divulgação.');
   const candidates = rows.map((row) => {
-    if (!opinions.includes(row.id)) return { id: row.id };
-    if (!row.recruitingAssessment?.opinionFinalizedAt) throw new Error('Inclua somente pareceres finalizados.');
-    return { id: row.id, opinionHash: tokenHash(JSON.stringify(professionalOpinion(row.recruitingAssessment.opinion))) };
+    const assessment = row.recruitingAssessment;
+    const version = assessment?.opinionVersions[0];
+    if (documents.reviewed && documents.reviewed.get(row.id) !== shortlistReviewFingerprint({
+      name: row.contact.name, headline: row.contact.headline, summary: safeOpinion(assessment?.opinion), version: version?.version,
+      resumeId: publicFile(ctx.orgId, row.contactId, row.applicationResume),
+      discId: publicFile(ctx.orgId, row.contactId, assessment?.discFile ?? null),
+    })) throw new Error('A seleção mudou. Atualize a página e revise a apresentação.');
+    const wantsSummary = opinions.includes(row.id);
+    const wantsPdf = pdf.includes(row.id);
+    const resumeId = resumes.includes(row.id) ? publicFile(ctx.orgId, row.contactId, row.applicationResume) : undefined;
+    const discId = discs.includes(row.id) ? publicFile(ctx.orgId, row.contactId, assessment?.discFile ?? null) : undefined;
+    if ((wantsSummary || wantsPdf) && !assessment?.opinionFinalizedAt) throw new Error('Inclua somente pareceres finalizados.');
+    if ((wantsPdf && !version) || (resumes.includes(row.id) && !resumeId) || (discs.includes(row.id) && !discId)) {
+      throw new Error('Documento indisponível para divulgação.');
+    }
+    return { id: row.id, resumeId, discId,
+      opinionHash: wantsSummary ? 'v2:' + hash([safeOpinion(assessment?.opinion), version?.version]) : undefined,
+      opinionPdfHash: wantsPdf ? hash([safeOpinion(assessment?.opinion), version?.version]) : undefined,
+    };
   });
   return persistShare(ctx, 'shortlist', postingId, { clientId: posting.clientCompanyId, candidates });
 }
@@ -131,19 +176,27 @@ export async function readShortlistShare(payload: SharePayload) {
   if (payload.scope !== 'shortlist' || !payload.selection) return null;
   const posting = await shortlistPosting(payload.orgId, payload.id);
   if (!posting || posting.clientCompanyId !== payload.selection.clientId) return null;
-  const selected = new Map(payload.selection.candidates.map((item) => [item.id, item.opinionHash]));
+  const selected = new Map(payload.selection.candidates.map((item) => [item.id, item]));
   const candidates = await db.opportunity.findMany({
     where: { ...publicFinalists(payload.orgId, posting.id), id: { in: [...selected.keys()] } },
-    select: {
-      id: true, contact: { select: { name: true, headline: true } },
-      recruitingAssessment: { select: { opinion: true, opinionFinalizedAt: true } },
-    },
+    select: selectionForShortlist,
     orderBy: { contact: { name: 'asc' } },
   });
-  return { title: posting.title, finalists: candidates.map((candidate) => {
-    const content = professionalOpinion(candidate.recruitingAssessment?.opinion);
-    const approved = candidate.recruitingAssessment?.opinionFinalizedAt
-      && selected.get(candidate.id) === tokenHash(JSON.stringify(content));
-    return { id: candidate.id, name: candidate.contact.name, headline: candidate.contact.headline, opinion: approved ? content : null };
+  return { title: posting.title, client: posting.clientCompany?.name ?? '', finalists: candidates.map((candidate) => {
+    const approval = selected.get(candidate.id);
+    const assessment = candidate.recruitingAssessment;
+    const content = safeOpinion(assessment?.opinion);
+    const legacy = professionalOpinion(assessment?.opinion);
+    const version = assessment?.opinionVersions[0];
+    const versionHash = hash([content, version?.version]);
+    const opinion = assessment?.opinionFinalizedAt && approval?.opinionHash === 'v2:' + versionHash ? content :
+      assessment?.opinionFinalizedAt && approval?.opinionHash === hash(legacy) ? legacy : null;
+    const opinionPdf = assessment?.opinionFinalizedAt && version && approval?.opinionPdfHash === versionHash
+      ? { content, version: version.version, issuedAt: version.issuedAt } : null;
+    const resumeId = publicFile(payload.orgId, candidate.contactId, candidate.applicationResume);
+    const discId = publicFile(payload.orgId, candidate.contactId, assessment?.discFile ?? null);
+    return { id: candidate.id, name: candidate.contact.name, headline: candidate.contact.headline, opinion, opinionPdf,
+      resumeId: resumeId && resumeId === approval?.resumeId ? resumeId : null,
+      discId: discId && discId === approval?.discId ? discId : null };
   }) };
 }

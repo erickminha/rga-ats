@@ -135,3 +135,7 @@ citizenship or nationality.
 - **Candidate data is personal data.** Whoever runs `AI_SERVICE_URL`
   processes it on the organization's behalf. Don't keep it longer than the
   request, and don't train on it without the organization's agreement.
+
+### `POST /v1/opinion-draft`
+
+Solicitação JSON com `section` e `source`, um trecho profissional curto de uma seção autorizada pela recrutadora. Resposta JSON com `model` e `text`. Reescreva em português brasileiro, mantendo estritamente o conteúdo fornecido. Evite acrescentar fatos, competências, experiências, interpretações de DISC ou diagnósticos. A resposta é uma sugestão descartável que a recrutadora pode revisar e copiar. O aplicativo só oferece a ação quando a integração está configurada.

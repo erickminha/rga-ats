@@ -1,5 +1,9 @@
+import { CustomerFeedbackForm, type CustomerFeedback } from '@/components/opinion-editor';
+import { CompareFinalists, CompetencyPlanForm } from '@/components/competency-assessment';
+import { readInterview, readPlan, readTemplates } from '@/lib/competency-assessment';
+import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { FinalistsForm } from '@/components/finalists-form';
-import { finalistStageNames } from '@/server/share-links';
+import { finalistStageNames, safeOpinion, shortlistReviewFingerprint } from '@/server/share-links';
 import { outcomeCategory, outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
 import { NewPostingForm } from '@/components/new-posting-form';
 import { publicClientName, publicPostingText } from '@/lib/public-careers';
@@ -71,14 +75,37 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
     db.opportunity.findMany({
       where: { ...scope, status: 'ACTIVE', stage: { orgId: ctx.orgId, name: { in: finalistStageNames } } },
       select: {
-        id: true, confidential: true, contact: { select: { name: true, headline: true } },
+        id: true, confidential: true, contactId: true, applicationResume: { select: { id: true, contactId: true, orgId: true, deletePendingAt: true } }, contact: { select: { name: true, headline: true } },
         stage: { select: { name: true } },
-        recruitingAssessment: { select: { disc: true, opinionFinalizedAt: true } },
+        recruitingAssessment: { select: { disc: true, opinion: true, opinionFinalizedAt: true, competencyInterview: true, clientFeedback: true,
+          opinionVersions: { take: 1, orderBy: { version: 'desc' }, select: { version: true } },
+          discFile: { select: { id: true, contactId: true, orgId: true, deletePendingAt: true } } } },
         interviews: { where: { orgId: ctx.orgId, state: 'COMPLETED' }, take: 1, select: { id: true } },
       },
       orderBy: { contact: { name: 'asc' } },
     }),
   ]);
+  const [assessmentOrg, scorecardQuestions] = canRecruit ? await Promise.all([
+    db.organization.findUnique({ where: { id: ctx.orgId }, select: { assessmentTemplates: true } }),
+    db.scorecardQuestion.findMany({ where: { orgId: ctx.orgId, archivedAt: null }, orderBy: { order: 'asc' }, select: { label: true }, take: 12 }),
+  ]) : [null, []];
+  const [operational, presentations] = canRecruit ? await Promise.all([
+    db.opportunity.findMany({ where: { ...scope, status: 'ACTIVE' }, select: {
+      id: true, interviews: { where: { orgId: ctx.orgId, state: 'COMPLETED' }, select: { id: true }, take: 1 },
+      recruitingAssessment: { select: { competencyInterview: true, disc: true, opinionFinalizedAt: true, opinionDraftAt: true } },
+    } }),
+    db.shareLink.findMany({ where: { orgId: ctx.orgId, scope: 'shortlist', targetId: posting.id, revokedAt: null, expiresAt: { gt: new Date() } },
+      select: { selection: true } }),
+  ]) : [[], []];
+  const presented = new Set(presentations.flatMap(({ selection }) => {
+    const data = selection as { clientId?: string; candidates?: { id: string }[] } | null;
+    return data?.clientId === linkedClient?.id ? data?.candidates?.map(({ id }) => id) ?? [] : [];
+  }));
+  const feedbackByRow = new Map(finalists.map((row) => [
+    row.id, (Array.isArray(row.recruitingAssessment?.clientFeedback) ? row.recruitingAssessment.clientFeedback : [])
+      .filter((item) => item && typeof item === 'object' && !Array.isArray(item) && item.clientId === linkedClient?.id)
+      .map((item) => { const entry = item as CustomerFeedback; return { ...entry, by: teammates.find(({ id }) => id === entry.by)?.name ?? '' }; }),
+  ]));
   const summary = { ACTIVE: 0, HIRED: 0, REJECTION: 0, WITHDRAWAL: 0, ADMINISTRATIVE: 0 };
   const byStage = new Map<string, number>();
   const byReason = new Map(reasons.map((reason) => [reason.id, reason]));
@@ -121,6 +148,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
           {canRecruit ? <RoleOwner inline postingId={posting.id} owner={posting.owner} teammates={teammates} /> : posting.owner?.name ?? 'Sem responsável'}
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
+          {posting.state !== 'CLOSED' && <Link className={buttonClass({ variant: 'primary', size: 'sm' })} href={`/contacts/busca?posting=${posting.id}`}>Buscar candidatos no banco de talentos</Link>}
           <Link className={buttonClass({ variant: 'tonal', size: 'sm' })} href={`/pipeline?posting=${posting.id}&view=kanban`}>Abrir funil desta vaga</Link>
           <Link className={buttonClass({ variant: 'ghost', size: 'sm' })} href={`/pipeline?posting=${posting.id}&status=archived`}>Ver participações encerradas</Link>
         </div>
@@ -184,17 +212,53 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
             ) : null}
           </div>
 
-      <section className={`${surface} my-5 p-5`}>
+      <details id="roteiro-avaliacao" className={`${surface} my-5 p-5`}>
+        <summary className="font-medium">Roteiro de avaliação da vaga</summary>
+        {isAdmin(ctx) && <a className="underline" href="/settings/modelos-avaliacao">Gerenciar modelos de avaliação</a>}
+        <CompetencyPlanForm postingId={posting.id} plan={readPlan(posting.competencyPlan)}
+          templates={readTemplates(assessmentOrg?.assessmentTemplates)} orgQuestions={scorecardQuestions.map((item) => item.label)} />
+      </details>
+      <section className={`${surface} my-5 p-5`} aria-labelledby="pendencias-vaga">
+        <h2 className="font-medium" id="pendencias-vaga">Acompanhamento das avaliações</h2>
+        <ul className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+          <li><a className="underline" href="/interviews">Entrevistas pendentes</a> · {operational.filter((row) => !row.interviews.length && !readInterview(row.recruitingAssessment?.competencyInterview)?.completed).length}</li>
+          <li><a className="underline" href="#roteiro-avaliacao">Competências pendentes</a> · {operational.filter((row) => !readInterview(row.recruitingAssessment?.competencyInterview)?.completed).length}</li>
+          <li><a className="underline" href="#finalistas">DISC pendentes</a> · {finalists.filter((row) => (row.recruitingAssessment?.disc as { complete?: boolean } | null)?.complete !== true).length}</li>
+          <li><a className="underline" href="#finalistas">Pareceres em elaboração</a> · {operational.filter((row) => row.recruitingAssessment?.opinionDraftAt && !row.recruitingAssessment.opinionFinalizedAt).length}</li>
+          <li><a className="underline" href="#finalistas">Pareceres finalizados</a> · {operational.filter((row) => row.recruitingAssessment?.opinionFinalizedAt).length}</li>
+          <li><a className="underline" href="#finalistas">Finalistas com apresentação vigente</a> · {finalists.filter((row) => !row.confidential && presented.has(row.id)).length}</li>
+          <li><a className="underline" href="#retorno-cliente">Retornos pendentes dos clientes</a> · {finalists.filter((row) => presented.has(row.id) && (!feedbackByRow.get(row.id)?.length || feedbackByRow.get(row.id)?.at(-1)?.status === 'WAIT')).length}</li>
+        </ul>
+      </section>
+      <CompareFinalists finalists={finalists.map((row) => ({
+        id: row.id, name: row.contact.name, headline: row.contact.headline,
+        experience: textRecord(row.recruitingAssessment?.opinion).experience ?? '',
+        review: readInterview(row.recruitingAssessment?.competencyInterview),
+        interview: row.interviews.length > 0, disc: (row.recruitingAssessment?.disc as { complete?: boolean } | null)?.complete === true,
+        opinion: !!row.recruitingAssessment?.opinionFinalizedAt,
+      }))} />
+      <section className={`${surface} my-5 p-5`} id="finalistas">
         <h2 className="mb-3 text-lg font-medium">Finalistas e apresentação ao cliente</h2>
         <FinalistsForm id={posting.id} enabled={posting.state === 'PUBLISHED' && !!linkedClient?.active}
-          finalists={finalists.map((row) => ({
-            id: row.id, name: row.contact.name, headline: row.contact.headline, stage: row.stage.name,
+          finalists={finalists.map((row) => {
+            const version = row.recruitingAssessment?.opinionVersions[0]?.version;
+            const summary = safeOpinion(row.recruitingAssessment?.opinion);
+            const resumeId = row.applicationResume?.orgId === ctx.orgId && row.applicationResume.contactId === row.contactId && !row.applicationResume.deletePendingAt ? row.applicationResume.id : undefined;
+            const disc = row.recruitingAssessment?.discFile;
+            const discId = disc?.orgId === ctx.orgId && disc.contactId === row.contactId && !disc.deletePendingAt ? disc.id : undefined;
+            return { id: row.id, name: row.contact.name, headline: row.contact.headline, stage: row.stage.name,
             interviewed: row.interviews.length > 0, opinionFinal: !!row.recruitingAssessment?.opinionFinalizedAt,
             discComplete: !!row.recruitingAssessment?.disc && typeof row.recruitingAssessment.disc === 'object'
               && !Array.isArray(row.recruitingAssessment.disc) && row.recruitingAssessment.disc.complete === true,
-            canShare: !row.confidential,
-          }))} />
+            canShare: !row.confidential, version, opinionSummary: summary, resumeId, discId,
+            reviewFingerprint: shortlistReviewFingerprint({ ...row.contact, summary, version, resumeId, discId }),
+          }; })} />
       </section>
+      {linkedClient && <section id="retorno-cliente" className={`${surface} my-5 grid gap-2 p-5`}>
+        <h2 className="font-medium">Retorno da empresa cliente</h2>
+        {!finalists.length && <p>Nenhum finalista disponível.</p>}
+        {finalists.map((row) => <CustomerFeedbackForm key={row.id} postingId={posting.id} id={row.id} name={row.contact.name} history={feedbackByRow.get(row.id) ?? []} />)}
+      </section>}
         </div>
         ) : null}
       </div>
