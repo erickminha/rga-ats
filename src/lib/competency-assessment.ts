@@ -1,3 +1,5 @@
+import { cleanCriteria } from '@/lib/match-criteria';
+import { publicPostingText } from '@/lib/public-careers';
 export const defaultScale = ['Muito abaixo do esperado', 'Abaixo do esperado', 'Atende ao esperado', 'Acima do esperado', 'Muito acima do esperado'];
 
 export type CompetencyPlan = { questions: string[]; scale: string[] };
@@ -83,4 +85,15 @@ export function discScale(min: string, max: string) {
   if (!min && !max) return null;
   const parse = (value: string) => /^-?\d{1,8}([.,]\d{1,6})?$/.test(value) ? Number(value.replace(',', '.')) : Number.NaN;
   return min && max && parse(max) > parse(min) ? { min: parse(min), max: parse(max), parse } : null;
+}
+
+export function postingRequirements(criteria: unknown, content: unknown) {
+  const labels = [...cleanCriteria(criteria).map(({ label }) => label),
+    ...publicPostingText(content).requirements.map((label) => label.slice(0, 240))];
+  const unique = new Map<string, string>();
+  for (const label of labels) {
+    const key = label.toLocaleLowerCase('pt-BR');
+    if (!unique.has(key)) unique.set(key, label);
+  }
+  return [...unique.values()].slice(0, 12).map((label) => ({ label }));
 }

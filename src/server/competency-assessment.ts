@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { db } from '@/lib/db';
 import { isAdmin, requireRecruitingAccess, type SessionContext } from '@/lib/session';
-import { cleanCriteria } from '@/lib/match-criteria';
-import { planFromForm, readInterview, readPlan, readTemplates, readText, recommendationLabels, requirementLabels } from '@/lib/competency-assessment';
+import { planFromForm, postingRequirements, readInterview, readPlan, readTemplates, readText, recommendationLabels, requirementLabels } from '@/lib/competency-assessment';
 import { lockIdentifiableContact } from '@/server/contact-lock';
 import { actorOf, emitEvent } from '@/server/events';
 
@@ -50,7 +49,7 @@ export async function saveCompetencyInterview(ctx: SessionContext, opportunityId
     if (!row || !await lockIdentifiableContact(tx, ctx.orgId, row.contactId)) throw new Error('Participação indisponível.');
     const entry = await tx.opportunity.findFirstOrThrow({
       where: { id: opportunityId, orgId: ctx.orgId, contactId: row.contactId },
-      select: { posting: { select: { orgId: true, competencyPlan: true, matchCriteria: true } },
+      select: { posting: { select: { orgId: true, competencyPlan: true, matchCriteria: true, content: true } },
         recruitingAssessment: { select: { competencyInterview: true } } },
     });
     const posting = entry.posting?.orgId === ctx.orgId ? entry.posting : null;
@@ -65,7 +64,7 @@ export async function saveCompetencyInterview(ctx: SessionContext, opportunityId
       if (score !== null && (!Number.isInteger(score) || score < 1 || score > scale.length)) throw new Error('Nota inválida.');
       return { score, response: readText(form, 'response-' + i, 1500), evidence: readText(form, 'evidence-' + i, 1500) };
     });
-    const requirements = (previous?.requirements ?? cleanCriteria(posting?.matchCriteria)).map(({ label }, i) => {
+    const requirements = (previous?.requirements ?? postingRequirements(posting?.matchCriteria, posting?.content)).map(({ label }, i) => {
       const result = readText(form, 'requirement-' + i, 20) || 'UNVERIFIED';
       if (!Object.hasOwn(requirementLabels, result)) throw new Error('Classificação de requisito inválida.');
       return { label, result };

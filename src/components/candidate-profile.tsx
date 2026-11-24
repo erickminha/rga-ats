@@ -1,5 +1,5 @@
 import { CompetencyInterviewForm } from '@/components/competency-assessment';
-import { readInterview, readPlan } from '@/lib/competency-assessment';
+import { postingRequirements, readInterview, readPlan } from '@/lib/competency-assessment';
 import { RecruitingAssessmentForm } from '@/components/recruiting-assessment-form';
 import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { outcomeCategory, outcomeNames, dateBR } from '@/lib/i18n/pt-BR/recruiting';
@@ -573,9 +573,9 @@ export async function CandidateProfile({ id }: { id: string }) {
           />
 
           {!contact.isAnonymized && <Link className="text-sm underline" href={`/contacts/${contact.id}#curriculos`}>Gerenciar cadastro e versões de currículo</Link>}
-          {!contact.isAnonymized && <CompetencyInterviewForm key={opportunity.id} id={opportunity.id}
+          {!contact.isAnonymized && <CompetencyInterviewForm key={`competency-${opportunity.id}`} id={opportunity.id}
             plan={readPlan(opportunity.posting?.competencyPlan)} review={readInterview(assessment?.competencyInterview)}
-            requirements={cleanCriteria(opportunity.posting?.matchCriteria)} postingId={opportunity.postingId} />}
+            requirements={postingRequirements(opportunity.posting?.matchCriteria, opportunity.posting?.content)} postingId={opportunity.postingId} />}
           {!contact.isAnonymized && <RecruitingAssessmentForm key={opportunity.id}
             id={opportunity.id} screening={textRecord(assessment?.screening)} disc={disc} discComplete={discComplete}
             discFileId={assessment?.discFileId ?? null} previousDiscs={previousDiscs.map((row) => ({
