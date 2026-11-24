@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import { closePendingApprovals, requestApproval } from '@/server/approvals';
 import { renderTemplate, sendEmail } from '@/server/email';
-import { isAdmin, type SessionContext } from '@/lib/session';
+import { requireRecruitingAccess, isAdmin, type SessionContext } from '@/lib/session';
 
 /**
  * Offers and requisitions (docs/02 §8). The offer is a state machine
@@ -80,6 +80,7 @@ export function renderOfferLetter(
 }
 
 export async function createOffer(ctx: SessionContext, input: OfferInput) {
+  requireRecruitingAccess(ctx);
   return db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
       where: { id: input.opportunityId, orgId: ctx.orgId },
@@ -115,6 +116,7 @@ export async function createOffer(ctx: SessionContext, input: OfferInput) {
 }
 
 export async function setOfferStatus(ctx: SessionContext, offerId: string, status: OfferStatus) {
+  requireRecruitingAccess(ctx);
   return db.$transaction(async (tx) => {
     const offer = await tx.offer.findFirst({
       where: { id: offerId, orgId: ctx.orgId },
@@ -166,6 +168,7 @@ export type RequisitionInput = {
 };
 
 export async function createRequisition(ctx: SessionContext, input: RequisitionInput) {
+  requireRecruitingAccess(ctx);
   const existing = await db.requisition.findUnique({
     where: { orgId_code: { orgId: ctx.orgId, code: input.code } },
   });
@@ -200,6 +203,7 @@ export async function setRequisitionState(
   requisitionId: string,
   state: RequisitionState,
 ) {
+  requireRecruitingAccess(ctx);
   return db.$transaction(async (tx) => {
     const req = await tx.requisition.findFirst({ where: { id: requisitionId, orgId: ctx.orgId } });
     if (!req) throw new Error('Requisition not found');
@@ -221,6 +225,7 @@ export async function linkPostingToRequisition(
   postingId: string,
   requisitionId: string | null,
 ) {
+  requireRecruitingAccess(ctx);
   const posting = await db.posting.findFirst({ where: { id: postingId, orgId: ctx.orgId } });
   if (!posting) throw new Error('Posting not found');
   if (requisitionId) {
@@ -238,6 +243,7 @@ export async function linkPostingToRequisition(
  * queues a PENDING_APPROVAL request instead of sending.
  */
 export async function sendOfferToCandidate(ctx: SessionContext, offerId: string, baseUrl: string) {
+  requireRecruitingAccess(ctx);
   const offer = await db.offer.findFirst({
     where: { id: offerId, orgId: ctx.orgId },
     include: {

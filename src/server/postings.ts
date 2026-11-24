@@ -1,8 +1,9 @@
-import type { Commitment, PostingState, WorkplaceType } from '@prisma/client';
+import { PostingState, type Commitment, type Prisma, type WorkplaceType } from '@prisma/client';
+import { postingContent } from '@/lib/public-careers';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import { closePendingApprovals, requestApproval } from '@/server/approvals';
-import { isAdmin, type SessionContext } from '@/lib/session';
+import { isAdmin, requireRecruitingAccess, type SessionContext } from '@/lib/session';
 import { lockClientWrites } from '@/server/client-companies';
 import { invalidateListMeta } from '@/server/lists/cache';
 
@@ -29,6 +30,7 @@ export type CreatePostingInput = {
 };
 
 export async function createPosting(ctx: SessionContext, input: CreatePostingInput) {
+  requireRecruitingAccess(ctx);
   const baseSlug = slugify(input.title) || 'role';
   const existing = await db.posting.findUnique({
     where: { orgId_slug: { orgId: ctx.orgId, slug: baseSlug } },
@@ -81,8 +83,59 @@ export async function createPosting(ctx: SessionContext, input: CreatePostingInp
   return created;
 }
 
+export class PostingEditError extends Error {}
+
+export async function updatePostingDetails(
+  ctx: SessionContext,
+  postingId: string,
+  input: Omit<CreatePostingInput, 'departmentId' | 'clientCompanyId'>,
+) {
+  requireRecruitingAccess(ctx);
+  const posting = await db.$transaction(async (tx) => {
+    // Serialize changes to content with the client identity and approval paths.
+    await lockClientWrites(tx, ctx.orgId);
+    await tx.$queryRaw`SELECT id FROM "Posting" WHERE id = ${postingId} AND "orgId" = ${ctx.orgId} FOR NO KEY UPDATE`;
+    const current = await tx.posting.findFirst({
+      where: { id: postingId, orgId: ctx.orgId },
+      include: { org: { select: { slug: true, requirePostingApproval: true } } },
+    });
+    if (!current) throw new PostingEditError('Vaga não encontrada.');
+    if (!isAdmin(ctx) && current.state === 'PUBLISHED' && current.org.requirePostingApproval) {
+      throw new PostingEditError('Somente administradores podem editar vagas publicadas quando a aprovação está ativa.');
+    }
+    const data = {
+      title: input.title,
+      location: input.location ?? null,
+      workplaceType: input.workplaceType,
+      commitment: input.commitment,
+      salaryMin: input.salaryMin ?? null,
+      salaryMax: input.salaryMax ?? null,
+      salaryCurrency: input.salaryCurrency ?? null,
+    };
+    const description = input.description ?? '';
+    const content = postingContent(current.content);
+    if (Object.keys(data).every((key) => data[key as keyof typeof data] === current[key as keyof typeof data])
+      && description === (content.description ?? '')) return current;
+    const updated = await tx.posting.update({
+      where: { id: postingId, orgId: ctx.orgId },
+      data: { ...data, content: { ...content, description } as Prisma.InputJsonObject },
+      include: { org: { select: { slug: true, requirePostingApproval: true } } },
+    });
+    await emitEvent(tx, {
+      orgId: ctx.orgId, ...actorOf(ctx), verb: 'posting.updated', subjectType: 'posting', subjectId: postingId,
+      payload: { title: updated.title },
+    });
+    return updated;
+  });
+  invalidateListMeta(ctx.orgId);
+  return posting;
+}
+
 export async function setPostingState(ctx: SessionContext, postingId: string, state: PostingState) {
+  requireRecruitingAccess(ctx);
+  if (!Object.hasOwn(PostingState, state)) throw new Error('Situação da vaga inválida.');
   return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Posting" WHERE id = ${postingId} AND "orgId" = ${ctx.orgId} FOR NO KEY UPDATE`;
     const posting = await tx.posting.findFirst({
       where: { id: postingId, orgId: ctx.orgId },
     });
@@ -91,6 +144,9 @@ export async function setPostingState(ctx: SessionContext, postingId: string, st
     // Approval chain: when the org requires it, a member's "publish"
     // becomes a request — only admins can take a posting live.
     const admin = isAdmin(ctx);
+    if (!admin && posting.state === 'PENDING_APPROVAL' && state !== 'PUBLISHED' && state !== 'PENDING_APPROVAL') {
+      throw new Error('Somente administradores podem resolver a aprovação de uma vaga.');
+    }
     let effective = state;
     let verb =
       state === 'PUBLISHED'
@@ -166,6 +222,7 @@ export function listPostings(ctx: SessionContext) {
 
 /** Hand a role to a recruiter (or to nobody, with null). Both must be in the org. */
 export async function setPostingOwner(ctx: SessionContext, postingId: string, ownerId: string | null) {
+  requireRecruitingAccess(ctx);
   const [posting, owner] = await Promise.all([
     db.posting.findFirst({ where: { id: postingId, orgId: ctx.orgId }, select: { id: true, title: true } }),
     ownerId

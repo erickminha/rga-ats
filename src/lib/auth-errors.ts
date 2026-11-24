@@ -6,6 +6,7 @@
  * set up nothing mentions it.
  */
 const GOOGLE_MESSAGES: Record<string, string> = {
+  'google-signup-closed': 'Peça um convite à administração da RGA ATS para entrar com o Google.',
   'google-unverified':
     'Google hasn’t verified that email address, so it can’t be used to sign in. Use an account with a verified address.',
   'google-unverified-domain':

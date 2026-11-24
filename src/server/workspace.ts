@@ -1,3 +1,4 @@
+import { isSingleWorkspace, WorkspaceSignupClosedError } from '@/server/rga-workspace';
 import { db } from '@/lib/db';
 import type { OrgKind } from '@prisma/client';
 import { isSampleSlug } from '@/server/sample-boards';
@@ -40,6 +41,7 @@ export type NewWorkspace = {
 };
 
 export async function createWorkspace(input: NewWorkspace): Promise<{ orgId: string; userId: string }> {
+  if (isSingleWorkspace()) throw new WorkspaceSignupClosedError();
   const email = input.email.trim().toLowerCase();
   const orgName = input.orgName.trim();
   const name = input.name.trim();

@@ -22,55 +22,59 @@ export function NewCandidateForm({
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Full name">
+        <Field label="Nome completo">
           <input {...noAutofill} name="name" required placeholder="Dana Reyes" className={inputClass} />
         </Field>
-        <Field label="Email">
+        <Field label="E-mail">
           <input {...noAutofill} name="email" type="email" placeholder="dana@example.com" className={inputClass} />
         </Field>
-        <Field label="Headline">
+        <Field label="Cargo ou área">
           <input {...noAutofill} name="headline" placeholder="Senior Product Designer" className={inputClass} />
         </Field>
-        <Field label="Location">
+        <Field label="Localidade">
           <input {...noAutofill} name="location" placeholder="Brooklyn, NY" className={inputClass} />
         </Field>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Posting">
+        <Field label="Vaga">
           <FormSelect
             name="postingId"
             options={[
-              { value: '', label: 'General (no posting)' },
+              { value: '', label: 'Sem vaga vinculada' },
               ...postings.map((p) => ({ value: p.id, label: p.title })),
             ]}
           />
         </Field>
-        <Field label="Stage">
+        <Field label="Etapa">
           <FormSelect
             name="stageId"
             defaultValue={stages[0]?.id}
             options={stages.map((s) => ({ value: s.id, label: s.name }))}
           />
         </Field>
-        <Field label="Origin">
+        <Field label="Origem">
           <FormSelect
             name="origin"
             defaultValue="SOURCED"
             options={[
-              { value: 'SOURCED', label: 'Sourced' },
-              { value: 'APPLIED', label: 'Applied' },
-              { value: 'REFERRED', label: 'Referred' },
+              { value: 'SOURCED', label: 'Prospecção' },
+              { value: 'APPLIED', label: 'Candidatura' },
+              { value: 'REFERRED', label: 'Indicação' },
               { value: 'AGENCY', label: organization.kinds.AGENCY.title },
-              { value: 'INTERNAL', label: 'Internal' },
-              { value: 'UNIVERSITY', label: 'University' },
+              { value: 'INTERNAL', label: 'Interna' },
+              { value: 'UNIVERSITY', label: 'Universidade' },
             ]}
           />
         </Field>
-        <Field label="Source">
+        <Field label="Fonte">
           <input {...noAutofill} name="source" placeholder="linkedin, referral name…" className={inputClass} />
         </Field>
       </div>
+
+      <Field label="Currículo (opcional, até 5 MB)">
+        <input name="resume" type="file" accept=".pdf,.doc,.docx,.odt,.rtf,.txt" className={inputClass} />
+      </Field>
 
       {state?.error ? (
         <p className="rounded-field bg-critical/10 px-3 py-2 text-sm text-critical">{state.error}</p>
@@ -78,7 +82,7 @@ export function NewCandidateForm({
 
       <div className="flex justify-end">
         <button type="submit" disabled={pending} className={btnPrimary}>
-          <TextSwap>{pending ? 'Adding…' : 'Add candidate'}</TextSwap>
+          <TextSwap>{pending ? 'Cadastrando…' : 'Cadastrar candidato'}</TextSwap>
         </button>
       </div>
     </form>

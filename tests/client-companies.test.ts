@@ -68,7 +68,7 @@ describe.skipIf(!hasDb)('client company management', () => {
     await expect(saveClientCompany(other.ctx, client.id, company('Intrusa'))).rejects.toThrow(/não encontrada/);
     await expect(saveCommercialContact(other.ctx, client.id, null, commercial)).rejects.toThrow(/não encontrada/);
     await expect(listClientCompanies({ ...ctx, accessRole: 'INTERVIEWER' }, {})).rejects.toThrow(/permissão/);
-    await expect(saveClientCompany({ ...ctx, accessRole: 'TEAM_MEMBER' }, client.id, company('Sem acesso'))).rejects.toThrow(/permissão/);
+    await expect(saveClientCompany({ ...ctx, accessRole: 'LIMITED_TEAM_MEMBER' }, client.id, company('Sem acesso'))).rejects.toThrow(/permissão/);
     await removeClientCompany(ctx, client.id);
     await expect(createPosting(ctx, { title: 'Vaga de cliente inativo', clientCompanyId: client.id, workplaceType: 'REMOTE', commitment: 'FULL_TIME' })).rejects.toThrow('Client not found');
     expect(await db.posting.findUnique({ where: { id: posting.id } })).toMatchObject({ clientCompanyId: client.id });

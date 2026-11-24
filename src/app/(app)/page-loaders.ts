@@ -8,7 +8,7 @@ import { organization } from '@/lib/i18n/pt-BR/organization';
 import type { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { decodeCursor } from '@/lib/list-cursor';
-import { getAuthSession, isAdmin, requireSession } from '@/lib/session';
+import { canManageRecruiting, getAuthSession, isAdmin, requireSession } from '@/lib/session';
 import { readOrgNavCookie } from '@/lib/org-nav-cookie';
 import { aiConfigured } from '@/server/ai';
 import { searchAll } from '@/server/contacts';
@@ -471,6 +471,7 @@ export async function loadPostingsPage(input: { status?: string; state?: string;
     stateFilter,
     q,
     isAgency,
+    canEditPostings: canManageRecruiting(ctx),
     canViewClients: isAgency && ['SUPER_ADMIN', 'ADMIN', 'TEAM_MEMBER'].includes(ctx.accessRole),
     isAdmin: ctx.accessRole === 'SUPER_ADMIN' || ctx.accessRole === 'ADMIN',
     org: org

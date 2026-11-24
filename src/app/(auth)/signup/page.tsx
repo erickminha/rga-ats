@@ -1,4 +1,6 @@
 import { organization } from '@/lib/i18n/pt-BR/organization';
+import { redirect } from 'next/navigation';
+import { isSingleWorkspace } from '@/server/rga-workspace';
 import Link from 'next/link';
 import { AuthForm } from '@/components/auth-form';
 import { GoogleSignIn } from '@/components/google-auth';
@@ -11,6 +13,7 @@ export const metadata = { title: 'Cadastro' };
 export const dynamic = 'force-dynamic';
 
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ kind?: string }> }) {
+  if (isSingleWorkspace()) redirect('/login');
   // From /agencies' Get started: the workspace is set up as a staffing agency.
   const agency = (await searchParams).kind === 'agency';
   return (

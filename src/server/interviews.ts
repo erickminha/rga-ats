@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import { buildOpportunityVars, sendEmail } from '@/server/email';
 import { buildInterviewIcs } from '@/server/ics';
-import type { SessionContext } from '@/lib/session';
+import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
 
 export type ScheduleInterviewInput = {
   opportunityId: string;
@@ -17,6 +17,7 @@ export type ScheduleInterviewInput = {
 };
 
 export async function scheduleInterview(ctx: SessionContext, input: ScheduleInterviewInput) {
+  requireRecruitingAccess(ctx);
   const interview = await db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
       where: { id: input.opportunityId, orgId: ctx.orgId },
@@ -137,6 +138,7 @@ export async function createPlanStep(
   ctx: SessionContext,
   input: { postingId: string; title: string; durationMins: number; focusAreas: string[] },
 ) {
+  requireRecruitingAccess(ctx);
   const posting = await db.posting.findFirst({
     where: { id: input.postingId, orgId: ctx.orgId },
   });
@@ -158,6 +160,7 @@ export async function createPlanStep(
 }
 
 export async function deletePlanStep(ctx: SessionContext, stepId: string) {
+  requireRecruitingAccess(ctx);
   await db.interviewPlanStep.deleteMany({ where: { id: stepId, orgId: ctx.orgId } });
 }
 

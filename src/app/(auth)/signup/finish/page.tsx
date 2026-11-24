@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { AuthForm } from '@/components/auth-form';
+import { isSingleWorkspace } from '@/server/rga-workspace';
 import { SIGNUP_KIND_COOKIE } from '@/lib/signup-kind';
 import { finishGoogleSignup } from '../../actions';
 import {
@@ -22,6 +23,7 @@ export const dynamic = 'force-dynamic';
  * sign-up's questions minus the email and password, which Google answered.
  */
 export default async function FinishSignupPage() {
+  if (isSingleWorkspace()) redirect('/login');
   if (!googleAuthEnabled()) redirect('/signup');
   const pending = await readPendingGoogle();
   if (!pending) redirect(loginErrorPath('expired'));

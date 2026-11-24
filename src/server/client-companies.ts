@@ -14,8 +14,8 @@ export async function canViewClientCompanies(ctx: SessionContext) {
   return org?.kind === 'AGENCY';
 }
 
-async function assertAccess(ctx: SessionContext, write = false) {
-  if ((write && !isAdmin(ctx)) || !(await canViewClientCompanies(ctx))) {
+async function assertAccess(ctx: SessionContext) {
+  if (!(await canViewClientCompanies(ctx))) {
     throw new ClientCompanyError('Você não tem permissão para esta operação.');
   }
 }
@@ -103,7 +103,7 @@ export async function clientPostingHistory(ctx: SessionContext, id: string, page
 }
 
 export async function saveClientCompany(ctx: SessionContext, id: string | null, data: ReturnType<typeof parseCompany>) {
-  await assertAccess(ctx, true);
+  await assertAccess(ctx);
   try {
     const saved = await db.$transaction(async (tx) => {
       await lockClientWrites(tx, ctx.orgId);
@@ -145,7 +145,7 @@ export async function saveClientCompany(ctx: SessionContext, id: string | null, 
 export async function saveCommercialContact(
   ctx: SessionContext, clientId: string, contactId: string | null, data: ReturnType<typeof parseCommercialContact>,
 ) {
-  await assertAccess(ctx, true);
+  await assertAccess(ctx);
   return db.$transaction(async (tx) => {
     await lockClientWrites(tx, ctx.orgId);
     const client = await tx.clientCompany.findFirst({
@@ -196,7 +196,8 @@ export async function setPostingClient(ctx: SessionContext, postingId: string, c
 }
 
 export async function setPublicClientIdentity(ctx: SessionContext, postingId: string, clientId: string, enabled: boolean) {
-  await assertAccess(ctx, true);
+  if (!isAdmin(ctx)) throw new ClientCompanyError('Somente administradores têm permissão para autorizar a divulgação do cliente.');
+  await assertAccess(ctx);
   return db.$transaction(async (tx) => {
     await lockClientWrites(tx, ctx.orgId);
     const posting = await tx.posting.findFirst({

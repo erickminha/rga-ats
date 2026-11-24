@@ -1,8 +1,10 @@
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import { settings } from '@/lib/i18n/pt-BR/settings';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { isRgaWorkspace } from '@/server/rga-workspace';
 import { db } from '@/lib/db';
-import { isAdmin, requireSession } from '@/lib/session';
+import { canManageRecruiting, isAdmin, requireSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 import { StageManager } from '@/components/stage-manager';
@@ -81,6 +83,10 @@ export default async function SettingsPage({
 }) {
   const ctx = await requireSession();
   const { section = 'business', notetaker, provider: notetakerProviderId } = await searchParams;
+  const admin = isAdmin(ctx);
+  const adminSections = ['hiring', 'team', 'email'];
+  const canImportContacts = canManageRecruiting(ctx);
+  if ((!admin && adminSections.includes(section)) || (section === 'data' && !canImportContacts)) redirect('/settings');
   const notetakers =
     section === 'integrations'
       ? await Promise.all([
@@ -99,20 +105,20 @@ export default async function SettingsPage({
         clientCompanies: { where: { active: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } },
       },
     }),
-    db.user.findMany({
+    admin ? db.user.findMany({
       where: { orgId: ctx.orgId },
       orderBy: { createdAt: 'asc' },
       select: { id: true, name: true, email: true, accessRole: true, deactivatedAt: true },
-    }),
+    }) : Promise.resolve([]),
     db.stage.findMany({ where: { orgId: ctx.orgId }, orderBy: { order: 'asc' } }),
     db.archiveReason.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: 'asc' } }),
     db.emailTemplate.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: 'asc' } }),
-    db.apiKey.findMany({ where: { orgId: ctx.orgId }, orderBy: { createdAt: 'desc' } }),
-    db.webhookEndpoint.findMany({
+    admin ? db.apiKey.findMany({ where: { orgId: ctx.orgId }, orderBy: { createdAt: 'desc' } }) : Promise.resolve([]),
+    admin ? db.webhookEndpoint.findMany({
       where: { orgId: ctx.orgId },
       orderBy: { createdAt: 'desc' },
       include: { deliveries: { select: { success: true } } },
-    }),
+    }) : Promise.resolve([]),
     db.customFieldDef.findMany({ where: { orgId: ctx.orgId }, orderBy: { label: 'asc' } }),
     db.scorecardQuestion.findMany({
       where: { orgId: ctx.orgId, archivedAt: null },
@@ -132,16 +138,18 @@ export default async function SettingsPage({
               eyebrow: settings.personal,
               items: [
                 ['integrations', settings.sections.integrations],
-                ['email', settings.sections.email],
+                ...(admin ? [['email', settings.sections.email]] : []),
               ],
             },
             {
               eyebrow: settings.organization,
               items: [
                 ['business', settings.sections.business],
-                ['hiring', settings.sections.hiring],
-                ['team', settings.sections.team],
-                ['data', settings.sections.data],
+                ...(admin ? [
+                  ['hiring', settings.sections.hiring],
+                  ['team', settings.sections.team],
+                ] : []),
+                ...(canImportContacts ? [['data', settings.sections.data]] : []),
               ],
             },
           ].map((g) => (
@@ -184,7 +192,7 @@ export default async function SettingsPage({
               </a>
             </p>
           </Row>
-          <Row>
+          {admin ? <Row>
             <p className="mb-3 text-sm text-ink-2">
               {isAgency ? settings.business.agencyLogo : settings.business.companyLogo}
             </p>
@@ -194,7 +202,7 @@ export default async function SettingsPage({
               remove={removeOrgLogoAction}
               label={settings.business.logo}
             />
-          </Row>
+          </Row> : null}
         </Group>
         ) : null}
 
@@ -231,13 +239,13 @@ export default async function SettingsPage({
                   ) : null}
                 </div>
               ) : null
-            ) : (
+            ) : admin ? (
               <GroupManager
                 kind="department"
                 items={(org?.departments ?? []).map((group) => ({ id: group.id, name: group.name }))}
                 placeholder={organization.department.example}
               />
-            )}
+            ) : null}
           </Row>
         </Group>
         ) : null}
@@ -249,6 +257,7 @@ export default async function SettingsPage({
               {settings.controls.stagesDescription}
             </p>
             <StageManager
+              showRgaPipeline={isAgency && isRgaWorkspace(ctx.orgId)}
               stages={stages.map((s) => ({ id: s.id, name: s.name, type: s.type }))}
             />
           </Row>
@@ -440,7 +449,7 @@ export default async function SettingsPage({
         </Group>
         ) : null}
 
-        {section === 'integrations' ? (
+        {section === 'integrations' && admin ? (
         <Group id="developers" title={settings.controls.apiKeys}>
           <Row>
             <p className="mb-4 text-sm text-ink-2">
@@ -461,7 +470,7 @@ export default async function SettingsPage({
         </Group>
         ) : null}
 
-        {section === 'integrations' ? (
+        {section === 'integrations' && admin ? (
         <Group title="Webhooks">
           <Row>
             <p className="mb-4 text-sm text-ink-2">
@@ -502,7 +511,7 @@ export default async function SettingsPage({
         </Group>
         ) : null}
 
-        {section === 'data' ? (
+        {section === 'data' && admin ? (
         <Group title={settings.controls.importAts}>
           <ControlRow description={settings.controls.importDescription}>
             <Link href="/settings/import" className={buttonClass({ variant: 'tonal', size: 'sm' })}>
@@ -512,7 +521,7 @@ export default async function SettingsPage({
         </Group>
         ) : null}
 
-        {section === 'data' ? (
+        {section === 'data' && admin ? (
         <Group title={settings.controls.export}>
           <ControlRow
             description={settings.controls.exportDescription}
@@ -528,7 +537,8 @@ export default async function SettingsPage({
         <Group id="team" title={settings.sections.team}>
           <Row>
             <TeamManager
-              isAdmin={ctx.accessRole === 'SUPER_ADMIN' || ctx.accessRole === 'ADMIN'}
+              isAdmin={admin}
+              isSuperAdmin={ctx.accessRole === 'SUPER_ADMIN'}
               googleSignIn={googleAuthEnabled()}
               members={members.map((m) => ({
                 id: m.id,
@@ -543,7 +553,7 @@ export default async function SettingsPage({
         </Group>
         ) : null}
 
-        {section === 'data' ? (
+        {section === 'data' && admin ? (
         <Group title={settings.controls.retention}>
           <Row>
             <p className="mb-4 text-sm text-ink-2">
@@ -567,7 +577,7 @@ export default async function SettingsPage({
         </Group>
         ) : null}
 
-        {section === 'data' ? (
+        {section === 'data' && admin ? (
         <Group title={settings.controls.audit}>
           <ControlRow description={settings.controls.auditDescription}>
             <a href="/settings/audit" className={buttonClass({ variant: 'tonal', size: 'sm' })}>
@@ -577,7 +587,7 @@ export default async function SettingsPage({
         </Group>
         ) : null}
 
-        {section === 'data' ? (
+        {section === 'data' && admin ? (
         <Group title={settings.controls.archive}>
           <Row className="flex flex-wrap gap-2">
             {archiveReasons.map((r) => (

@@ -16,7 +16,7 @@ import { TextSwap } from '@/components/ui/motion';
 
 const ROLES = [
   { value: 'ADMIN', label: 'Administrador' },
-  { value: 'TEAM_MEMBER', label: 'Membro da equipe' },
+  { value: 'TEAM_MEMBER', label: 'Recrutadora / Recrutador' },
   { value: 'LIMITED_TEAM_MEMBER', label: 'Acesso limitado' },
   { value: 'INTERVIEWER', label: 'Entrevistador' },
 ];
@@ -24,7 +24,7 @@ const ROLES = [
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Administrador principal',
   ADMIN: 'Administrador',
-  TEAM_MEMBER: 'Membro da equipe',
+  TEAM_MEMBER: 'Recrutadora / Recrutador',
   LIMITED_TEAM_MEMBER: 'Acesso limitado',
   INTERVIEWER: 'Entrevistador',
 };
@@ -41,10 +41,12 @@ export type MemberItem = {
 export function TeamManager({
   members,
   isAdmin,
+  isSuperAdmin = false,
   googleSignIn = false,
 }: {
   members: MemberItem[];
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
   /** This deployment has "Continue with Google": invitees can use it too. */
   googleSignIn?: boolean;
 }) {
@@ -55,6 +57,8 @@ export function TeamManager({
   const [role, setRole] = useState('TEAM_MEMBER');
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const roles = isSuperAdmin ? [{ value: 'SUPER_ADMIN', label: ROLE_LABELS.SUPER_ADMIN }, ...ROLES] : ROLES;
+  const activeSuperAdmins = members.filter((member) => member.accessRole === 'SUPER_ADMIN' && !member.deactivated).length;
 
   return (
     <div className="flex flex-col gap-3">
@@ -85,24 +89,24 @@ export function TeamManager({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              {isAdmin && m.accessRole !== 'SUPER_ADMIN' && !m.isSelf ? (
+              {isAdmin && (m.accessRole !== 'SUPER_ADMIN' || isSuperAdmin) && (!m.isSelf || isSuperAdmin) ? (
                 <>
                   <Dropdown
                     compact
                     onSurface
-                    disabled={pending || m.deactivated}
+                    disabled={pending || m.deactivated || (m.accessRole === 'SUPER_ADMIN' && activeSuperAdmins <= 1)}
                     label={ROLE_LABELS[m.accessRole] ?? m.accessRole}
                     showSelectedInTrigger={false}
                     value={m.accessRole}
-                    options={ROLES.map((r) => ({ value: r.value, label: r.label }))}
+                    options={roles.map((r) => ({ value: r.value, label: r.label }))}
                     onSelect={(next) => {
                       if (next && next !== m.accessRole)
-                        startTransition(() => setUserRoleAction(m.id, next));
+                        startTransition(async () => setError((await setUserRoleAction(m.id, next)).error ?? null));
                     }}
                   />
                   <button
-                    disabled={pending}
-                    onClick={() => startTransition(() => setUserActiveAction(m.id, m.deactivated))}
+                    disabled={pending || m.isSelf || (!m.deactivated && m.accessRole === 'SUPER_ADMIN' && activeSuperAdmins <= 1)}
+                    onClick={() => startTransition(async () => setError((await setUserActiveAction(m.id, m.deactivated)).error ?? null))}
                     className={buttonClass({ variant: 'ghost', size: 'xs' })}
                   >
                     {m.deactivated ? 'Reativar' : 'Desativar'}
@@ -149,7 +153,7 @@ export function TeamManager({
               placeholder="nome@empresa.com"
               className={inputClass}
             />
-            <FormSelect value={role} onChange={setRole} options={ROLES} />
+            <FormSelect value={role} onChange={setRole} options={roles} />
             <button type="submit" disabled={pending} className={btnPrimary}>
               <TextSwap>{pending ? 'Enviando…' : 'Convidar'}</TextSwap>
             </button>
@@ -162,7 +166,7 @@ export function TeamManager({
           </div>
         )
       ) : null}
-      {error ? <p className="text-sm text-critical">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm text-critical">{error}</p> : null}
     </div>
   );
 }

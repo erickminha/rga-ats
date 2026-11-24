@@ -21,6 +21,14 @@ export function isAdmin(ctx: SessionContext): boolean {
   return ctx.accessRole === 'SUPER_ADMIN' || ctx.accessRole === 'ADMIN';
 }
 
+export function canManageRecruiting(ctx: SessionContext): boolean {
+  return isAdmin(ctx) || ctx.accessRole === 'TEAM_MEMBER' || (ctx.accessRole === 'API' && !!ctx.apiKeyId);
+}
+
+export function requireRecruitingAccess(ctx: SessionContext) {
+  if (!canManageRecruiting(ctx)) throw new Error('Seu perfil não pode gerenciar a operação de recrutamento.');
+}
+
 /** Per-request dedupe — layout and pages both call this. */
 export const getAuthSession = cache(async () => auth());
 

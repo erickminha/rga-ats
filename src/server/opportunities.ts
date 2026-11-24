@@ -4,7 +4,12 @@ import { actorOf, emitEvent } from '@/server/events';
 import { buildOpportunityVars, sendEmail } from '@/server/email';
 import { maybeAutoSendSchedulingLink } from '@/server/scheduling';
 import { appBaseUrl } from '@/lib/base-url';
-import type { SessionContext } from '@/lib/session';
+import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
+import { storeExtractedResume, type ResumeUpload } from '@/server/resume-upload';
+import { deleteStoredFileBytes } from '@/server/storage';
+import { MAX_RESUME_BYTES } from '@/server/resume';
+import { parseQueueFields } from '@/server/resume-parse';
+import { textFields } from '@/server/text';
 import { capName } from '@/lib/utils';
 import { invalidateContactCounts, invalidatePipelineCounts } from '@/server/lists/cache';
 
@@ -17,7 +22,10 @@ export type CreateCandidateInput = {
   stageId: string;
   origin: Origin;
   source?: string;
+  resume?: ResumeUpload;
 };
+
+export class CandidateResumeError extends Error {}
 
 /**
  * Add a candidate: reuses an existing contact when the email matches
@@ -25,7 +33,12 @@ export type CreateCandidateInput = {
  * opportunity in the given stage.
  */
 export async function createCandidate(ctx: SessionContext, input: CreateCandidateInput) {
+  requireRecruitingAccess(ctx);
   const email = input.email?.toLowerCase().trim() || null;
+  if (input.resume && input.resume.data.byteLength > MAX_RESUME_BYTES) {
+    throw new CandidateResumeError('O currículo deve ter até 5 MB.');
+  }
+  const resume = input.resume ? await storeExtractedResume(ctx.orgId, input.resume) : null;
 
   const created = await db.$transaction(async (tx) => {
     const stage = await tx.stage.findFirst({ where: { id: input.stageId, orgId: ctx.orgId } });
@@ -61,6 +74,19 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
       });
     }
 
+    if (resume) {
+      const linked = await tx.contact.updateMany({
+        where: { id: contact.id, orgId: ctx.orgId, isAnonymized: false, resumeFileId: null },
+        data: { resumeFileId: resume.file.id, resumeText: resume.extracted.text },
+      });
+      if (!linked.count) throw new CandidateResumeError('O perfil já tem um currículo ou não pode receber anexos.');
+      const org = await tx.organization.findUnique({ where: { id: ctx.orgId }, select: { id: true, slug: true } });
+      await tx.storedFile.update({
+        where: { id: resume.file.id },
+        data: { contactId: contact.id, ...textFields(resume.extracted, new Date()), ...parseQueueFields(resume.extracted.status, org ?? undefined) },
+      });
+    }
+
     const opportunity = await tx.opportunity.create({
       data: {
         orgId: ctx.orgId,
@@ -84,6 +110,22 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
       payload: { contactName: contact.name, stageName: stage.name },
     });
     return opportunity;
+  }).catch(async (error) => {
+    if (resume) {
+      try {
+        const unlinked = await db.storedFile.findFirst({
+          where: { id: resume.file.id, orgId: ctx.orgId, contactId: null },
+          select: { key: true },
+        });
+        if (unlinked) {
+          await deleteStoredFileBytes(unlinked.key);
+          await db.storedFile.deleteMany({ where: { id: resume.file.id, contactId: null } });
+        }
+      } catch {
+        console.error('[candidate] Não foi possível limpar um currículo sem vínculo.');
+      }
+    }
+    throw error;
   });
   invalidatePipelineCounts(ctx.orgId);
   invalidateContactCounts(ctx.orgId);
@@ -103,6 +145,7 @@ export async function moveStage(
   toStageId: string,
   { invalidate = true }: WriteOptions = {},
 ) {
+  requireRecruitingAccess(ctx);
   const result = await db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
       where: { id: opportunityId, orgId: ctx.orgId },
@@ -169,6 +212,7 @@ export async function archiveOpportunity(
   archiveReasonId: string,
   { invalidate = true }: WriteOptions = {},
 ) {
+  requireRecruitingAccess(ctx);
   const result = await db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
       where: { id: opportunityId, orgId: ctx.orgId },
@@ -225,6 +269,7 @@ export async function archiveOpportunity(
 }
 
 export async function unarchiveOpportunity(ctx: SessionContext, opportunityId: string) {
+  requireRecruitingAccess(ctx);
   const updated = await db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
       where: { id: opportunityId, orgId: ctx.orgId },

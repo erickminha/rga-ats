@@ -1,11 +1,13 @@
+import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
-import { requireSession } from '@/lib/session';
+import { canManageRecruiting, requireSession } from '@/lib/session';
 import { firstParams, type SearchParams } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 import { NewPostingForm } from '@/components/new-posting-form';
 
 export default async function NewPostingPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await requireSession();
+  if (!canManageRecruiting(ctx)) notFound();
   const org = await db.organization.findUnique({
     where: { id: ctx.orgId },
     include: {
@@ -21,7 +23,7 @@ export default async function NewPostingPage({ searchParams }: { searchParams: S
 
   return (
     <div className="max-w-2xl">
-      <PageHeader title="New posting" subtitle="Drafts are private until you publish" />
+      <PageHeader title="Nova vaga" subtitle="Rascunhos ficam privados até a publicação." />
       <div className="mx-6 mb-8 mt-4 rounded-card bg-surface p-5">
         <NewPostingForm
           isAgency={isAgency}

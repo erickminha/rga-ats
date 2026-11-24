@@ -16,6 +16,7 @@ import {
   type RefusalReason,
   type WorkspaceOption,
 } from '@/server/google-account';
+import { isSingleWorkspace } from '@/server/rga-workspace';
 import { requestOrigin } from '@/server/request-origin';
 import { activeSessionUser, type SessionUser } from '@/server/session-user';
 
@@ -110,7 +111,7 @@ export async function completeGoogleSignIn(identity: GoogleIdentity, userId: str
   return activeSessionUser(userId);
 }
 
-export function loginErrorPath(reason: RefusalReason | 'expired'): string {
+export function loginErrorPath(reason: RefusalReason | 'expired' | 'signup-closed'): string {
   return `/login?error=google-${reason}`;
 }
 
@@ -137,6 +138,7 @@ export async function googleSignInCallback(user: Record<string, unknown>, profil
     }
     case 'choose-workspace':
     case 'create-workspace': {
+      if (resolution.kind === 'create-workspace' && isSingleWorkspace()) return loginErrorPath('signup-closed');
       const p = profile as Record<string, unknown>;
       await writePendingGoogle({
         sub: identity.sub,

@@ -1,3 +1,4 @@
+import { isSingleWorkspace } from '@/server/rga-workspace';
 import { Prisma, type Commitment, type OrgKind, type WorkplaceType } from '@prisma/client';
 import { db } from '@/lib/db';
 import { DEFAULT_STAGES } from '@/server/org-defaults';
@@ -189,6 +190,7 @@ const PRESENTED = {
 
 /** The sample board behind a slug, seeded if it isn't there yet. Null for other slugs. */
 export async function ensureSampleBoard(slug: string): Promise<void> {
+  if (isSingleWorkspace()) return;
   const board = Object.values(SAMPLE_BOARDS).find((b) => b.slug === slug);
   if (!board) return;
   if (await db.organization.findUnique({ where: { slug }, select: { id: true } })) return;
@@ -202,6 +204,7 @@ export async function ensureSampleBoard(slug: string): Promise<void> {
 
 /** The agency board and its sample presentation, for /share/<SAMPLE_PRESENTATION_CODE>. */
 export async function ensureSamplePresentation(): Promise<void> {
+  if (isSingleWorkspace()) return;
   await ensureSampleBoard(SAMPLE_BOARDS.agency.slug);
   // The whole resume and their work, for boards seeded before either existed
   const org = await db.organization.findUnique({ where: { slug: SAMPLE_BOARDS.agency.slug }, select: { id: true } });

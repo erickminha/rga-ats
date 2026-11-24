@@ -2,11 +2,10 @@ import { db } from '@/lib/db';
 import { capName } from '@/lib/utils';
 import { emitEvent } from '@/server/events';
 import { DEFAULT_TEMPLATES, sendEmail } from '@/server/email';
-import { storeFile } from '@/server/storage';
+import { storeExtractedResume, type ResumeUpload } from '@/server/resume-upload';
 import { extractSignals, uniqueLinks } from '@/server/resume';
 import { parseQueueFields } from '@/server/resume-parse';
-import { extractText, FORMAT_EXT, FORMAT_MIME, textFields, type ExtractResult } from '@/server/text';
-import { EncryptedDocumentError } from '@/server/text/types';
+import { textFields, type ExtractResult } from '@/server/text';
 import { invalidateContactCounts, invalidatePipelineCounts } from '@/server/lists/cache';
 
 export type ApplicationInput = {
@@ -20,7 +19,7 @@ export type ApplicationInput = {
   networkOptIn?: boolean;
   storeProfile?: boolean;
   /** No MIME: the type is read from the bytes, never taken from the browser. */
-  resume?: { data: Buffer; filename: string };
+  resume?: ResumeUpload;
   /** Campaign attribution captured from the careers-page URL. */
   utm?: { source?: string; medium?: string; campaign?: string };
   /** Voluntary EEO self-ID — stored with NO candidate linkage (aggregate only). */
@@ -61,16 +60,8 @@ export async function submitApplication(input: ApplicationInput) {
   let resume: { fileId: string; extracted: ExtractResult } | null = null;
   let signals: { links: string[]; phones: string[] } | null = null;
   if (input.resume) {
-    const extracted = await extractText({ data: input.resume.data, source: 'apply', timeoutMs: 5000 });
-    if (extracted.status === 'ENCRYPTED') throw new EncryptedDocumentError();
-    const { format } = extracted;
-    const stored = await storeFile({
-      orgId: org.id,
-      filename: format ? withExtension(input.resume.filename, FORMAT_EXT[format]) : input.resume.filename,
-      mime: format ? FORMAT_MIME[format] : 'application/octet-stream',
-      data: input.resume.data,
-    });
-    resume = { fileId: stored.id, extracted };
+    const { file, extracted } = await storeExtractedResume(org.id, input.resume);
+    resume = { fileId: file.id, extracted };
     if (extracted.text) {
       signals = extractSignals(extracted.text, extracted.links, { targetsInText: extracted.format !== 'pdf' });
     }
@@ -269,9 +260,4 @@ export async function submitApplication(input: ApplicationInput) {
   }
 
   return opportunity;
-}
-
-/** "cv.docx" that is really a PDF is stored as "cv.pdf", so the download opens in the right app. */
-function withExtension(filename: string, ext: string): string {
-  return (filename.replace(/\.[^.]*$/, '') || 'resume') + ext;
 }

@@ -53,11 +53,11 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
       <PageHeader
         title="Postings"
         subtitle="Draft, publish, and distribute open roles"
-        actions={
+        actions={data.canEditPostings ? (
           <Link href="/postings/new" className={btnPrimary}>
             <Plus /> Add new job
           </Link>
-        }
+        ) : undefined}
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-6 pb-6 pt-4">
@@ -187,17 +187,17 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
                         </td>
                         <td className="px-4 py-3 text-ink-2">{p.location ?? '—'}</td>
                         <td className="px-4 py-3">
-                          <RequisitionLink
+                          {data.canEditPostings ? <RequisitionLink
                             postingId={p.id}
                             requisitionId={p.requisitionId}
                             requisitions={data.openReqs}
-                          />
+                          /> : null}
                         </td>
                         <td className="px-4 py-3">
                           <PostingStateBadge />
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <PostingStateMenu />
+                          {data.canEditPostings ? <PostingStateMenu /> : null}
                         </td>
                       </tr>
                     </PostingStateScope>

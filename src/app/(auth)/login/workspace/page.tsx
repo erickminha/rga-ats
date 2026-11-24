@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { isSingleWorkspace } from '@/server/rga-workspace';
 import { WorkspaceChoice } from '@/components/google-auth';
 import {
   googleAuthEnabled,
@@ -25,7 +26,7 @@ export default async function ChooseWorkspacePage() {
   if (!pending) redirect(loginErrorPath('expired'));
 
   const { resolution, candidates } = await resolveGoogle(pendingIdentity(pending));
-  if (resolution.kind === 'create-workspace') redirect('/signup/finish');
+  if (resolution.kind === 'create-workspace') redirect(isSingleWorkspace() ? loginErrorPath('signup-closed') : '/signup/finish');
   if (resolution.kind === 'refused') redirect(loginErrorPath(resolution.reason));
   const options = workspaceOptions(resolution, candidates);
 

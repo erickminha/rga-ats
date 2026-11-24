@@ -14,12 +14,14 @@ import {
   loginErrorPath,
   readPendingGoogle,
 } from '@/server/google-auth';
+import { isSingleWorkspace, signupClosedMessage, WorkspaceSignupClosedError } from '@/server/rga-workspace';
 import { createWorkspace, EmailTakenError } from '@/server/workspace';
 import { SIGNUP_KIND_COOKIE } from '@/lib/signup-kind';
 
 export type AuthFormState = { error?: string } | undefined;
 
 export async function signup(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  if (isSingleWorkspace()) return { error: signupClosedMessage };
   const name = String(formData.get('name') ?? '').trim();
   const orgName = String(formData.get('orgName') ?? '').trim();
   const email = String(formData.get('email') ?? '')
@@ -38,7 +40,7 @@ export async function signup(_prev: AuthFormState, formData: FormData): Promise<
   try {
     await createWorkspace({ orgName, name, email, passwordHash, kind: signupKind(formData.get('kind')) });
   } catch (error) {
-    if (error instanceof EmailTakenError) return { error: error.message };
+    if (error instanceof EmailTakenError || error instanceof WorkspaceSignupClosedError) return { error: error.message };
     throw error;
   }
 
@@ -126,6 +128,7 @@ export async function chooseWorkspace(formData: FormData): Promise<void> {
  * has none, through the same code as the password sign-up, then sign in.
  */
 export async function finishGoogleSignup(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  if (isSingleWorkspace()) return { error: signupClosedMessage };
   const pending = await readPendingGoogle();
   if (!pending) redirect(loginErrorPath('expired'));
 
@@ -147,6 +150,7 @@ export async function finishGoogleSignup(_prev: AuthFormState, formData: FormDat
     // The address has an account now (a second submit, or an invite that
     // just landed): sign in to that instead of making another workspace.
     if (error instanceof EmailTakenError) redirect('/login/workspace');
+    if (error instanceof WorkspaceSignupClosedError) return { error: error.message };
     throw error;
   }
 

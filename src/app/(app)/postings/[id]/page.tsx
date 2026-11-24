@@ -1,4 +1,5 @@
-import { publicClientName } from '@/lib/public-careers';
+import { NewPostingForm } from '@/components/new-posting-form';
+import { publicClientName, publicPostingText } from '@/lib/public-careers';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -6,7 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import { canViewClientCompanies } from '@/server/client-companies';
 import { PostingClientForm, PublicClientIdentityForm } from '@/components/client-company-form';
 import { db } from '@/lib/db';
-import { isAdmin, requireSession } from '@/lib/session';
+import { canManageRecruiting, isAdmin, requireSession } from '@/lib/session';
 import { PlanEditor } from '@/components/plan-editor';
 import { ShareLinkButton } from '@/components/share-link-button';
 import { sectionLabel, surface } from '@/components/form-controls';
@@ -39,6 +40,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
       department: true,
       clientCompany: { select: { id: true, name: true, active: true, orgId: true } },
       requisition: true,
+      org: { select: { requirePostingApproval: true } },
       planSteps: { orderBy: { order: 'asc' } },
       _count: { select: { opportunities: true } },
     },
@@ -50,6 +52,8 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
     }),
   ]);
   if (!posting) notFound();
+  const canRecruit = canManageRecruiting(ctx);
+  const canEditDetails = canRecruit && (posting.state !== 'PUBLISHED' || !posting.org.requirePostingApproval || isAdmin(ctx));
   const canManageClient = await canViewClientCompanies(ctx);
   const linkedClient = posting.clientCompany?.orgId === ctx.orgId ? posting.clientCompany : null;
   const choices = canManageClient ? await db.clientCompany.findMany({
@@ -87,7 +91,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
         </p>
         <div className="mt-4 flex items-center gap-3">
           <span className="w-20 shrink-0 text-xs font-medium text-ink-2">Recruiter</span>
-          <RoleOwner inline postingId={posting.id} owner={posting.owner} teammates={teammates} />
+          {canRecruit ? <RoleOwner inline postingId={posting.id} owner={posting.owner} teammates={teammates} /> : posting.owner?.name ?? 'Sem responsável'}
         </div>
         {canManageClient ? (
           <div className="mt-6 grid gap-2">
@@ -99,7 +103,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
             <PostingClientForm key={posting.clientCompanyId ?? 'unassigned'} postingId={posting.id} clientId={linkedClient?.id ?? null} choices={choices} />
           </div>
         ) : null}
-        <div className="mt-6">
+        {canRecruit ? <div className="mt-6">
           <LogoUpload
             logoFileId={posting.logoFileId}
             upload={uploadPostingLogoAction.bind(null, posting.id)}
@@ -109,7 +113,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
           {canManageClient && linkedClient && isAdmin(ctx) ? <div className="mt-3">
             <PublicClientIdentityForm key={linkedClient.id} postingId={posting.id} clientId={linkedClient.id} allowed={!!publicClientName(posting)} />
           </div> : null}
-        </div>
+        </div> : null}
         <div className="mt-6">
           <p className="mb-2 text-xs text-ink-2">
             Compartilhe com o cliente um link de consulta com os nomes dos candidatos e suas etapas. Anotações, avaliações e remuneração ficam privadas.
@@ -136,7 +140,26 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      {aiOn ? (
+      {canEditDetails ? (
+        <details className={`${surface} mt-6 p-5`}>
+          <summary className="cursor-pointer text-sm font-medium">Editar dados da vaga</summary>
+          <div className="mt-4">
+            <NewPostingForm initialPosting={{
+              id: posting.id,
+              title: posting.title,
+              location: posting.location,
+              workplaceType: posting.workplaceType,
+              commitment: posting.commitment,
+              salaryMin: posting.salaryMin,
+              salaryMax: posting.salaryMax,
+              salaryCurrency: posting.salaryCurrency,
+              description: publicPostingText(posting.content).description,
+            }} />
+          </div>
+        </details>
+      ) : null}
+
+      {aiOn && canRecruit ? (
         <section className="mt-8">
           <div className="mb-1 flex items-center justify-between gap-3">
             <h2 className={sectionLabel}>Match criteria</h2>
@@ -165,7 +188,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
         </section>
       ) : null}
 
-      <section className="mt-8">
+      {canRecruit ? <section className="mt-8">
         <h2 className={`${sectionLabel} mb-1`}>Interview plan</h2>
         <p className="mb-4 text-sm text-ink-2">
           The interview sequence this role expects. Scheduling from a step pre-fills the interview
@@ -180,7 +203,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
             focusAreas: s.focusAreas,
           }))}
         />
-      </section>
+      </section> : null}
     </div>
   );
 }
