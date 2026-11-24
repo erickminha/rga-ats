@@ -1,10 +1,10 @@
 import { createSign } from 'node:crypto';
 import { mappingSuggestion } from '@/lib/rga-import';
 
-const scope = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+const sheetScope = 'https://www.googleapis.com/auth/spreadsheets.readonly' as const;
 const tokenUrl = 'https://oauth2.googleapis.com/token';
 
-async function readToken() {
+export async function readGoogleToken(scope: typeof sheetScope | 'https://www.googleapis.com/auth/drive.readonly') {
   const secret = process.env.RGA_GOOGLE_SERVICE_ACCOUNT;
   if (!secret) throw new Error('Credencial de leitura não configurada.');
   const account = JSON.parse(secret) as { client_email: string; private_key: string };
@@ -24,7 +24,7 @@ async function readToken() {
 export async function readTalentSheet(): Promise<string[][]> {
   const id = process.env.RGA_TALENT_SHEET_ID;
   if (!id || !/^[a-zA-Z0-9_-]{10,180}$/.test(id)) throw new Error('Planilha de talentos não configurada.');
-  const token = await readToken();
+  const token = await readGoogleToken(sheetScope);
   const range = encodeURIComponent("'Respostas ao formulário 1'!A:R");
   const response = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + id + '/values/' + range, {
     headers: { Authorization: 'Bearer ' + token }, redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(25000),
