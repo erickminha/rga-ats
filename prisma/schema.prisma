@@ -184,6 +184,7 @@ model User {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
+  passwordReset      PasswordResetToken?
   ownedOpportunities Opportunity[] @relation("OpportunityOwner")
   ownedPostings      Posting[]      @relation("PostingOwner")
   notes              Note[]
@@ -203,6 +204,23 @@ model User {
   @@unique([orgId, googleSub])
   @@index([orgId])
   @@index([googleSub])
+}
+
+model PasswordResetToken {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model PasswordResetLimit {
+  key       String   @id
+  count     Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }
 
 // ---------- Contacts & opportunities (the Lever model) ----------

@@ -56,9 +56,9 @@ export async function login(_prev: AuthFormState, formData: FormData): Promise<A
   } catch (error) {
     if (error instanceof AuthError) {
       if (googleAuthEnabled() && (await signsInWithGoogleOnly(email))) {
-        return { error: 'This account signs in with Google. Use Continue with Google above.' };
+        return { error: 'Esta conta usa o Google. Selecione Continuar com o Google.' };
       }
-      return { error: 'Invalid email or password.' };
+      return { error: 'E-mail ou senha inválidos.' };
     }
     throw error; // successful signIn throws a redirect — let it through
   }

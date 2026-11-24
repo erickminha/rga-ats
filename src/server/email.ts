@@ -7,10 +7,8 @@ import type { SessionContext } from '@/lib/session';
 /**
  * Email delivery with merge tokens, scheduling, and automation.
  *
- * Transport: set SMTP_URL (smtp://user:pass@host:587) to send real email —
- * any provider (SES, Postmark, Resend SMTP, self-hosted). Without SMTP_URL
- * messages are marked sent without leaving the box (dev mode), so every
- * flow is testable locally.
+ * SMTP_URL takes precedence over the Resend SMTP configuration. With no
+ * transport, development and tests simulate delivery. Production records a failure.
  *
  * Scheduling: messages with a future scheduledAt stay SCHEDULED until
  * processDueEmails() runs — wired to /api/cron/emails (Vercel Cron in the
@@ -31,29 +29,55 @@ export function renderTemplate(text: string, vars: Record<string, string>): stri
   return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key: string) => vars[key] ?? '');
 }
 
-function getTransport() {
-  const url = process.env.SMTP_URL;
-  if (!url) return null; // dev mode
-  return nodemailer.createTransport(url);
-}
-
 export type EmailAttachment = { filename: string; content: string; contentType?: string };
 
-async function deliver(messageId: string, attachments?: EmailAttachment[]) {
+class MailConfigurationError extends Error {}
+
+export function emailDeliveryError(error: unknown): string {
+  if (error instanceof MailConfigurationError) return error.message;
+  const code = (error as { code?: unknown } | null)?.code;
+  const reason: Record<string, string> = {
+    EAUTH: 'SMTP_AUTHENTICATION_FAILED',
+    ETIMEDOUT: 'SMTP_TIMEOUT',
+    ECONNECTION: 'SMTP_CONNECTION_FAILED',
+    ESOCKET: 'SMTP_CONNECTION_FAILED',
+    EENVELOPE: 'SMTP_ENVELOPE_REJECTED',
+    EMESSAGE: 'SMTP_MESSAGE_REJECTED',
+  };
+  return typeof code === 'string' && Object.hasOwn(reason, code) ? reason[code] : 'SMTP_DELIVERY_FAILED';
+}
+
+async function transmitEmail(message: { toEmail: string; subject: string; body: string }, attachments?: EmailAttachment[]) {
+  const smtp = process.env.SMTP_URL?.trim();
+  const resend = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.EMAIL_FROM?.trim();
+  if (!smtp && !resend) {
+    if (process.env.NODE_ENV === 'production') throw new MailConfigurationError('SMTP_NOT_CONFIGURED');
+    return;
+  }
+  if (!smtp && !from) throw new MailConfigurationError('EMAIL_FROM_NOT_CONFIGURED');
+  const transport = smtp ? nodemailer.createTransport(smtp) : nodemailer.createTransport({
+    host: 'smtp.resend.com', port: 465, secure: true,
+    auth: { user: 'resend', pass: resend! },
+    connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 20_000,
+  });
+  await transport.sendMail({
+    from: from || 'Source <no-reply@source.local>',
+    to: message.toEmail, subject: message.subject, text: message.body, attachments,
+  });
+}
+
+/** A password link is immediate and never belongs in the ATS email history. */
+export function sendPrivateEmail(message: { toEmail: string; subject: string; body: string }) {
+  return transmitEmail(message);
+}
+
+async function deliver(messageId: string, attachments?: EmailAttachment[], privateBody?: string) {
   const message = await db.emailMessage.findUnique({ where: { id: messageId } });
   if (!message || message.status !== 'SCHEDULED') return message;
 
-  const transport = getTransport();
   try {
-    if (transport) {
-      await transport.sendMail({
-        from: process.env.EMAIL_FROM ?? 'Source <no-reply@source.local>',
-        to: message.toEmail,
-        subject: message.subject,
-        text: message.body,
-        attachments,
-      });
-    }
+    await transmitEmail({ ...message, body: privateBody ?? message.body }, attachments);
     return await db.emailMessage.update({
       where: { id: message.id },
       data: { status: 'SENT', sentAt: new Date() },
@@ -61,7 +85,7 @@ async function deliver(messageId: string, attachments?: EmailAttachment[]) {
   } catch (error) {
     return await db.emailMessage.update({
       where: { id: message.id },
-      data: { status: 'FAILED', error: error instanceof Error ? error.message : String(error) },
+      data: { status: 'FAILED', error: emailDeliveryError(error) },
     });
   }
 }
@@ -81,9 +105,10 @@ export type SendEmailInput = {
   attachments?: EmailAttachment[];
 };
 
-export async function sendEmail(input: SendEmailInput) {
+export async function sendEmail(input: SendEmailInput, privateBody?: string) {
   const vars = input.vars ?? {};
   const isFuture = !!input.scheduledAt && input.scheduledAt.getTime() > Date.now();
+  if (isFuture && privateBody !== undefined) throw new Error('Private email content cannot be scheduled');
 
   const message = await db.emailMessage.create({
     data: {
@@ -99,7 +124,8 @@ export async function sendEmail(input: SendEmailInput) {
     },
   });
 
-  if (input.opportunityId) {
+  const result = isFuture ? message : await deliver(message.id, input.attachments, privateBody);
+  if (input.opportunityId && (isFuture || result?.status === 'SENT')) {
     await db.$transaction(async (tx) => {
       await emitEvent(tx, {
         orgId: input.orgId,
@@ -117,8 +143,7 @@ export async function sendEmail(input: SendEmailInput) {
     });
   }
 
-  if (!isFuture) return deliver(message.id, input.attachments);
-  return message;
+  return result;
 }
 
 export async function cancelScheduledEmail(ctx: SessionContext, messageId: string) {
@@ -153,8 +178,8 @@ export async function processDueEmails(): Promise<number> {
     take: 100,
   });
   for (const message of due) {
-    await deliver(message.id);
-    if (message.opportunityId) {
+    const result = await deliver(message.id);
+    if (message.opportunityId && result?.status === 'SENT') {
       await db.$transaction(async (tx) => {
         await emitEvent(tx, {
           orgId: message.orgId,

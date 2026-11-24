@@ -543,12 +543,12 @@ describe.skipIf(!hasDb)('Continue with Google', () => {
     jar.clear();
 
     expect(await login(undefined, form({ email, password: 'anything-at-all' }))).toEqual({
-      error: 'This account signs in with Google. Use Continue with Google above.',
+      error: 'Esta conta usa o Google. Selecione Continuar com o Google.',
     });
     const withPassword = address();
     await passwordWorkspace(withPassword);
     expect(await login(undefined, form({ email: withPassword, password: 'wrong-password' }))).toEqual({
-      error: 'Invalid email or password.',
+      error: 'E-mail ou senha inválidos.',
     });
   });
 
