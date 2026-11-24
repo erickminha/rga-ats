@@ -897,7 +897,7 @@ const PipelineRail = memo(function PipelineRail({
   groups: { label: string | null; postings: { id: string; title: string }[] }[];
   fallbackGroupLabel: string;
   onGo: (postingId: string, e: React.MouseEvent) => void;
-  intent: (key: string, withCounts: boolean) => Registro<string, () => void>;
+  intent: (key: string, withCounts: boolean) => Record<string, () => void>;
 }) {
   const baseInput = inputFromKey(base, PIPELINE_KEYS);
   const keyFor = (posting: string) => listKey({ ...baseInput, posting }, PIPELINE_KEYS);
