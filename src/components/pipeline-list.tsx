@@ -73,17 +73,6 @@ const EMPTY_PAGE: ListPage<ListRow> = { rows: [], endCursor: null, hasMore: fals
 const fmt = (n: number) => n.toLocaleString(appLocale);
 const EMPTY = new Set<string>();
 
-/** "Senior Designer at Northbeam" → { role: 'Senior Designer', org: 'Northbeam' } */
-function splitHeadline(headline: string | null): {
-  role: string | null;
-  org: string | null;
-} {
-  if (!headline) return { role: null, org: null };
-  const i = headline.lastIndexOf(' at ');
-  if (i === -1) return { role: headline, org: null };
-  return { role: headline.slice(0, i), org: headline.slice(i + 4) };
-}
-
 /**
  * The pipeline (Recruiting-Assistant Candidates layout): role rail with
  * client/department eyebrows and an Active/Archived toggle, stage tabs,
@@ -802,8 +791,8 @@ export function PipelineList({
                 {[
                   "Nome completo",
                   'Perfis',
-                  "Título profissional",
-                  'Empresa',
+                  "Vaga vinculada",
+                  'Empresa cliente',
                   'Localidade',
                   "Etapa",
                   "Tempo na etapa",
@@ -1001,7 +990,6 @@ function PipelineRowView({
   onMove,
   onSaved,
 }: RowProps) {
-  const { role, org } = splitHeadline(r.headline);
   return (
     <tr
       data-row-id={r.id}
@@ -1014,7 +1002,10 @@ function PipelineRowView({
       <td className={cell}>
         <CandidateLink id={r.id} lazy className="flex min-w-0 items-center gap-2.5">
           <Avatar name={r.name} seed={r.contactId} size={28} />
-          <span className="truncate font-medium hover:underline">{r.name}</span>
+          <span className="min-w-0">
+            <span className="block truncate font-medium hover:underline" title={r.name}>{r.name}</span>
+            <span className="block truncate text-xs text-ink-2" title={r.headline ?? r.postingTitle ?? undefined}>{r.headline ?? r.postingTitle ?? 'Cargo não informado'}</span>
+          </span>
         </CandidateLink>
       </td>
       <td className={cell}>
@@ -1042,8 +1033,8 @@ function PipelineRowView({
           {!r.email && !r.phone && !r.link ? '—' : null}
         </span>
       </td>
-      <td className={`${cell} text-ink-2`}>{role ?? '—'}</td>
-      <td className={`${cell} text-ink-2`}>{org ?? '—'}</td>
+      <td className={`${cell} text-ink-2`} title={r.postingTitle ?? undefined}>{r.postingTitle ?? 'Sem vaga vinculada'}</td>
+      <td className={`${cell} text-ink-2`} title={r.clientName ?? undefined}>{r.clientName ?? '—'}</td>
       <td className={`${cell} text-ink-2`}>{r.location ?? '—'}</td>
       <td className={cell}>
         {archived ? (
