@@ -1,10 +1,11 @@
+import { capabilityPath } from '@/lib/capability-links';
 import { randomBytes } from 'crypto';
 import type { OfferStatus, RequisitionState } from '@prisma/client';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import { closePendingApprovals, requestApproval } from '@/server/approvals';
 import { renderTemplate, sendEmail } from '@/server/email';
-import { isAdmin, type SessionContext } from '@/lib/session';
+import { requireRecruitingAccess, isAdmin, type SessionContext } from '@/lib/session';
 
 /**
  * Offers and requisitions (docs/02 §8). The offer is a state machine
@@ -80,6 +81,7 @@ export function renderOfferLetter(
 }
 
 export async function createOffer(ctx: SessionContext, input: OfferInput) {
+  requireRecruitingAccess(ctx);
   return db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
       where: { id: input.opportunityId, orgId: ctx.orgId },
@@ -115,6 +117,7 @@ export async function createOffer(ctx: SessionContext, input: OfferInput) {
 }
 
 export async function setOfferStatus(ctx: SessionContext, offerId: string, status: OfferStatus) {
+  requireRecruitingAccess(ctx);
   return db.$transaction(async (tx) => {
     const offer = await tx.offer.findFirst({
       where: { id: offerId, orgId: ctx.orgId },
@@ -166,6 +169,7 @@ export type RequisitionInput = {
 };
 
 export async function createRequisition(ctx: SessionContext, input: RequisitionInput) {
+  requireRecruitingAccess(ctx);
   const existing = await db.requisition.findUnique({
     where: { orgId_code: { orgId: ctx.orgId, code: input.code } },
   });
@@ -200,6 +204,7 @@ export async function setRequisitionState(
   requisitionId: string,
   state: RequisitionState,
 ) {
+  requireRecruitingAccess(ctx);
   return db.$transaction(async (tx) => {
     const req = await tx.requisition.findFirst({ where: { id: requisitionId, orgId: ctx.orgId } });
     if (!req) throw new Error('Requisition not found');
@@ -221,6 +226,7 @@ export async function linkPostingToRequisition(
   postingId: string,
   requisitionId: string | null,
 ) {
+  requireRecruitingAccess(ctx);
   const posting = await db.posting.findFirst({ where: { id: postingId, orgId: ctx.orgId } });
   if (!posting) throw new Error('Posting not found');
   if (requisitionId) {
@@ -238,6 +244,7 @@ export async function linkPostingToRequisition(
  * queues a PENDING_APPROVAL request instead of sending.
  */
 export async function sendOfferToCandidate(ctx: SessionContext, offerId: string, baseUrl: string) {
+  requireRecruitingAccess(ctx);
   const offer = await db.offer.findFirst({
     where: { id: offerId, orgId: ctx.orgId },
     include: {
@@ -276,13 +283,22 @@ export async function sendOfferToCandidate(ctx: SessionContext, offerId: string,
         payload: { contactName: offer.opportunity.contact.name, jobTitle: offer.jobTitle },
       });
     });
-    return { url: `/offer/${offer.token}`, pendingApproval: true };
+    return { url: capabilityPath('offer', offer.token), pendingApproval: true };
   }
 
   if (offer.status === 'DRAFT' || offer.status === 'PENDING_APPROVAL') {
     await setOfferStatus(ctx, offer.id, 'SENT');
   }
 
+  const body = [
+    `Hi ${offer.opportunity.contact.name.split(' ')[0]},`,
+    '',
+    `We're excited to share your offer for ${offer.jobTitle} at ${offer.org.name}.`,
+    '',
+    `Review and sign it here: ${baseUrl}${capabilityPath('offer', offer.token)}`,
+    '',
+    `If anything looks off, just reply to this email.`,
+  ].join('\n');
   await sendEmail({
     orgId: ctx.orgId,
     actorId: ctx.userId ?? undefined,
@@ -290,17 +306,9 @@ export async function sendOfferToCandidate(ctx: SessionContext, offerId: string,
     opportunityId: offer.opportunityId,
     toEmail,
     subject: `Your offer from ${offer.org.name}`,
-    body: [
-      `Hi ${offer.opportunity.contact.name.split(' ')[0]},`,
-      '',
-      `We're excited to share your offer for ${offer.jobTitle} at ${offer.org.name}.`,
-      '',
-      `Review and sign it here: ${baseUrl}/offer/${offer.token}`,
-      '',
-      `If anything looks off, just reply to this email.`,
-    ].join('\n'),
-  });
-  return { url: `/offer/${offer.token}` };
+    body: 'Mensagem de proposta com link individual omitido do histórico.',
+  }, body);
+  return { url: capabilityPath('offer', offer.token) };
 }
 
 /** Public fetch for the offer page; stamps first view. */

@@ -4,7 +4,8 @@ import { CandidateLink } from '@/components/candidate-link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { db } from '@/lib/db';
-import { requireSession } from '@/lib/session';
+import { PrivacyControls } from '@/components/privacy-controls';
+import { isAdmin, requireSession } from '@/lib/session';
 import { addNoteAction, saveCustomFieldsAction } from '@/app/(app)/actions';
 import { CandidateStatusControls } from '@/components/archive-controls';
 import { ActivityFeed } from '@/components/activity-feed';
@@ -92,6 +93,7 @@ export async function CandidateProfile({ id }: { id: string }) {
       where: { id, orgId: ctx.orgId },
       include: {
         contact: { include: { resumeFile: true, caseStudies: { orderBy: { position: 'asc' } } } },
+        applicationResume: { select: { id: true, deletePendingAt: true } },
         posting: {
           include: {
             planSteps: { orderBy: { order: 'asc' } },
@@ -255,7 +257,8 @@ export async function CandidateProfile({ id }: { id: string }) {
             <ShareLinkButton
               scope="candidate"
               id={opportunity.id}
-              label="Presentation"
+              canCreate={!opportunity.confidential && !contact.isAnonymized}
+              label="Compartilhar perfil"
               subject={{
                 name: contact.name,
                 detail: opportunity.posting?.title ?? contact.headline,
@@ -544,6 +547,16 @@ export async function CandidateProfile({ id }: { id: string }) {
                 : null
             }
           />
+
+          {opportunity.applicationResume && !opportunity.applicationResume.deletePendingAt
+            && opportunity.applicationResume.id !== contact.resumeFileId ? (
+            <Link className="text-sm text-accent underline" href={`/api/files/${opportunity.applicationResume.id}`}>
+              Baixar currículo desta candidatura
+            </Link>
+          ) : null}
+          {isAdmin(ctx) && !contact.isAnonymized ? (
+            <PrivacyControls contactId={contact.id} onHold={contact.retentionHold} />
+          ) : null}
 
           <KeyFactsSection facts={keyFacts} />
 

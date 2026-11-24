@@ -1,10 +1,16 @@
 import type { Prisma, StageType } from '@prisma/client';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
-import type { SessionContext } from '@/lib/session';
+import { isAdmin, type SessionContext } from '@/lib/session';
 import { invalidateListMeta } from '@/server/lists/cache';
-import { nameKey } from '@/server/imports/mapping';
+import { looseKey, nameKey } from '@/server/imports/mapping';
+import { isRgaWorkspace } from '@/server/rga-workspace';
+import { RGA_STAGES } from '@/server/rga-pipeline';
 import { GROUP_RANK, stageGroup } from '@/lib/stage-types';
+
+function requireStageAdmin(ctx: SessionContext) {
+  if (!isAdmin(ctx)) throw new Error('Somente administradores podem configurar as etapas.');
+}
 
 /**
  * A new stage goes at the end of its group: after the last lead, after the
@@ -13,6 +19,7 @@ import { GROUP_RANK, stageGroup } from '@/lib/stage-types';
  * into the middle of a process someone has reordered.
  */
 export async function createStage(ctx: SessionContext, name: string, type: StageType) {
+  requireStageAdmin(ctx);
   const trimmed = name.trim();
   if (!trimmed) throw new Error('Stage name is required');
   const result = await db.$transaction(async (tx) => {
@@ -53,15 +60,18 @@ export async function createStage(ctx: SessionContext, name: string, type: Stage
  * concurrent add or reorder waits instead of colliding on @@unique([orgId, order]).
  */
 async function lockStages(tx: Prisma.TransactionClient, orgId: string) {
+  // The organization row also serializes concurrent creation in an empty pipeline.
+  await tx.$queryRaw`SELECT id FROM "Organization" WHERE id = ${orgId} FOR NO KEY UPDATE`;
   await tx.$queryRaw`SELECT id FROM "Stage" WHERE "orgId" = ${orgId} FOR NO KEY UPDATE`;
   return tx.stage.findMany({ where: { orgId }, orderBy: { order: 'asc' } });
 }
 
 export async function renameStage(ctx: SessionContext, stageId: string, name: string) {
+  requireStageAdmin(ctx);
   const trimmed = name.trim();
   if (!trimmed) throw new Error('Stage name is required');
   const result = await db.$transaction(async (tx) => {
-    const stage = await tx.stage.findFirst({ where: { id: stageId, orgId: ctx.orgId } });
+    const stage = (await lockStages(tx, ctx.orgId)).find((row) => row.id === stageId);
     if (!stage) throw new Error('Stage not found');
     if (stage.name === trimmed) return stage;
     const updated = await tx.stage.update({ where: { id: stage.id }, data: { name: trimmed } });
@@ -85,6 +95,7 @@ export async function renameStage(ctx: SessionContext, stageId: string, name: st
  * interview process whatever order arrives; within a group it's the caller's.
  */
 export async function setStageOrder(ctx: SessionContext, ids: string[]) {
+  requireStageAdmin(ctx);
   await db.$transaction(async (tx) => {
     const stages = await lockStages(tx, ctx.orgId);
     const byId = new Map(stages.map((s) => [s.id, s]));
@@ -99,13 +110,19 @@ export async function setStageOrder(ctx: SessionContext, ids: string[]) {
     // Through negative temporaries so @@unique([orgId, order]) never trips mid-way.
     for (const [i, s] of stages.entries()) await tx.stage.update({ where: { id: s.id }, data: { order: -1 - i } });
     for (const [order, s] of ordered.entries()) await tx.stage.update({ where: { id: s.id }, data: { order } });
+    await emitEvent(tx, {
+      orgId: ctx.orgId, ...actorOf(ctx), verb: 'stage.reordered',
+      subjectType: 'organization', subjectId: ctx.orgId,
+      payload: { from: stages.map(({ id }) => id), to: ordered.map(({ id }) => id) },
+    });
   });
   invalidateListMeta(ctx.orgId);
 }
 
 export async function deleteStage(ctx: SessionContext, stageId: string) {
+  requireStageAdmin(ctx);
   const result = await db.$transaction(async (tx) => {
-    const stage = await tx.stage.findFirst({ where: { id: stageId, orgId: ctx.orgId } });
+    const stage = (await lockStages(tx, ctx.orgId)).find((row) => row.id === stageId);
     if (!stage) throw new Error('Stage not found');
 
     const stageCount = await tx.stage.count({ where: { orgId: ctx.orgId } });
@@ -130,5 +147,63 @@ export async function deleteStage(ctx: SessionContext, stageId: string) {
     });
   });
   invalidateListMeta(ctx.orgId);
+  return result;
+}
+
+/** Configure only the selected, existing RGA agency. Stage IDs and references stay intact. */
+export async function reconcileRgaStages(ctx: SessionContext) {
+  requireStageAdmin(ctx);
+  if (!isRgaWorkspace(ctx.orgId)) throw new Error('O funil RGA não está habilitado para esta organização.');
+
+  const result = await db.$transaction(async (tx) => {
+    const current = await lockStages(tx, ctx.orgId);
+    const org = await tx.organization.findUnique({ where: { id: ctx.orgId }, select: { kind: true } });
+    if (org?.kind !== 'AGENCY') throw new Error('Selecione o cadastro existente da agência RGA.');
+
+    const official = RGA_STAGES.map(({ name, type, defaultName }) => {
+      const matches = current.filter((stage) => looseKey(stage.name) === looseKey(name));
+      if (!matches.length && defaultName) {
+        matches.push(...current.filter((stage) => stage.type === type && nameKey(stage.name) === nameKey(defaultName)));
+      }
+      if (matches.length > 1 || matches.some((stage) => stage.type !== type)) {
+        throw new Error(`Confira as etapas existentes antes de reconciliar “${name}”. Há nomes duplicados ou um tipo incompatível.`);
+      }
+      return { name, type, existing: matches[0] };
+    });
+    const matchedIds = new Set(official.flatMap(({ existing }) => existing ? [existing.id] : []));
+    const leads = current.filter((stage) => stage.type === 'LEAD');
+    const legacy = current.filter((stage) => stage.type !== 'LEAD' && !matchedIds.has(stage.id));
+    const ordered = [
+      ...leads.map((stage) => ({ name: stage.name, type: stage.type, existing: stage })),
+      ...official,
+      ...legacy.map((stage) => ({ name: stage.name, type: stage.type, existing: stage })),
+    ];
+
+    const changes = ordered.flatMap(({ name, type, existing }, order) =>
+      existing?.name === name && existing.order === order ? [] : [{
+        name, type, order,
+        ...(existing ? { previous: { name: existing.name, order: existing.order } } : {}),
+      }]);
+    if (!changes.length) return { changed: false, legacy: legacy.map((stage) => stage.name) };
+
+    const tempStart = Math.min(0, ...current.map((stage) => stage.order)) - current.length;
+    for (const [index, stage] of current.entries()) {
+      await tx.stage.update({ where: { id: stage.id }, data: { order: tempStart + index } });
+    }
+    for (const [order, { name, type, existing }] of ordered.entries()) {
+      const stage = existing
+        ? await tx.stage.update({ where: { id: existing.id }, data: { name, order } })
+        : await tx.stage.create({ data: { orgId: ctx.orgId, name, type, order } });
+      const change = changes.find((item) => item.order === order);
+      if (change) Object.assign(change, { id: stage.id });
+    }
+    await emitEvent(tx, {
+      orgId: ctx.orgId, ...actorOf(ctx), verb: 'stage.rga_pipeline_reconciled',
+      subjectType: 'organization', subjectId: ctx.orgId,
+      payload: { changes, legacyStageIds: legacy.map((stage) => stage.id) },
+    });
+    return { changed: true, legacy: legacy.map((stage) => stage.name) };
+  });
+  if (result.changed) invalidateListMeta(ctx.orgId);
   return result;
 }

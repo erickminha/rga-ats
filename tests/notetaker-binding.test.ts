@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hasDb } from './setup';
 import { candidate, createOrg } from './fixtures';
 import { startFakeMcp, type FakeMcp, type FakeTool } from './support/fake-mcp';
@@ -68,7 +68,9 @@ describe.skipIf(!hasDb)('binding a notetaker meeting to a person', () => {
   afterAll(async () => {
     await mcp?.close();
   });
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
+    vi.stubEnv('RGA_ALLOW_NOTETAKERS', 'true');
     meetings = [];
     mcp.calls.length = 0;
   });

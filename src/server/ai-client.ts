@@ -30,14 +30,16 @@ export function aiProvider(env: Env = process.env): AiProvider | null {
   if (read('AI_PROVIDER') === 'mock') return { kind: 'mock' };
   const raw = read('AI_SERVICE_URL');
   const token = read('AI_SERVICE_TOKEN');
-  if (!raw || !token) return null;
+  if (!raw || !token || read('RGA_ALLOW_EXTERNAL_AI') !== 'true') return null;
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
     return null;
   }
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+  if ((url.protocol !== 'https:' && !(url.protocol === 'http:'
+    && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))
+    || url.username || url.password || url.search || url.hash) return null;
   const provider = { kind: 'service' as const, url: `${url.origin}${url.pathname.replace(/\/+$/, '')}` };
   return Object.defineProperty(provider, 'token', { value: token, enumerable: false }) as AiProvider;
 }
@@ -60,7 +62,7 @@ export class AiUnavailableError extends Error {
 /** One log line for a failed call: the reason and status, never the material, the answer or the token. */
 export function logAiFailure(feature: string, error: unknown) {
   if (error instanceof AiUnavailableError) console.error(`[ai] ${feature} failed: ${error.reason}${error.status ? ` (${error.status})` : ''}`);
-  else console.error(`[ai] ${feature} failed`, error);
+  else console.error(`[ai] ${feature} failed`);
 }
 
 // ---------- The protocol (docs/ai-protocol.md) ----------
@@ -151,8 +153,7 @@ export async function runAiTask<T extends AiTask>(task: T, input: AiTasks[T]['in
   }
   const body = (await res.json().catch(() => null)) as { error?: { code?: unknown } } | null;
   if (res.status !== 200 || !body || typeof body !== 'object') {
-    const code = body?.error?.code;
-    throw new AiUnavailableError(typeof code === 'string' && /^[\w.-]{1,64}$/.test(code) ? code : `http_${res.status}`, res.status);
+    throw new AiUnavailableError(`http_${res.status}`, res.status);
   }
   return body as AiTasks[T]['output'];
 }

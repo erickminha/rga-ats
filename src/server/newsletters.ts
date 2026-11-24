@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import { readBrand } from '@/lib/brand';
 import type { SessionContext } from '@/lib/session';
-import { renderTemplate } from '@/server/email';
+import { emailDeliveryError, renderTemplate } from '@/server/email';
 import {
   renderNewsletterHtml,
   renderNewsletterText,
@@ -297,7 +297,7 @@ export async function processNewsletters(budgetMs = 40_000): Promise<{ sent: num
           await db.newsletterRecipient.update({ where: { id: r.id }, data: { status: 'SENT', sentAt: new Date() } });
           sent++;
         } catch (error) {
-          const message = error instanceof Error ? error.message.slice(0, 300) : 'send failed';
+          const message = emailDeliveryError(error);
           await db.newsletterRecipient.update({ where: { id: r.id }, data: { status: 'FAILED', error: message } });
         }
       }

@@ -244,6 +244,7 @@ model Contact {
   // attachments), so anonymization can delete them all.
   files          StoredFile[] @relation("ContactFiles")
   isAnonymized   Boolean   @default(false)
+  retentionHold  Boolean   @default(false)
   // Bulk email (newsletters): when they unsubscribed, and when their address
   // hard-bounced or they marked one as spam. Either keeps them off every
   // future send; emails about their own applications still go.
@@ -304,6 +305,8 @@ model Opportunity {
   ownerId         String?
   owner           User?             @relation("OpportunityOwner", fields: [ownerId], references: [id])
   confidential    Boolean           @default(false)
+  applicationResumeId String?
+  applicationResume StoredFile? @relation("ApplicationResume", fields: [applicationResumeId], references: [id], onDelete: SetNull)
   customFields    Json?
   // Snoozed candidates are hidden from the pipeline until this passes
   snoozedUntil    DateTime?
@@ -330,6 +333,7 @@ model Opportunity {
   @@index([orgId, createdAt]) // reports: created-in-range
   @@index([orgId, postingId])
   @@index([contactId])
+  @@index([applicationResumeId])
 }
 
 // ---------- Pipeline configuration ----------
@@ -993,6 +997,10 @@ model StoredFile {
   ocrConfidence Int? // Tesseract's mean word confidence, 0-100
   ocrError      String? // an error code or "<Name>: <message>", never text
 
+  deletePendingAt DateTime?
+  applicationResumes Opportunity[] @relation("ApplicationResume")
+  @@index([deletePendingAt])
+
   contacts      Contact[]      @relation("ContactResume")
   orgLogoOf     Organization[] @relation("OrgLogo")
   postingLogoOf Posting[]      @relation("PostingLogo")
@@ -1162,6 +1170,7 @@ model EmailMessage {
   scheduledAt   DateTime? // null = send immediately
   sentAt        DateTime?
   error         String?
+  deliveryClaimedAt DateTime?
   createdAt     DateTime     @default(now())
 
   @@index([orgId, status, scheduledAt])
@@ -1277,6 +1286,7 @@ model ShareLink {
   scope     String // 'candidate' | 'posting' | 'client'
   targetId  String // opportunityId, postingId, or clientCompanyId
   expiresAt DateTime
+  revokedAt DateTime?
   createdAt DateTime     @default(now())
 
   @@index([orgId, scope, targetId])

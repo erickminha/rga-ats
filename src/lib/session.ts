@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { unstable_cache, updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { hasRecruitingRole } from '@/lib/recruiting-role';
 import { db } from '@/lib/db';
 
 export type SessionContext = {
@@ -21,18 +22,32 @@ export function isAdmin(ctx: SessionContext): boolean {
   return ctx.accessRole === 'SUPER_ADMIN' || ctx.accessRole === 'ADMIN';
 }
 
+export function canManageRecruiting(ctx: SessionContext): boolean {
+  return hasRecruitingRole(ctx.accessRole) || (ctx.accessRole === 'API' && !!ctx.apiKeyId);
+}
+
+export function requireRecruitingAccess(ctx: SessionContext) {
+  if (!canManageRecruiting(ctx)) throw new Error('Seu perfil não pode gerenciar a operação de recrutamento.');
+}
+
 /** Per-request dedupe — layout and pages both call this. */
 export const getAuthSession = cache(async () => auth());
 
 /** Resolve the signed-in user's tenant context, or redirect to login. */
-export const requireSession = cache(async (): Promise<SessionContext> => {
+export const requireAuthenticatedSession = cache(async (): Promise<SessionContext> => {
   const session = await getAuthSession();
   if (!session?.user?.id || !session.user.orgId) redirect('/login');
   return {
     userId: session.user.id,
     orgId: session.user.orgId,
-    accessRole: String(session.user.accessRole ?? 'TEAM_MEMBER'),
+    accessRole: String(session.user.accessRole ?? ''),
   };
+});
+
+export const requireSession = cache(async (): Promise<SessionContext> => {
+  const ctx = await requireAuthenticatedSession();
+  if (!canManageRecruiting(ctx)) redirect('/interviews');
+  return ctx;
 });
 
 /**
@@ -45,7 +60,7 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
   return {
     userId: session.user.id,
     orgId: session.user.orgId,
-    accessRole: String(session.user.accessRole ?? 'TEAM_MEMBER'),
+    accessRole: String(session.user.accessRole ?? ''),
   };
 });
 

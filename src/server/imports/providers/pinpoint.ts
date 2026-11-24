@@ -1019,14 +1019,16 @@ export function createPinpointProvider(pageSizes: Partial<PinpointPageSizes> = {
         const outcomeAt = status === 'archived' ? toDate(a.rejected_at) : status === 'hired' ? toDate(a.hired_at) : null;
         // A hire that left the application in its offer stage entered that stage before the hire.
         const beforeOutcome = status === 'hired' && !!kind && kind !== 'hired';
-        const reachedAt = beforeOutcome ? (enteredCurrent ?? outcomeAt) : (outcomeAt ?? enteredCurrent);
+        const reachedAt = beforeOutcome
+          ? enteredCurrent && (!outcomeAt || enteredCurrent < outcomeAt) ? enteredCurrent : null
+          : outcomeAt ?? enteredCurrent;
 
         // Pinpoint keeps no moves: applied at created_at, then the stage it sits in.
         let history: StageHistoryEntry[] = entry && created ? [{ stage: refOf(entry), at: created }] : [];
         if (stage && stage.externalId !== history[0]?.stage.externalId) {
           history = reachedAt
             ? [...history, { stage, at: created && reachedAt < created ? created : reachedAt }]
-            : []; // can't place the current stage in time
+            : history; // preserve the recorded entry without guessing a stage date
         }
 
         const reasons = tagNames(a.tags, isRejectionTag);

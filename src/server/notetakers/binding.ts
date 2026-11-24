@@ -1,5 +1,6 @@
 import type { Prisma, TranscriptConnection } from '@prisma/client';
 import type { FetchLike } from '@modelcontextprotocol/client';
+import { notetakersAllowed } from '@/server/privacy-options';
 import { db } from '@/lib/db';
 import type { SessionContext } from '@/lib/session';
 import { notetakerProvider } from '@/lib/notetaker-providers';
@@ -33,7 +34,7 @@ export function usableConnectionWhere(ctx: Pick<SessionContext, 'orgId'> & { use
 
 /** Whether the person has a notetaker to pick recordings from. */
 export async function hasUsableNotetaker(ctx: SessionContext): Promise<boolean> {
-  if (!ctx.userId) return false;
+  if (!ctx.userId || !notetakersAllowed()) return false;
   return (await db.transcriptConnection.count({ where: usableConnectionWhere({ orgId: ctx.orgId, userId: ctx.userId }) })) > 0;
 }
 

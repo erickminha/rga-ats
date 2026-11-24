@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Building2, Plus, Search } from 'lucide-react';
 import { appLocale } from '@/lib/i18n';
 import { maskCnpj } from '@/lib/client-company';
-import { isAdmin, requireSession } from '@/lib/session';
+import { requireSession } from '@/lib/session';
 import { firstParams, type SearchParams } from '@/lib/utils';
 import { canViewClientCompanies, listClientCompanies } from '@/server/client-companies';
 import { EmptyState } from '@/components/empty-state';
@@ -30,11 +30,10 @@ export default async function ClientsPage({ searchParams }: { searchParams: Sear
     <>
       <PageHeader title="Empresas clientes" subtitle="Consulte os clientes da agência e as vagas vinculadas." />
       <div className="mx-6 mt-4 grid max-w-5xl gap-5 pb-8">
-        {isAdmin(ctx) ? (
-          <Link href="/clients/new" className={buttonClass({ variant: 'primary', className: 'justify-self-start ring-2 ring-[#1581c9] ring-offset-2' })}>
-            <Plus /> Cadastrar empresa
-          </Link>
-        ) : null}
+        <Link href="/clients/new" className={buttonClass({ variant: 'primary', className: 'justify-self-start ring-2 ring-[#1581c9] ring-offset-2' })}>
+          <Plus /> Cadastrar empresa
+        </Link>
+
         <form action="/clients" method="get" className={`${surface} grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_auto]`}>
           <label className="grid gap-1.5 text-sm">
             Buscar empresa

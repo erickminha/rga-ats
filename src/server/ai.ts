@@ -1,6 +1,7 @@
+import { lockIdentifiableContact } from '@/server/contact-lock';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
-import type { SessionContext } from '@/lib/session';
+import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
 import { aiConfigured, AiUnavailableError, runAiTask, type EvaluationResult } from '@/server/ai-client';
 import {
   cleanCriteria,
@@ -123,6 +124,7 @@ function chunkAround(text: string, terms: string[], radius = 400): string {
  * this same function when the corpus outgrows keyword search.
  */
 export async function askCorpus(ctx: SessionContext, question: string): Promise<CorpusAnswer> {
+  requireRecruitingAccess(ctx);
   if (!aiConfigured()) throw new AiUnavailableError('not_configured');
   const terms = keywords(question);
   if (!terms.length) return { answer: 'Ask a more specific question.', sources: [] };
@@ -202,10 +204,11 @@ export async function ensurePostingCriteria(ctx: SessionContext, postingId: stri
 }
 
 export async function evaluateOpportunity(ctx: SessionContext, opportunityId: string) {
+  requireRecruitingAccess(ctx);
   if (!aiConfigured()) throw new AiUnavailableError('not_configured');
 
   const opportunity = await db.opportunity.findFirst({
-    where: { id: opportunityId, orgId: ctx.orgId },
+    where: { id: opportunityId, orgId: ctx.orgId, contact: { isAnonymized: false } },
     include: {
       contact: true,
       posting: true,
@@ -247,6 +250,7 @@ export async function evaluateOpportunity(ctx: SessionContext, opportunityId: st
   const matchScore = computeMatchScore(scored);
 
   return db.$transaction(async (tx) => {
+    if (!await lockIdentifiableContact(tx, ctx.orgId, contact.id)) throw new Error('Cadastro anonimizado.');
     const evaluation = await tx.aiEvaluation.create({
       data: {
         orgId: ctx.orgId,

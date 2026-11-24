@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { Prisma, type Origin, type Stage, type StageType } from '@prisma/client';
+import { isSingleWorkspace, WorkspaceSignupClosedError } from '@/server/rga-workspace';
 import { db } from '@/lib/db';
 import { DEFAULT_TEMPLATES } from '@/server/email';
 import { DEFAULT_STAGES, DEFAULT_ARCHIVE_REASONS } from '@/server/org-defaults';
@@ -21,7 +22,7 @@ import { demoWorkSeeded, seedDemoWork } from '@/server/demo-work';
 export const DEMO_EMAIL = 'demo@source.demo';
 
 export function demoEnabled(): boolean {
-  return process.env.DEMO_MODE === '1' || process.env.NODE_ENV === 'development';
+  return !isSingleWorkspace() && (process.env.DEMO_MODE === '1' || process.env.NODE_ENV === 'development');
 }
 
 /**
@@ -29,6 +30,7 @@ export function demoEnabled(): boolean {
  * and return credentials for an immediate signIn.
  */
 export async function ensureDemoOrg(): Promise<{ email: string; password: string }> {
+  if (isSingleWorkspace()) throw new WorkspaceSignupClosedError();
   const password = randomBytes(24).toString('base64url');
   // Cost 4, not 12: bcrypt's work factor protects guessable human passwords.
   // This one is 192 random bits, rotated on every demo login, so extra rounds

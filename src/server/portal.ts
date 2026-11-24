@@ -1,10 +1,14 @@
+import { capabilityPath } from '@/lib/capability-links';
+import { reserveRequest } from '@/server/request-limit';
+import { talentNetworkAllowed } from '@/server/privacy-options';
+import { emailPublicOrigin } from '@/lib/base-url';
 import type { StageType } from '@prisma/client';
 import { db } from '@/lib/db';
 import { emitEvent } from '@/server/events';
 import { sendEmail } from '@/server/email';
 import { candidate } from '@/lib/i18n/pt-BR/candidate';
 import { publicClientName } from '@/lib/public-careers';
-import { createPortalToken, verifyPortalToken } from '@/lib/portal-token';
+import { createPortalToken, portalEmailProof, verifyPortalToken } from '@/lib/portal-token';
 
 /**
  * Candidate portal: magic-link status tracking + consent management.
@@ -36,16 +40,20 @@ export function candidateStatus(
 
 /** Email a magic link. Silent when no contact matches — no email enumeration. */
 export async function requestPortalLink(orgSlug: string, email: string, baseUrl: string) {
+  const normalized = email.toLowerCase().trim();
+  if (normalized.length > 254 || orgSlug.length > 150 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalized)) return;
+  if (!await reserveRequest('portal-link', [orgSlug, normalized], 5, 60 * 60_000)) return;
+  const origin = process.env.NODE_ENV === 'production' || process.env.K_SERVICE ? emailPublicOrigin() : baseUrl;
+  if (!origin) return;
   const org = await db.organization.findUnique({ where: { slug: orgSlug } });
   if (!org) return;
-  const normalized = email.toLowerCase().trim();
   const contact = await db.contact.findFirst({
     where: { orgId: org.id, emails: { has: normalized }, isAnonymized: false, opportunities: { some: { orgId: org.id, origin: 'APPLIED', confidential: false } } },
   });
   if (!contact) return;
 
-  const token = createPortalToken(contact.id, org.id);
-  const link = new URL(`/portal/${token}`, baseUrl).href;
+  const token = createPortalToken(contact.id, org.id, 14, normalized);
+  const link = new URL(capabilityPath('portal', token), origin).href;
   const mail = candidate.linkEmail(org.name, contact.name.split(' ')[0], link);
   await sendEmail({
     orgId: org.id,
@@ -76,7 +84,7 @@ export async function getPortalData(token: string) {
       consents: { orderBy: { grantedAt: 'desc' } },
     },
   });
-  if (!contact) return null;
+  if (!contact || (payload.emailProof && !contact.emails.some((email) => portalEmailProof(email) === payload.emailProof))) return null;
 
   const networkConsent = contact.consents.find(
     (c) => c.orgId === payload.orgId && c.purpose === 'NETWORK_DISCOVERY' && !c.withdrawnAt,
@@ -93,34 +101,39 @@ export async function getPortalData(token: string) {
       status: candidateStatus(opp.status, opp.stage.type, opp.archiveReason?.countsAsRejection ?? null),
     })),
     networkOptIn: !!networkConsent,
-    networkEnabled: contact.org.talentNetworkEnabled,
+    networkEnabled: !!payload.emailProof && talentNetworkAllowed() && contact.org.talentNetworkEnabled,
+    verifiedPreferences: !!payload.emailProof,
+    profileStorage: contact.consents.some((consent) => consent.orgId === payload.orgId
+      && consent.purpose === 'PROFILE_STORAGE' && !consent.withdrawnAt),
   };
 }
 
 /** Grant or withdraw NETWORK_DISCOVERY consent — candidate-initiated via portal token. */
-export async function setNetworkConsent(token: string, granted: boolean) {
+export async function setPortalPreference(token: string, granted: boolean, profileStorage = false) {
+  const purpose = profileStorage ? 'PROFILE_STORAGE' as const : 'NETWORK_DISCOVERY' as const;
   const payload = verifyPortalToken(token);
-  if (!payload) throw new Error('Invalid or expired link');
+  if (!payload?.emailProof) throw new Error('Invalid or expired link');
 
   return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Contact" WHERE id = ${payload.contactId} AND "orgId" = ${payload.orgId} FOR NO KEY UPDATE`;
     const contact = await tx.contact.findFirst({
       where: { id: payload.contactId, orgId: payload.orgId, isAnonymized: false },
-      select: { id: true, org: { select: { talentNetworkEnabled: true } } },
+      select: { id: true, emails: true, org: { select: { talentNetworkEnabled: true } } },
     });
-    if (!contact) throw new Error('Not found');
+    if (!contact || !contact.emails.some((email) => portalEmailProof(email) === payload.emailProof)) throw new Error('Not found');
 
     const active = await tx.consentRecord.findFirst({
       where: {
         contactId: contact.id,
         orgId: payload.orgId,
-        purpose: 'NETWORK_DISCOVERY',
+        purpose,
         withdrawnAt: null,
       },
     });
 
-    if (granted && !active && contact.org.talentNetworkEnabled) {
+    if (granted && !active && (profileStorage || (talentNetworkAllowed() && contact.org.talentNetworkEnabled))) {
       await tx.consentRecord.create({
-        data: { orgId: payload.orgId, contactId: contact.id, purpose: 'NETWORK_DISCOVERY' },
+        data: { orgId: payload.orgId, contactId: contact.id, purpose },
       });
       await emitEvent(tx, {
         orgId: payload.orgId,
@@ -128,12 +141,12 @@ export async function setNetworkConsent(token: string, granted: boolean) {
         verb: 'consent.granted',
         subjectType: 'contact',
         subjectId: contact.id,
-        payload: { purpose: 'NETWORK_DISCOVERY' },
+        payload: { purpose },
       });
     }
     if (!granted && active) {
-      await tx.consentRecord.update({
-        where: { id: active.id },
+      await tx.consentRecord.updateMany({
+        where: { orgId: payload.orgId, contactId: contact.id, purpose, withdrawnAt: null },
         data: { withdrawnAt: new Date() },
       });
       await emitEvent(tx, {
@@ -142,8 +155,10 @@ export async function setNetworkConsent(token: string, granted: boolean) {
         verb: 'consent.withdrawn',
         subjectType: 'contact',
         subjectId: contact.id,
-        payload: { purpose: 'NETWORK_DISCOVERY' },
+        payload: { purpose },
       });
     }
   });
 }
+
+export const setNetworkConsent = (token: string, granted: boolean) => setPortalPreference(token, granted);

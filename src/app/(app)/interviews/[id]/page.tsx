@@ -2,7 +2,8 @@ import { CandidateLink } from '@/components/candidate-link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { db } from '@/lib/db';
-import { requireSession } from '@/lib/session';
+import { interviewAccess } from '@/server/interview-access';
+import { canManageRecruiting, requireAuthenticatedSession } from '@/lib/session';
 import { FeedbackSection } from '@/components/feedback-section';
 import { badge, sectionLabel, surface } from '@/components/form-controls';
 import { LocalTime } from '@/components/local-time';
@@ -22,20 +23,22 @@ const STATE_BADGES: Record<string, { label: string; tone: Tone }> = {
  * Respects the independent-scorecards setting like the profile does.
  */
 export default async function InterviewKitPage({ params }: { params: Promise<{ id: string }> }) {
-  const ctx = await requireSession();
+  const ctx = await requireAuthenticatedSession();
+  const operator = canManageRecruiting(ctx);
   const { id } = await params;
 
   const interview = await db.interview.findFirst({
-    where: { id, orgId: ctx.orgId },
+    where: { ...interviewAccess(ctx), id },
     include: {
       panelists: { orderBy: { name: 'asc' } },
       opportunity: {
         include: {
           contact: { include: { resumeFile: true } },
+          applicationResume: true,
           posting: true,
           stage: true,
-          feedback: { orderBy: { createdAt: 'desc' }, include: { author: true, interview: true } },
-          notes: { orderBy: { createdAt: 'desc' }, take: 5, include: { author: true } },
+          feedback: { where: operator ? undefined : { interviewId: id, authorId: ctx.userId! }, orderBy: { createdAt: 'desc' }, include: { author: true, interview: true } },
+          notes: { where: operator ? undefined : { id: { in: [] } }, orderBy: { createdAt: 'desc' }, take: 5, include: { author: true } },
         },
       },
     },
@@ -55,6 +58,8 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
   const { opportunity } = interview;
   const state = STATE_BADGES[interview.state] ?? { label: interview.state, tone: 'neutral' as Tone };
   const { contact } = opportunity;
+  const resume = [opportunity.applicationResume, contact.resumeFile]
+    .find((file) => file?.orgId === ctx.orgId && !file.deletePendingAt);
   const mustSubmitFirst =
     !!org?.hideFeedbackUntilSubmitted &&
     !opportunity.feedback.some((f) => f.authorId === ctx.userId);
@@ -64,12 +69,12 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-6">
-      <CandidateLink
+      {operator ? <CandidateLink
         id={opportunity.id}
         className={buttonClass({ variant: 'ghost', size: 'sm', className: '-ml-3 mb-4' })}
       >
         <ArrowLeft /> Candidate profile
-      </CandidateLink>
+      </CandidateLink> : <a href="/interviews" className="mb-4 inline-block underline">Minhas entrevistas</a>}
 
       <div className={`${surface} p-5`}>
         <div className="flex flex-wrap items-center gap-2">
@@ -93,13 +98,13 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
           <div className="min-w-0">
             <p className="text-md font-medium text-ink">{contact.name}</p>
             <p className="mt-0.5 text-sm text-ink-2">
-              {[contact.headline, opportunity.posting?.title, `currently in ${opportunity.stage.name}`]
+              {[contact.headline, opportunity.posting?.title, operator ? `currently in ${opportunity.stage.name}` : null]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
-            {contact.resumeFile ? (
+            {resume ? (
               <a
-                href={`/api/files/${contact.resumeFile.id}`}
+                href={`/api/files/${resume.id}`}
                 target="_blank"
                 className={buttonClass({ variant: 'tonal', size: 'sm', className: 'mt-3' })}
               >
@@ -122,7 +127,7 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
           </div>
         ) : null}
 
-        {opportunity.notes.length ? (
+        {opportunity.notes?.length ? (
           <div className="mt-6">
             <p className={`${sectionLabel} mb-2`}>Recent notes</p>
             <div className="flex flex-col gap-2">

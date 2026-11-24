@@ -2,12 +2,14 @@
 
 import { groups, logo } from '@/lib/i18n/pt-BR/organization';
 import { revalidatePath } from 'next/cache';
+import { lockPostingForEdit, mayEditPostingDetails } from '@/server/posting-policy';
 import { storeFile } from '@/server/storage';
 import { redirect } from 'next/navigation';
-import { Prisma, type OrgKind, type StageType } from '@prisma/client';
+import { AccessRole, Prisma, type OrgKind, type StageType } from '@prisma/client';
 import { isDefaultBrand, readBrand } from '@/lib/brand';
 import { db } from '@/lib/db';
-import { requireSession, revalidateOrgNav } from '@/lib/session';
+import { EEOEnabled, talentNetworkAllowed } from '@/server/privacy-options';
+import { requireRecruitingAccess, requireSession, revalidateOrgNav } from '@/lib/session';
 import { writeOrgNavCookie } from '@/lib/org-nav-cookie';
 import {
   addGroups,
@@ -21,7 +23,7 @@ import {
 import { cleanNames, namesFromRows } from '@/lib/names';
 import { providerMeta } from '@/lib/import-providers';
 import { readSpreadsheet } from '@/server/spreadsheet';
-import { createStage, deleteStage, renameStage, setStageOrder } from '@/server/stages';
+import { createStage, deleteStage, reconcileRgaStages, renameStage, setStageOrder } from '@/server/stages';
 import {
   createTemplate,
   deleteTemplate,
@@ -29,8 +31,7 @@ import {
   updateTemplate,
 } from '@/server/email';
 import { createApiKey, revokeApiKey } from '@/server/api-keys';
-import { inviteUser, setUserActive, setUserRole } from '@/server/team';
-import type { AccessRole } from '@prisma/client';
+import { inviteUser, setUserActive, setUserRole, TeamError } from '@/server/team';
 import {
   createWebhookEndpoint,
   deleteWebhookEndpoint,
@@ -131,6 +132,17 @@ export async function removeGroupAction(kind: 'department' | 'client', id: strin
   refresh();
 }
 
+export async function reconcileRgaStagesAction() {
+  const ctx = await requireAdmin();
+  try {
+    const result = await reconcileRgaStages(ctx);
+    if (result.changed) refresh();
+    return result;
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Não foi possível configurar o funil RGA.' };
+  }
+}
+
 export async function createStageAction(name: string, type: string): Promise<{ error?: string }> {
   const ctx = await requireAdmin();
   const trimmed = String(name ?? '').trim();
@@ -170,7 +182,6 @@ export async function reorderStagesAction(ids: string[]): Promise<{ error?: stri
   return {};
 }
 
-const ROLE_VALUES = ['ADMIN', 'TEAM_MEMBER', 'LIMITED_TEAM_MEMBER', 'INTERVIEWER'] as const;
 const FIELD_TYPES = ['TEXT', 'NUMBER', 'DATE', 'SELECT'] as const;
 
 export async function createCustomFieldAction(
@@ -219,6 +230,7 @@ export async function deleteCustomFieldAction(defId: string) {
 export async function setCollectEeoAction(enabled: boolean) {
   const ctx = await requireSession();
   if (ctx.accessRole !== 'SUPER_ADMIN' && ctx.accessRole !== 'ADMIN') return;
+  if (enabled && !EEOEnabled()) return;
   await db.organization.update({ where: { id: ctx.orgId }, data: { collectEeo: enabled } });
   // No revalidatePath here: callers router.refresh() after the action
   // resolves. revalidatePath inside the action trips a Next 15 regression
@@ -232,7 +244,7 @@ export async function inviteUserAction(
   role: string,
 ): Promise<{ tempPassword?: string; error?: string }> {
   const ctx = await requireSession();
-  if (!ROLE_VALUES.includes(role as never)) return { error: 'Perfil de acesso inválido.' };
+  if (!Object.hasOwn(AccessRole, role)) return { error: 'Perfil de acesso inválido.' };
   try {
     const { tempPassword } = await inviteUser(ctx, {
       name,
@@ -242,21 +254,32 @@ export async function inviteUserAction(
     revalidatePath('/settings');
     return { tempPassword };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Failed' };
+    return { error: error instanceof TeamError ? error.message : 'Não foi possível convidar a pessoa.' };
   }
 }
 
-export async function setUserRoleAction(userId: string, role: string) {
+export async function setUserRoleAction(userId: string, role: string): Promise<{ error?: string }> {
   const ctx = await requireSession();
-  if (!ROLE_VALUES.includes(role as never)) return;
-  await setUserRole(ctx, userId, role as AccessRole);
-  revalidatePath('/settings');
+  if (!Object.hasOwn(AccessRole, role)) return { error: 'Perfil de acesso inválido.' };
+  try {
+    await setUserRole(ctx, userId, role as AccessRole);
+    revalidatePath('/settings');
+    return {};
+  } catch (error) {
+    return { error: error instanceof TeamError ? error.message : 'Não foi possível alterar o perfil.' };
+  }
 }
 
-export async function setUserActiveAction(userId: string, active: boolean) {
+export async function setUserActiveAction(userId: string, active: boolean): Promise<{ error?: string }> {
   const ctx = await requireSession();
-  await setUserActive(ctx, userId, active);
-  revalidatePath('/settings');
+  if (typeof active !== 'boolean') return { error: 'Situação inválida.' };
+  try {
+    await setUserActive(ctx, userId, active);
+    revalidatePath('/settings');
+    return {};
+  } catch (error) {
+    return { error: error instanceof TeamError ? error.message : 'Não foi possível alterar a situação da conta.' };
+  }
 }
 
 export async function saveRetentionAction(formData: FormData) {
@@ -282,6 +305,7 @@ export async function setFeedbackVisibilityAction(enabled: boolean) {
 
 export async function setTalentNetworkAction(enabled: boolean) {
   const ctx = await requireAdmin();
+  if (enabled && !talentNetworkAllowed()) return;
   await db.organization.update({
     where: { id: ctx.orgId },
     data: { talentNetworkEnabled: enabled },
@@ -438,21 +462,29 @@ export async function saveBrandKitAction(input: unknown) {
 
 export async function uploadPostingLogoAction(postingId: string, formData: FormData) {
   const ctx = await requireSession();
-  const posting = await db.posting.findFirst({ where: { id: postingId, orgId: ctx.orgId } });
-  if (!posting) throw new Error('Posting not found.');
+  requireRecruitingAccess(ctx);
   const file = formData.get('logo');
   if (!(file instanceof File) || file.size === 0) return;
-  const stored = await storeLogo(ctx.orgId, file);
-  await db.posting.update({ where: { id: posting.id }, data: { logoFileId: stored.id } });
-  revalidatePath(`/postings/${posting.id}`);
+  await savePostingLogo(ctx, postingId, file);
 }
 
 export async function removePostingLogoAction(postingId: string) {
   const ctx = await requireSession();
-  const posting = await db.posting.findFirst({ where: { id: postingId, orgId: ctx.orgId } });
-  if (!posting) throw new Error('Posting not found.');
-  await db.posting.update({ where: { id: posting.id }, data: { logoFileId: null } });
-  revalidatePath(`/postings/${posting.id}`);
+  requireRecruitingAccess(ctx);
+  await savePostingLogo(ctx, postingId, null);
+}
+
+async function savePostingLogo(ctx: Awaited<ReturnType<typeof requireSession>>, postingId: string, file: File | null) {
+  await db.$transaction(async (tx) => {
+    const posting = await lockPostingForEdit(tx, ctx, postingId);
+    if (!posting) throw new Error('Vaga não encontrada.');
+    if (!mayEditPostingDetails(ctx, posting.state, posting.org.requirePostingApproval)) {
+      throw new Error('Somente administradores podem editar vagas publicadas quando a aprovação está ativa.');
+    }
+    const logo = file ? await storeLogo(ctx.orgId, file) : null;
+    await tx.posting.update({ where: { id: posting.id }, data: { logoFileId: logo?.id ?? null } });
+  });
+  revalidatePath(`/postings/${postingId}`);
 }
 
 export async function setRequirePostingApprovalAction(enabled: boolean) {

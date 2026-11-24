@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { appLocale } from '@/lib/i18n';
 import { companyFields, maskCnpj, maskPhone, maskPostalCode, postingStates } from '@/lib/client-company';
-import { isAdmin, requireSession } from '@/lib/session';
+import { requireSession } from '@/lib/session';
 import { firstParams, type SearchParams } from '@/lib/utils';
 import { canViewClientCompanies, clientPostingHistory, getClientCompany } from '@/server/client-companies';
 import { CommercialContactForm } from '@/components/client-company-form';
@@ -23,7 +23,6 @@ export default async function ClientDetailPage({ params, searchParams }: {
   if (!client) notFound();
   const { page } = await firstParams(searchParams);
   const history = await clientPostingHistory(ctx, client.id, page);
-  const admin = isAdmin(ctx);
   const clientPath = `/clients/${client.id}`;
   const rows = [
     ['legalName', client.legalName], ['cnpj', client.cnpj && maskCnpj(client.cnpj)],
@@ -45,7 +44,7 @@ export default async function ClientDetailPage({ params, searchParams }: {
         </div>
         <div className="flex flex-wrap gap-2">
           {client.active ? <Link href={`/postings/new?client=${encodeURIComponent(client.id)}`} className={buttonClass({ variant: 'tonal' })}>Criar vaga vinculada</Link> : null}
-          {admin ? <Link href={clientPath + '/edit'} className={buttonClass({ variant: 'tonal' })}>Editar empresa</Link> : null}
+          <Link href={clientPath + '/edit'} className={buttonClass({ variant: 'tonal' })}>Editar empresa</Link>
         </div>
       </header>
       <section aria-labelledby="client-data" className={`${surface} p-4 sm:p-5`}>
@@ -70,16 +69,16 @@ export default async function ClientDetailPage({ params, searchParams }: {
                 <p className="text-xs text-ink-2">
                   {[contact.role, contact.phone && maskPhone(contact.phone), contact.whatsapp && `WhatsApp: ${maskPhone(contact.whatsapp)}`, contact.email].filter(Boolean).join(' · ')}
                 </p>
-                {admin ? <details className="mt-2"><summary className="cursor-pointer text-sm underline">Editar contato de {contact.name}</summary>
+                <details className="mt-2"><summary className="cursor-pointer text-sm underline">Editar contato de {contact.name}</summary>
                   <CommercialContactForm clientId={client.id} contact={contact} />
-                </details> : null}
+                </details>
               </li>
             ))}
           </ul>
         ) : <p className="text-sm text-ink-2">Nenhum contato comercial cadastrado.</p>}
-        {admin ? <details className="mt-3"><summary className="cursor-pointer text-sm underline">Adicionar contato comercial</summary>
+        <details className="mt-3"><summary className="cursor-pointer text-sm underline">Adicionar contato comercial</summary>
           <CommercialContactForm clientId={client.id} />
-        </details> : null}
+        </details>
       </section>
       <section aria-labelledby="client-postings" className={`${surface} grid gap-3 p-4 sm:p-5`}>
         <h2 id="client-postings" className="text-md font-medium">Histórico de vagas</h2>

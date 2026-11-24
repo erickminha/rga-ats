@@ -32,7 +32,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           notes: { select: { body: true, createdAt: true } },
           feedback: { select: { overallRating: true, summary: true, createdAt: true } },
           interviews: { select: { title: true, startAt: true, state: true } },
-          offers: true,
+          applicationResume: { select: fileFields },
+          offers: { omit: { token: true } },
           transcripts: { select: { title: true, content: true, source: true, createdAt: true } },
         },
       },
@@ -54,6 +55,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           { subjectType: 'opportunity', subjectId: { in: contact.opportunities.map((o) => o.id) } },
         ],
       },
+      select: { verb: true, subjectType: true, subjectId: true, occurredAt: true },
       orderBy: { occurredAt: 'asc' },
     }),
   ]);
@@ -63,6 +65,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     {
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'private, no-store',
         'Content-Disposition': `attachment; filename="sar-${contact.id}.json"`,
       },
     },

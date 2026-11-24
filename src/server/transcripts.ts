@@ -1,3 +1,4 @@
+import { lockIdentifiableContact } from '@/server/contact-lock';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import type { SessionContext } from '@/lib/session';
@@ -39,7 +40,7 @@ export async function addTranscriptTx(tx: Prisma.TransactionClient, ctx: Session
     where: { id: input.opportunityId, orgId: ctx.orgId },
     include: { contact: true },
   });
-  if (!opportunity) throw new Error('Opportunity not found');
+  if (!opportunity || !await lockIdentifiableContact(tx, ctx.orgId, opportunity.contactId)) throw new Error('Opportunity not found');
   if (input.interviewId) {
     const interview = await tx.interview.findFirst({
       where: { id: input.interviewId, orgId: ctx.orgId, opportunityId: opportunity.id },

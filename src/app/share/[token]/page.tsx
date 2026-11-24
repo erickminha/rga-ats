@@ -2,14 +2,14 @@ import { appLocale } from '@/lib/i18n';
 import { notFound } from 'next/navigation';
 import { PoweredBySource } from '@/components/powered-by';
 import { db } from '@/lib/db';
-import { resolveShare } from '@/server/share-links';
+import { resolveShare, shareableOpportunity, shareablePosting } from '@/server/share-links';
 import { ensureSamplePresentation, SAMPLE_PRESENTATION_CODE } from '@/server/sample-boards';
 
 /** Share links are for the people they're sent to, never search results. */
+export const dynamic = 'force-dynamic';
 export const metadata = { robots: { index: false, follow: false } };
 import { CandidatePresentation } from '@/components/candidate-presentation';
 import { sectionLabel } from '@/components/form-controls';
-import { Badge } from '@/components/ui/primitives';
 import { DitherBar } from '@/components/ui/dither';
 
 /**
@@ -39,10 +39,14 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     );
   }
 
+  if (payload.scope === 'client' && !await db.clientCompany.findFirst({
+    where: { id: payload.id, orgId: org.id, active: true }, select: { id: true },
+  })) notFound();
+
   const postingWhere =
     payload.scope === 'posting' ? { id: payload.id } : { clientCompanyId: payload.id };
   const postings = await db.posting.findMany({
-    where: { orgId: org.id, ...postingWhere },
+    where: { orgId: org.id, ...shareablePosting, ...postingWhere },
     include: { clientCompany: { select: { name: true } } },
     orderBy: { createdAt: 'desc' },
   });
@@ -54,9 +58,8 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   const [stages, opportunities] = await Promise.all([
     db.stage.findMany({ where: { orgId: org.id }, orderBy: { order: 'asc' } }),
     db.opportunity.findMany({
-      where: { orgId: org.id, postingId: { in: postingIds } },
+      where: { ...shareableOpportunity(org.id), postingId: { in: postingIds } },
       include: {
-        contact: { select: { name: true } },
         stage: { select: { name: true, order: true } },
         posting: { select: { title: true } },
         interviews: { select: { state: true } },
@@ -82,8 +85,6 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     { label: 'Entrevistas concluídas', value: interviewsDone },
     { label: 'Contratados', value: hired.length },
   ];
-
-  const daysIn = (d: Date) => Math.max(0, Math.floor((Date.now() - d.getTime()) / 86_400_000));
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
@@ -118,39 +119,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
         </section>
       ) : null}
 
-      <section className="mt-8 overflow-hidden rounded-card bg-surface">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-line text-left">
-              {['Candidato', ...(postings.length > 1 ? ['Vaga'] : []), 'Etapa', 'Dias em processo'].map((h) => (
-                <th key={h} className="px-4 py-3 text-xs font-medium text-ink-2">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {opportunities.map((o) => (
-              <tr key={o.id} className="border-b border-line last:border-0">
-                <td className="px-4 py-3 font-medium">{o.contact.name}</td>
-                {postings.length > 1 ? (
-                  <td className="px-4 py-3 text-ink-2">{o.posting?.title}</td>
-                ) : null}
-                <td className="px-4 py-3">
-                  <Badge
-                    tone={o.status === 'HIRED' ? 'positive' : o.status === 'ARCHIVED' ? 'neutral' : undefined}
-                  >
-                    {o.status === 'HIRED' ? 'Contratado' : o.status === 'ARCHIVED' ? 'Fora do processo' : o.stage.name}
-                  </Badge>
-                </td>
-                <td className="px-4 py-3 text-xs tabular-nums text-ink-2">
-                  {daysIn(o.createdAt)}d
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+
 
       <div className="mt-8 flex justify-center">
         <PoweredBySource />

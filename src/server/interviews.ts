@@ -1,9 +1,10 @@
+import { lockIdentifiableContact } from '@/server/contact-lock';
 import type { InterviewState } from '@prisma/client';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import { buildOpportunityVars, sendEmail } from '@/server/email';
 import { buildInterviewIcs } from '@/server/ics';
-import type { SessionContext } from '@/lib/session';
+import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
 
 export type ScheduleInterviewInput = {
   opportunityId: string;
@@ -17,12 +18,13 @@ export type ScheduleInterviewInput = {
 };
 
 export async function scheduleInterview(ctx: SessionContext, input: ScheduleInterviewInput) {
+  requireRecruitingAccess(ctx);
   const interview = await db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
       where: { id: input.opportunityId, orgId: ctx.orgId },
       include: { contact: true },
     });
-    if (!opportunity) throw new Error('Opportunity not found');
+    if (!opportunity || !await lockIdentifiableContact(tx, ctx.orgId, opportunity.contactId)) throw new Error('Opportunity not found');
 
     const panelists = await tx.user.findMany({
       where: { id: { in: input.panelistIds }, orgId: ctx.orgId },
@@ -137,6 +139,7 @@ export async function createPlanStep(
   ctx: SessionContext,
   input: { postingId: string; title: string; durationMins: number; focusAreas: string[] },
 ) {
+  requireRecruitingAccess(ctx);
   const posting = await db.posting.findFirst({
     where: { id: input.postingId, orgId: ctx.orgId },
   });
@@ -158,6 +161,7 @@ export async function createPlanStep(
 }
 
 export async function deletePlanStep(ctx: SessionContext, stepId: string) {
+  requireRecruitingAccess(ctx);
   await db.interviewPlanStep.deleteMany({ where: { id: stepId, orgId: ctx.orgId } });
 }
 
@@ -166,6 +170,7 @@ export async function setInterviewState(
   interviewId: string,
   state: InterviewState,
 ) {
+  requireRecruitingAccess(ctx);
   return db.$transaction(async (tx) => {
     const interview = await tx.interview.findFirst({
       where: { id: interviewId, orgId: ctx.orgId },

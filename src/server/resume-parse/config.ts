@@ -183,6 +183,8 @@ export function resumeParserConfig(env: Env = process.env): ResumeParserState {
     const host = url.host.toLowerCase();
     const profile = profileFor(hostname);
     const local = isPrivateHost(hostname);
+    const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+    if (!loopback && read(env, 'RGA_ALLOW_EXTERNAL_AI') !== 'true') return { state: 'off' };
     const providerLabel = profile !== 'generic' ? PROFILE_LABEL[profile] : local ? 'Your own server' : hostname;
     const apiKey = explicitKey ?? (profile === 'groq' ? groqKey : null);
     if (profile !== 'generic' && !apiKey) return { state: 'misconfigured', reason: 'key_required', host, providerLabel };
@@ -204,7 +206,7 @@ export function resumeParserConfig(env: Env = process.env): ResumeParserState {
   }
 
   const apiKey = explicitKey ?? groqKey;
-  if (!apiKey) return { state: 'off' };
+  if (!apiKey || read(env, 'RGA_ALLOW_EXTERNAL_AI') !== 'true') return { state: 'off' };
   return withKey(
     {
       state: 'on' as const,

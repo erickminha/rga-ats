@@ -1,10 +1,12 @@
+import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
-import { requireSession } from '@/lib/session';
+import { canManageRecruiting, requireSession } from '@/lib/session';
 import { PageHeader } from '@/components/page-header';
 import { NewCandidateForm } from '@/components/new-candidate-form';
 
 export default async function NewCandidatePage() {
   const ctx = await requireSession();
+  if (!canManageRecruiting(ctx)) notFound();
   const [stages, postings] = await Promise.all([
     db.stage.findMany({ where: { orgId: ctx.orgId }, orderBy: { order: 'asc' } }),
     db.posting.findMany({
@@ -17,8 +19,8 @@ export default async function NewCandidatePage() {
   return (
     <div className="max-w-2xl">
       <PageHeader
-        title="Add candidate"
-        subtitle="Creates a contact and opens an opportunity in your pipeline"
+        title="Novo candidato"
+        subtitle="Cadastre o contato e vincule-o a uma etapa do funil."
       />
       <div className="mx-6 mb-8 mt-2 rounded-card bg-surface p-5">
         <NewCandidateForm

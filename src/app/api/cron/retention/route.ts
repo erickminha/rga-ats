@@ -1,3 +1,5 @@
+import { cronAuthorized, takeCronLease } from '@/server/cron';
+import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { processRetention } from '@/server/retention';
 
@@ -7,13 +9,14 @@ import { processRetention } from '@/server/retention';
  * local dev when unset.
  */
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = request.headers.get('authorization');
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-    }
+  if (!cronAuthorized(request)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const release = await takeCronLease('retention', new Date(Date.now() + 15 * 60_000));
+  if (!release) return NextResponse.json({ busy: true });
+  try {
+    const anonymized = await processRetention();
+    const pendingFiles = await db.storedFile.count({ where: { deletePendingAt: { not: null } } });
+    return NextResponse.json({ anonymized, pendingFiles });
+  } finally {
+    await release();
   }
-  const anonymized = await processRetention();
-  return NextResponse.json({ anonymized });
 }

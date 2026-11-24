@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition, type ReactNode } from 'react';
 import { Reorder, useDragControls } from 'motion/react';
 import { GripVertical, Plus, X } from 'lucide-react';
 import type { StageType } from '@prisma/client';
-import { createStageAction, deleteStageAction, renameStageAction, reorderStagesAction } from '@/app/org-actions';
+import { createStageAction, deleteStageAction, renameStageAction, reorderStagesAction, reconcileRgaStagesAction } from '@/app/org-actions';
 import { btnTonal, fieldBareInput, fieldShellClass, inputClass, noAutofill } from '@/components/form-controls';
 import { FormSelect } from '@/components/form-select';
 import { guessInterviewType, INTERVIEW_TYPES, STAGE_GROUPS, stageGroup, type StageGroup } from '@/lib/stage-types';
@@ -18,7 +18,7 @@ const typeLabel = (type: string) => INTERVIEW_TYPES.find((t) => t.value === type
  * (inbound), then the interview process. Stages are dragged by their handle,
  * or moved with the arrow keys on it, within their group.
  */
-export function StageManager({ stages }: { stages: Stage[] }) {
+export function StageManager({ stages, showRgaPipeline = false }: { stages: Stage[]; showRgaPipeline?: boolean }) {
   const [items, setItems] = useState(stages);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +59,25 @@ export function StageManager({ stages }: { stages: Stage[] }) {
 
   return (
     <div className="flex flex-col gap-6">
+      {showRgaPipeline ? (
+        <div className="grid justify-items-start gap-2">
+          <button type="button" className={btnTonal} disabled={pending} onClick={() => {
+            if (!window.confirm('Configurar as oito etapas oficiais e preservar os cadastros e históricos existentes?')) return;
+            startTransition(async () => {
+              const result = await reconcileRgaStagesAction();
+              if ('error' in result) {
+                setError(result.error ?? null);
+                setAnnouncement('');
+                return;
+              }
+              setError(null);
+              const legacy = result.legacy.length ? ` Etapas adicionais preservadas: ${result.legacy.join(', ')}.` : '';
+              setAnnouncement((result.changed ? 'Funil RGA configurado.' : 'O funil RGA já está configurado.') + legacy);
+            });
+          }}>Configurar funil RGA</button>
+          <p role="status" className="text-sm text-ink-2">{announcement}</p>
+        </div>
+      ) : null}
       {STAGE_GROUPS.map((group) => {
         const list = inGroup(group.id);
         return (
@@ -102,10 +121,8 @@ export function StageManager({ stages }: { stages: Stage[] }) {
         );
       })}
 
-      {error ? <p className="text-sm text-critical">{error}</p> : null}
-      <p className="sr-only" aria-live="polite">
-        {announcement}
-      </p>
+      {error ? <p role="alert" className="text-sm text-critical">{error}</p> : null}
+      {showRgaPipeline ? null : <p className="sr-only" aria-live="polite">{announcement}</p>}
     </div>
   );
 }

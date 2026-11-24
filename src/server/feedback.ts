@@ -1,7 +1,9 @@
+import { lockIdentifiableContact } from '@/server/contact-lock';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import { sendEmail } from '@/server/email';
-import type { SessionContext } from '@/lib/session';
+import { interviewAccess } from '@/server/interview-access';
+import { canManageRecruiting, type SessionContext } from '@/lib/session';
 
 export const RATING_LABELS: Record<number, string> = {
   1: 'Strong no',
@@ -25,6 +27,8 @@ export type ScorecardAnswer = { label: string; kind: 'RATING' | 'TEXT'; value: s
 export async function submitFeedback(ctx: SessionContext, input: SubmitFeedbackInput) {
   if (!ctx.userId) throw new Error('Feedback requires a user author');
   const authorId = ctx.userId;
+  const restricted = !canManageRecruiting(ctx);
+  if (restricted && !input.interviewId) throw new Error('Selecione uma entrevista atribuída a você.');
   if (input.overallRating < 1 || input.overallRating > 4) throw new Error('Invalid rating');
 
   // Validate answers against the org's live questions and snapshot label+kind
@@ -54,11 +58,11 @@ export async function submitFeedback(ctx: SessionContext, input: SubmitFeedbackI
       where: { id: input.opportunityId, orgId: ctx.orgId },
       include: { contact: true },
     });
-    if (!opportunity) throw new Error('Opportunity not found');
+    if (!opportunity || !await lockIdentifiableContact(tx, ctx.orgId, opportunity.contactId)) throw new Error('Opportunity not found');
 
     if (input.interviewId) {
       const interview = await tx.interview.findFirst({
-        where: { id: input.interviewId, orgId: ctx.orgId, opportunityId: opportunity.id },
+        where: { ...interviewAccess(ctx), id: input.interviewId, opportunityId: opportunity.id },
       });
       if (!interview) throw new Error('Interview not found');
     }
@@ -125,35 +129,39 @@ export async function processFeedbackReminders(): Promise<number> {
         (f) => f.authorId === panelist.id,
       );
       if (hasFeedback) continue;
-      const alreadyReminded = await db.event.findFirst({
-        where: {
-          orgId: interview.orgId,
-          verb: 'feedback.reminder_sent',
-          subjectType: 'interview',
-          subjectId: interview.id,
-          payload: { path: ['panelistId'], equals: panelist.id },
-        },
+      const claimed = await db.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`feedback-reminder:${interview.id}:${panelist.id}`}))`;
+        const previous = await tx.event.findFirst({
+          where: {
+            orgId: interview.orgId,
+            verb: { in: ['feedback.reminder_claimed', 'feedback.reminder_sent'] },
+            subjectType: 'interview',
+            subjectId: interview.id,
+            payload: { path: ['panelistId'], equals: panelist.id },
+          },
+        });
+        if (previous) return null;
+        return tx.event.create({
+          data: {
+            orgId: interview.orgId, actorType: 'system', verb: 'feedback.reminder_claimed',
+            subjectType: 'interview', subjectId: interview.id, payload: { panelistId: panelist.id },
+          },
+        });
       });
-      if (alreadyReminded) continue;
+      if (!claimed) continue;
 
       const candidate = interview.opportunity.contact.name;
       const role = interview.opportunity.posting?.title ?? 'the role';
-      await sendEmail({
+      const email = await sendEmail({
         orgId: interview.orgId,
+        contactId: interview.opportunity.contactId,
+        opportunityId: interview.opportunityId,
         toEmail: panelist.email,
         subject: `Scorecard missing: ${candidate} — ${interview.title}`,
-        body: `Hi ${panelist.name.split(' ')[0]},\n\nYou interviewed ${candidate} for ${role} (${interview.title}) and your scorecard hasn't been submitted yet. Feedback loses fidelity fast — please add it while it's fresh.\n\nOpen the candidate: /candidates/${interview.opportunityId}\n\n— Source`,
-      });
-      await db.event.create({
-        data: {
-          orgId: interview.orgId,
-          actorType: 'system',
-          verb: 'feedback.reminder_sent',
-          subjectType: 'interview',
-          subjectId: interview.id,
-          payload: { panelistId: panelist.id, panelistName: panelist.name },
-        },
-      });
+        body: `Hi ${panelist.name.split(' ')[0]},\n\nYou interviewed ${candidate} for ${role} (${interview.title}) and your scorecard hasn't been submitted yet. Feedback loses fidelity fast — please add it while it's fresh.\n\nOpen the interview: /interviews/${interview.id}\n\n— Source`,
+      }).catch(() => null);
+      if (email?.status !== 'SENT') continue;
+      await db.event.update({ where: { id: claimed.id }, data: { verb: 'feedback.reminder_sent' } });
       sent++;
     }
   }

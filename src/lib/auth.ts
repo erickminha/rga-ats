@@ -1,3 +1,4 @@
+import { reserveRequest } from '@/server/request-limit';
 import NextAuth from 'next-auth';
 import type { Provider } from 'next-auth/providers';
 import Credentials from 'next-auth/providers/credentials';
@@ -21,17 +22,16 @@ const providers: Provider[] = [
         .toLowerCase()
         .trim();
       const password = String(credentials?.password ?? '');
-      if (!email || !password) return null;
+      if (!email || email.length > 254 || !password || password.length > 1024) return null;
+      if (!await reserveRequest('login', [email], 12, 15 * 60_000)) return null;
 
       // Users who only sign in with Google have no password to check.
       const user = await db.user.findFirst({
         where: { email, deactivatedAt: null, passwordHash: { not: null } },
         include: { org: { select: sessionOrgSelect } },
       });
-      if (!user?.passwordHash) return null;
-
-      const valid = await bcrypt.compare(password, user.passwordHash);
-      if (!valid) return null;
+      const valid = await bcrypt.compare(password, user?.passwordHash ?? '$2b$12$C6UzMDM.H6dfI/f/IKcEe.ajW2YqRl2ah2Njb1iQJgS0eqr2mL1Tu');
+      if (!user || !valid) return null;
 
       return toSessionUser(user);
     },

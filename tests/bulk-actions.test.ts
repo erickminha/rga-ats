@@ -15,7 +15,8 @@ vi.mock('next/cache', () => ({
   unstable_cache: (fn: () => unknown) => fn,
 }));
 const session = vi.hoisted(() => ({ orgId: '', userId: '' }));
-vi.mock('@/lib/session', () => ({
+vi.mock('@/lib/session', async (load) => ({
+  ...await load<typeof import('@/lib/session')>(),
   requireSession: async () => ({ userId: session.userId, orgId: session.orgId, accessRole: 'SUPER_ADMIN' }),
   getAuthSession: async () => null,
   isAdmin: () => true,

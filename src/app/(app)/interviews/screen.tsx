@@ -52,13 +52,13 @@ export function InterviewsScreen({ data }: { data: Awaited<ReturnType<typeof loa
 
   return (
     <div className="t-reveal">
-      <PageHeader title="Interviews" subtitle="Schedules, panels, and outcomes" />
+      <PageHeader title="Entrevistas" subtitle="Agenda, participantes e avaliações" />
 
       {upcoming.length === 0 && past.length === 0 ? (
         <EmptyState
           icon={CalendarDays}
-          title="No interviews yet"
-          description="Schedule interviews from any candidate profile — they'll all show up here."
+          title="Nenhuma entrevista disponível"
+          description="As entrevistas disponíveis para seu perfil aparecem aqui."
         />
       ) : (
         <div className="mx-6 mt-4 flex flex-col gap-8 pb-8">

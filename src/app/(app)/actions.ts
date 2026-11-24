@@ -13,12 +13,13 @@ import type {
 } from '@prisma/client';
 import { db } from '@/lib/db';
 import { BULK_LIMIT, POOL_BULK_LIMIT, type BulkResult } from '@/lib/bulk';
-import { isAdmin, requireSession } from '@/lib/session';
+import { requireAuthenticatedSession, requireRecruitingAccess, isAdmin, requireSession } from '@/lib/session';
 import { invalidateContactCounts, invalidateLists, invalidatePipelineCounts } from '@/server/lists/cache';
-import { createPosting, setPostingOwner, setPostingState } from '@/server/postings';
+import { createPosting, PostingEditError, setPostingOwner, setPostingState, updatePostingDetails } from '@/server/postings';
 import {
   addNote,
   archiveOpportunity,
+  CandidateResumeError,
   createCandidate,
   moveStage,
   unarchiveOpportunity,
@@ -49,9 +50,11 @@ import {
   setOfferStatus,
   setRequisitionState,
 } from '@/server/offers';
-import { requestBaseUrl } from '@/lib/base-url';
+import { EncryptedDocumentError } from '@/server/text/types';
+import { capabilityPath } from '@/lib/capability-links';
+import { emailPublicOrigin, requestBaseUrl } from '@/lib/base-url';
 import { normalizeBookingUrl } from '@/lib/booking';
-import { getOrCreateShareLink } from '@/server/share-links';
+import { createRecruitingShare, revokeRecruitingShares } from '@/server/share-links';
 import { getPendingApproval } from '@/server/approvals';
 import { submitReferral } from '@/server/referrals';
 import { submitFeedback } from '@/server/feedback';
@@ -78,30 +81,49 @@ export async function createPostingAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  return savePostingForm(null, formData);
+}
+
+export async function updatePostingDetailsAction(postingId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  return savePostingForm(postingId, formData);
+}
+
+async function savePostingForm(postingId: string | null, formData: FormData): Promise<FormState> {
   const ctx = await requireSession();
   const title = String(formData.get('title') ?? '').trim();
-  if (!title) return { error: 'Title is required.' };
+  if (!title) return { error: 'Informe o título da vaga.' };
 
   const workplaceType = String(formData.get('workplaceType') ?? 'ONSITE');
   const commitment = String(formData.get('commitment') ?? 'FULL_TIME');
   if (!WORKPLACE_TYPES.includes(workplaceType as never))
-    return { error: 'Invalid workplace type.' };
-  if (!COMMITMENTS.includes(commitment as never)) return { error: 'Invalid commitment.' };
+    return { error: 'Modalidade inválida.' };
+  if (!COMMITMENTS.includes(commitment as never)) return { error: 'Tipo de contratação inválido.' };
 
+  const input = {
+    title,
+    location: String(formData.get('location') ?? '').trim() || undefined,
+    workplaceType: workplaceType as WorkplaceType,
+    commitment: commitment as Commitment,
+    salaryMin: parseIntOrUndefined(formData.get('salaryMin')),
+    salaryMax: parseIntOrUndefined(formData.get('salaryMax')),
+    salaryCurrency: String(formData.get('salaryCurrency') ?? '').trim() || undefined,
+    description: String(formData.get('description') ?? '').trim() || undefined,
+  };
   try {
-    await createPosting(ctx, {
-      title,
-      departmentId: String(formData.get('departmentId') ?? '') || undefined,
-      clientCompanyId: String(formData.get('clientCompanyId') ?? '') || undefined,
-      location: String(formData.get('location') ?? '').trim() || undefined,
-      workplaceType: workplaceType as WorkplaceType,
-      commitment: commitment as Commitment,
-      salaryMin: parseIntOrUndefined(formData.get('salaryMin')),
-      salaryMax: parseIntOrUndefined(formData.get('salaryMax')),
-      salaryCurrency: String(formData.get('salaryCurrency') ?? '').trim() || undefined,
-      description: String(formData.get('description') ?? '').trim() || undefined,
-    });
+    if (postingId !== null) {
+      const updated = await updatePostingDetails(ctx, postingId, input);
+      revalidatePath(`/careers/${updated.org.slug}`);
+      revalidatePath(`/careers/${updated.org.slug}/${updated.slug}`);
+      revalidatePath(`/postings/${postingId}`);
+    } else {
+      await createPosting(ctx, {
+        ...input,
+        departmentId: String(formData.get('departmentId') ?? '') || undefined,
+        clientCompanyId: String(formData.get('clientCompanyId') ?? '') || undefined,
+      });
+    }
   } catch (error) {
+    if (error instanceof PostingEditError) return { error: error.message };
     if (error instanceof Error && error.message === 'Client not found') {
       return { error: 'Selecione uma empresa cliente ativa do seu espaço de trabalho.' };
     }
@@ -109,7 +131,7 @@ export async function createPostingAction(
   }
 
   revalidatePath('/postings');
-  redirect('/postings');
+  redirect(postingId === null ? '/postings' : `/postings/${postingId}`);
 }
 
 export async function setPostingStateAction(postingId: string, state: PostingState) {
@@ -135,20 +157,29 @@ export async function createCandidateAction(
   const name = String(formData.get('name') ?? '').trim();
   const stageId = String(formData.get('stageId') ?? '');
   const origin = String(formData.get('origin') ?? 'SOURCED');
-  if (!name) return { error: 'Name is required.' };
-  if (!stageId) return { error: 'Stage is required.' };
-  if (!ORIGINS.includes(origin as never)) return { error: 'Invalid origin.' };
+  if (!name) return { error: 'Informe o nome.' };
+  if (!stageId) return { error: 'Selecione uma etapa.' };
+  if (!ORIGINS.includes(origin as never)) return { error: 'Origem inválida.' };
 
-  await createCandidate(ctx, {
-    name,
-    email: String(formData.get('email') ?? '').trim() || undefined,
-    headline: String(formData.get('headline') ?? '').trim() || undefined,
-    location: String(formData.get('location') ?? '').trim() || undefined,
-    postingId: String(formData.get('postingId') ?? '') || undefined,
-    stageId,
-    origin: origin as Origin,
-    source: String(formData.get('source') ?? '').trim() || undefined,
-  });
+  requireRecruitingAccess(ctx);
+  const file = formData.get('resume');
+  try {
+    await createCandidate(ctx, {
+      name,
+      email: String(formData.get('email') ?? '').trim() || undefined,
+      headline: String(formData.get('headline') ?? '').trim() || undefined,
+      location: String(formData.get('location') ?? '').trim() || undefined,
+      postingId: String(formData.get('postingId') ?? '') || undefined,
+      stageId,
+      origin: origin as Origin,
+      source: String(formData.get('source') ?? '').trim() || undefined,
+      resume: file instanceof File && file.size ? { data: Buffer.from(await file.arrayBuffer()), filename: file.name } : undefined,
+    });
+  } catch (error) {
+    if (error instanceof EncryptedDocumentError) return { error: 'Envie um currículo sem proteção por senha.' };
+    if (error instanceof CandidateResumeError) return { error: error.message };
+    throw error;
+  }
 
   revalidatePath('/pipeline');
   revalidatePath('/contacts');
@@ -243,7 +274,7 @@ export async function createSchedulingLinkAction(
         .filter(Boolean),
     });
     revalidatePath(`/candidates/${opportunityId}`);
-    return { url: `/schedule/${link.token}` };
+    return { url: capabilityPath('schedule', link.token) };
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Could not create link.' };
   }
@@ -292,7 +323,7 @@ export async function submitFeedbackAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const ctx = await requireSession();
+  const ctx = await requireAuthenticatedSession();
   const opportunityId = String(formData.get('opportunityId') ?? '');
   const overallRating = Number.parseInt(String(formData.get('overallRating') ?? ''), 10);
   const summary = String(formData.get('summary') ?? '').trim();
@@ -623,7 +654,7 @@ export async function saveCustomFieldsAction(opportunityId: string, formData: Fo
     } else values[def.key] = raw;
   }
   await db.opportunity.update({
-    where: { id: opportunity.id },
+    where: { id: opportunity.id, orgId: ctx.orgId, contact: { isAnonymized: false } },
     data: { customFields: values as object },
   });
   revalidatePath(`/candidates/${opportunityId}`);
@@ -684,6 +715,7 @@ export async function mergeContactsAction(
   duplicateId: string,
 ): Promise<{ error?: string }> {
   const ctx = await requireSession();
+  requireRecruitingAccess(ctx);
   try {
     await mergeContacts(ctx, primaryId, duplicateId);
   } catch (error) {
@@ -705,6 +737,7 @@ export async function importContactRowsAction(
   last: boolean,
 ): Promise<CsvImportResult> {
   const ctx = await requireSession();
+  requireRecruitingAccess(ctx);
   // Validate at the boundary: cells must be strings, whatever the caller sent.
   const cells = (row: unknown) => (Array.isArray(row) ? row.map((c) => (typeof c === 'string' ? c : '')) : []);
   const safeRows = (Array.isArray(rows) ? rows : []).slice(0, CSV_BATCH_ROWS).map(cells);
@@ -796,19 +829,16 @@ export async function createShareLinkAction(
   scope: 'posting' | 'client' | 'candidate',
   id: string,
 ): Promise<{ url?: string; expiresAt?: string; error?: string }> {
-  const ctx = await requireSession();
-  if (scope === 'posting') {
-    const posting = await db.posting.findFirst({ where: { id, orgId: ctx.orgId } });
-    if (!posting) return { error: 'Posting not found.' };
-  } else if (scope === 'candidate') {
-    const opp = await db.opportunity.findFirst({ where: { id, orgId: ctx.orgId } });
-    if (!opp) return { error: 'Candidate not found.' };
-  } else {
-    const client = await db.clientCompany.findFirst({ where: { id, orgId: ctx.orgId } });
-    if (!client) return { error: 'Client not found.' };
-  }
-  const link = await getOrCreateShareLink(ctx.orgId, scope, id);
-  return { url: `${await requestBaseUrl()}/share/${link.code}`, expiresAt: link.expiresAt.toISOString() };
+  const ctx = await requireAuthenticatedSession();
+  const origin = emailPublicOrigin();
+  if (!origin) return { error: 'Origem pública não configurada.' };
+  const link = await createRecruitingShare(ctx, scope, id);
+  if ('error' in link) return { error: link.error };
+  return { url: `${origin}/share#${link.code}`, expiresAt: link.expiresAt.toISOString() };
+}
+
+export async function revokeShareLinksAction(scope: 'posting' | 'client' | 'candidate', id: string) {
+  return revokeRecruitingShares(await requireSession(), scope, id);
 }
 
 export async function addTranscriptAction(

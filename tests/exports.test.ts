@@ -9,9 +9,9 @@ import { db } from '@/lib/db';
  * and 10,000), in keyset batches whose boundaries fall inside timestamp
  * ties; search says when a section has more than it shows.
  */
-const session = vi.hoisted(() => ({ orgId: '' }));
+const session = vi.hoisted(() => ({ orgId: '', accessRole: 'ADMIN' }));
 vi.mock('@/lib/auth', () => ({
-  auth: async () => ({ user: { id: 'u', orgId: session.orgId, accessRole: 'ADMIN' } }),
+  auth: async () => ({ user: { id: 'u', orgId: session.orgId, accessRole: session.accessRole } }),
 }));
 
 const reports = await import('@/app/api/reports/export/route');
@@ -58,6 +58,17 @@ describe.skipIf(!hasDb)('streamed exports', () => {
     expect(new Set(names).size).toBe(2_500);
     const created = rows.map((r) => r.split(',').at(-3)!);
     expect([...created].sort().reverse()).toEqual(created);
+  });
+
+  it('refuses detailed organization exports to recruiting and limited profiles', async () => {
+    try {
+      for (const accessRole of ['TEAM_MEMBER', 'LIMITED_TEAM_MEMBER', 'INTERVIEWER']) {
+        session.accessRole = accessRole;
+        expect((await reports.GET()).status).toBe(403);
+      }
+    } finally {
+      session.accessRole = 'ADMIN';
+    }
   });
 
   it('exports every matching audit event, once each', async () => {

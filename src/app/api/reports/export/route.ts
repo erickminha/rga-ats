@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { Prisma } from '@prisma/client';
-import { auth } from '@/lib/auth';
+import { getSessionContext, isAdmin } from '@/lib/session';
 import { csvLine, EXPORT_BATCH, streamReadOnly } from '@/lib/csv-stream';
 
 export const maxDuration = 300;
@@ -14,9 +14,10 @@ export const maxDuration = 300;
  * (createdAt DESC, id DESC). It used to stop silently at 50,000.
  */
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.orgId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  const orgId = session.user.orgId;
+  const ctx = await getSessionContext();
+  if (!ctx) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!isAdmin(ctx)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  const orgId = ctx.orgId;
 
   async function* lines(tx: Prisma.TransactionClient): AsyncGenerator<string> {
     yield 'candidate,email,role,stage,status,origin,source,owner,archive_reason,tags,created_at,stage_changed_at,archived_at\n';

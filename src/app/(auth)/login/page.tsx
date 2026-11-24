@@ -4,6 +4,7 @@ import { AuthForm } from '@/components/auth-form';
 import { GoogleSignIn } from '@/components/google-auth';
 import { signInErrorMessage } from '@/lib/auth-errors';
 import { safeRedirectPath } from '@/lib/safe-redirect';
+import { isSingleWorkspace, signupClosedMessage } from '@/server/rga-workspace';
 import { demoEnabled } from '@/server/demo';
 import { googleAuthEnabled } from '@/server/google-auth';
 import { requestOrigin } from '@/server/request-origin';
@@ -69,10 +70,12 @@ export default async function LoginPage({
         </div>
       ) : null}
       <p className="mt-6 text-sm text-ink-2">
+        {isSingleWorkspace() ? signupClosedMessage : <>
         Primeiro acesso?{' '}
         <Link href="/signup" className="font-medium text-ink hover:underline">
           Criar uma organização
         </Link>
+        </>}
       </p>
     </div>
   );

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { isAdmin, requireSession } from '@/lib/session';
+import { requireSession } from '@/lib/session';
 import { canViewClientCompanies, getClientCompany } from '@/server/client-companies';
 import { ClientCompanyForm } from '@/components/client-company-form';
 
@@ -7,7 +7,7 @@ export const metadata = { title: 'Editar empresa' };
 
 export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requireSession();
-  if (!isAdmin(ctx) || !await canViewClientCompanies(ctx)) notFound();
+  if (!await canViewClientCompanies(ctx)) notFound();
   const { id } = await params;
   const client = await getClientCompany(ctx, id);
   if (!client) notFound();

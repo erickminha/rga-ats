@@ -13,7 +13,6 @@ vi.mock('next/cache', () => ({
   revalidatePath: () => {},
   unstable_cache: (fn: () => unknown) => fn,
 }));
-vi.mock('@/lib/session', () => ({ isAdmin: () => true }));
 vi.mock('@/server/scheduling', () => ({ maybeAutoSendSchedulingLink: async () => {} }));
 
 const { createStage, renameStage, setStageOrder, deleteStage } = await import('@/server/stages');

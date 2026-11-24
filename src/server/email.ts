@@ -1,8 +1,9 @@
+import { lockIdentifiableContact } from '@/server/contact-lock';
 import nodemailer from 'nodemailer';
 import { db } from '@/lib/db';
 import { publicClientName } from '@/lib/public-careers';
 import { emitEvent } from '@/server/events';
-import type { SessionContext } from '@/lib/session';
+import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
 
 /**
  * Email delivery with merge tokens, scheduling, and automation.
@@ -73,8 +74,23 @@ export function sendPrivateEmail(message: { toEmail: string; subject: string; bo
 }
 
 async function deliver(messageId: string, attachments?: EmailAttachment[], privateBody?: string) {
-  const message = await db.emailMessage.findUnique({ where: { id: messageId } });
-  if (!message || message.status !== 'SCHEDULED') return message;
+  const message = await db.$transaction(async (tx) => {
+    const row = await tx.emailMessage.findUnique({ where: { id: messageId } });
+    if (!row || row.status !== 'SCHEDULED' || row.deliveryClaimedAt) return null;
+    const opportunity = !row.contactId && row.opportunityId ? await tx.opportunity.findFirst({
+      where: { id: row.opportunityId, orgId: row.orgId }, select: { contactId: true },
+    }) : null;
+    const contactId = row.contactId ?? opportunity?.contactId;
+    if (contactId) {
+      if (!await lockIdentifiableContact(tx, row.orgId, contactId)) return null;
+    }
+    const claim = await tx.emailMessage.updateMany({
+      where: { id: row.id, status: 'SCHEDULED', deliveryClaimedAt: null },
+      data: { deliveryClaimedAt: new Date() },
+    });
+    return claim.count ? row : null;
+  });
+  if (!message) return null;
 
   try {
     await transmitEmail({ ...message, body: privateBody ?? message.body }, attachments);
@@ -110,18 +126,27 @@ export async function sendEmail(input: SendEmailInput, privateBody?: string) {
   const isFuture = !!input.scheduledAt && input.scheduledAt.getTime() > Date.now();
   if (isFuture && privateBody !== undefined) throw new Error('Private email content cannot be scheduled');
 
-  const message = await db.emailMessage.create({
-    data: {
-      orgId: input.orgId,
-      contactId: input.contactId ?? null,
-      opportunityId: input.opportunityId ?? null,
-      templateId: input.templateId ?? null,
-      senderId: input.actorId ?? null,
-      toEmail: input.toEmail,
-      subject: renderTemplate(input.subject, vars),
-      body: renderTemplate(input.body, vars),
-      scheduledAt: input.scheduledAt ?? null,
-    },
+  const message = await db.$transaction(async (tx) => {
+    const opportunity = !input.contactId && input.opportunityId ? await tx.opportunity.findFirst({
+      where: { id: input.opportunityId, orgId: input.orgId }, select: { contactId: true },
+    }) : null;
+    const contactId = input.contactId ?? opportunity?.contactId;
+    if (contactId) {
+      if (!await lockIdentifiableContact(tx, input.orgId, contactId)) throw new Error('Cadastro indisponível para envio.');
+    }
+    return tx.emailMessage.create({
+      data: {
+        orgId: input.orgId,
+        contactId: contactId ?? null,
+        opportunityId: input.opportunityId ?? null,
+        templateId: input.templateId ?? null,
+        senderId: input.actorId ?? null,
+        toEmail: input.toEmail,
+        subject: renderTemplate(input.subject, vars),
+        body: renderTemplate(input.body, vars),
+        scheduledAt: input.scheduledAt ?? null,
+      },
+    });
   });
 
   const result = isFuture ? message : await deliver(message.id, input.attachments, privateBody);
@@ -147,14 +172,16 @@ export async function sendEmail(input: SendEmailInput, privateBody?: string) {
 }
 
 export async function cancelScheduledEmail(ctx: SessionContext, messageId: string) {
+  requireRecruitingAccess(ctx);
   const message = await db.emailMessage.findFirst({
-    where: { id: messageId, orgId: ctx.orgId, status: 'SCHEDULED' },
+    where: { id: messageId, orgId: ctx.orgId, status: 'SCHEDULED', deliveryClaimedAt: null },
   });
   if (!message) throw new Error('Scheduled email not found');
-  const updated = await db.emailMessage.update({
-    where: { id: message.id },
+  const updated = await db.emailMessage.updateMany({
+    where: { id: message.id, status: 'SCHEDULED', deliveryClaimedAt: null },
     data: { status: 'CANCELED' },
   });
+  if (!updated.count) throw new Error('O envio desta mensagem já começou.');
   if (message.opportunityId) {
     await db.$transaction(async (tx) => {
       await emitEvent(tx, {
@@ -168,13 +195,18 @@ export async function cancelScheduledEmail(ctx: SessionContext, messageId: strin
       });
     });
   }
-  return updated;
+  return db.emailMessage.findUniqueOrThrow({ where: { id: message.id } });
 }
 
 /** Deliver everything due. Called from /api/cron/emails. */
 export async function processDueEmails(): Promise<number> {
+  // After a crash SMTP may already have accepted the message.
+  await db.emailMessage.updateMany({
+    where: { status: 'SCHEDULED', deliveryClaimedAt: { lte: new Date(Date.now() - 30 * 60_000) } },
+    data: { status: 'FAILED', error: 'SMTP_DELIVERY_UNCERTAIN' },
+  });
   const due = await db.emailMessage.findMany({
-    where: { status: 'SCHEDULED', scheduledAt: { not: null, lte: new Date() } },
+    where: { status: 'SCHEDULED', deliveryClaimedAt: null, scheduledAt: { not: null, lte: new Date() } },
     take: 100,
   });
   for (const message of due) {

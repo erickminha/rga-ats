@@ -1,10 +1,16 @@
+import { lockIdentifiableContact } from '@/server/contact-lock';
 import type { Origin, StageType } from '@prisma/client';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import { buildOpportunityVars, sendEmail } from '@/server/email';
 import { maybeAutoSendSchedulingLink } from '@/server/scheduling';
-import { appBaseUrl } from '@/lib/base-url';
-import type { SessionContext } from '@/lib/session';
+import { emailPublicOrigin } from '@/lib/base-url';
+import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
+import { storeExtractedResume, type ResumeUpload } from '@/server/resume-upload';
+import { discardUnlinkedFile } from '@/server/storage';
+import { MAX_RESUME_BYTES } from '@/server/resume';
+import { parseQueueFields } from '@/server/resume-parse';
+import { textFields } from '@/server/text';
 import { capName } from '@/lib/utils';
 import { invalidateContactCounts, invalidatePipelineCounts } from '@/server/lists/cache';
 
@@ -17,7 +23,10 @@ export type CreateCandidateInput = {
   stageId: string;
   origin: Origin;
   source?: string;
+  resume?: ResumeUpload;
 };
+
+export class CandidateResumeError extends Error {}
 
 /**
  * Add a candidate: reuses an existing contact when the email matches
@@ -25,7 +34,12 @@ export type CreateCandidateInput = {
  * opportunity in the given stage.
  */
 export async function createCandidate(ctx: SessionContext, input: CreateCandidateInput) {
+  requireRecruitingAccess(ctx);
   const email = input.email?.toLowerCase().trim() || null;
+  if (input.resume && input.resume.data.byteLength > MAX_RESUME_BYTES) {
+    throw new CandidateResumeError('O currículo deve ter até 5 MB.');
+  }
+  const resume = input.resume ? await storeExtractedResume(ctx.orgId, input.resume) : null;
 
   const created = await db.$transaction(async (tx) => {
     const stage = await tx.stage.findFirst({ where: { id: input.stageId, orgId: ctx.orgId } });
@@ -61,6 +75,19 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
       });
     }
 
+    if (resume) {
+      const linked = await tx.contact.updateMany({
+        where: { id: contact.id, orgId: ctx.orgId, isAnonymized: false, resumeFileId: null },
+        data: { resumeFileId: resume.file.id, resumeText: resume.extracted.text },
+      });
+      if (!linked.count) throw new CandidateResumeError('O perfil já tem um currículo ou não pode receber anexos.');
+      const org = await tx.organization.findUnique({ where: { id: ctx.orgId }, select: { id: true, slug: true } });
+      await tx.storedFile.update({
+        where: { id: resume.file.id, deletePendingAt: { gt: new Date() } },
+        data: { deletePendingAt: null, contactId: contact.id, ...textFields(resume.extracted, new Date()), ...parseQueueFields(resume.extracted.status, org ?? undefined) },
+      });
+    }
+
     const opportunity = await tx.opportunity.create({
       data: {
         orgId: ctx.orgId,
@@ -84,6 +111,9 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
       payload: { contactName: contact.name, stageName: stage.name },
     });
     return opportunity;
+  }).catch(async (error) => {
+    if (resume) await discardUnlinkedFile(ctx.orgId, resume.file.id).catch(() => undefined);
+    throw error;
   });
   invalidatePipelineCounts(ctx.orgId);
   invalidateContactCounts(ctx.orgId);
@@ -103,9 +133,10 @@ export async function moveStage(
   toStageId: string,
   { invalidate = true }: WriteOptions = {},
 ) {
+  requireRecruitingAccess(ctx);
   const result = await db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
-      where: { id: opportunityId, orgId: ctx.orgId },
+      where: { id: opportunityId, orgId: ctx.orgId, contact: { isAnonymized: false } },
       include: { stage: true, contact: true, posting: true },
     });
     if (!opportunity) throw new Error('Opportunity not found');
@@ -115,6 +146,9 @@ export async function moveStage(
 
     // A hire fills a requisition opening via the posting linkage; the req
     // auto-closes when the last opening is filled (docs/02 §8).
+    if (toStage.type === 'HIRED' && opportunity.status !== 'HIRED') {
+      await tx.$queryRaw`SELECT id FROM "Contact" WHERE id = ${opportunity.contactId} AND "orgId" = ${ctx.orgId} FOR NO KEY UPDATE`;
+    }
     if (toStage.type === 'HIRED' && opportunity.status !== 'HIRED' && opportunity.posting?.requisitionId) {
       const req = await tx.requisition.update({
         where: { id: opportunity.posting.requisitionId },
@@ -158,7 +192,8 @@ export async function moveStage(
   if (invalidate) invalidatePipelineCounts(ctx.orgId);
 
   if (result.toStage) {
-    await maybeAutoSendSchedulingLink(ctx, opportunityId, result.toStage, appBaseUrl());
+    const origin = emailPublicOrigin();
+    if (origin) await maybeAutoSendSchedulingLink(ctx, opportunityId, result.toStage, origin);
   }
   return result.updated;
 }
@@ -169,6 +204,7 @@ export async function archiveOpportunity(
   archiveReasonId: string,
   { invalidate = true }: WriteOptions = {},
 ) {
+  requireRecruitingAccess(ctx);
   const result = await db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
       where: { id: opportunityId, orgId: ctx.orgId },
@@ -225,6 +261,7 @@ export async function archiveOpportunity(
 }
 
 export async function unarchiveOpportunity(ctx: SessionContext, opportunityId: string) {
+  requireRecruitingAccess(ctx);
   const updated = await db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
       where: { id: opportunityId, orgId: ctx.orgId },
@@ -232,8 +269,9 @@ export async function unarchiveOpportunity(ctx: SessionContext, opportunityId: s
     });
     if (!opportunity) throw new Error('Opportunity not found');
 
+    await tx.$queryRaw`SELECT id FROM "Contact" WHERE id = ${opportunity.contactId} AND "orgId" = ${ctx.orgId} FOR NO KEY UPDATE`;
     const updated = await tx.opportunity.update({
-      where: { id: opportunity.id },
+      where: { id: opportunity.id, contact: { isAnonymized: false } },
       data: { status: 'ACTIVE', archiveReasonId: null, archivedAt: null },
     });
     await emitEvent(tx, {
@@ -251,6 +289,7 @@ export async function unarchiveOpportunity(ctx: SessionContext, opportunityId: s
 }
 
 export async function addNote(ctx: SessionContext, opportunityId: string, body: string) {
+  requireRecruitingAccess(ctx);
   if (!ctx.userId) throw new Error('Notes require a user author');
   const authorId = ctx.userId;
   return db.$transaction(async (tx) => {
@@ -259,6 +298,7 @@ export async function addNote(ctx: SessionContext, opportunityId: string, body: 
       include: { contact: true },
     });
     if (!opportunity) throw new Error('Opportunity not found');
+    if (!await lockIdentifiableContact(tx, ctx.orgId, opportunity.contactId)) throw new Error('Cadastro anonimizado.');
 
     const note = await tx.note.create({
       data: { orgId: ctx.orgId, opportunityId: opportunity.id, authorId, body },

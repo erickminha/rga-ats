@@ -1,11 +1,12 @@
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
-import type { SessionContext } from '@/lib/session';
+import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
 import { cleanCriteria, type MatchCriterion } from '@/lib/match-criteria';
 import { actorOf, emitEvent } from '@/server/events';
 
 /** Replace a role's criteria (the editor). Past evaluations keep their own copy. */
 export async function saveMatchCriteria(ctx: SessionContext, postingId: string, raw: unknown): Promise<MatchCriterion[]> {
+  requireRecruitingAccess(ctx);
   const criteria = cleanCriteria(raw);
   await db.$transaction(async (tx) => {
     const posting = await tx.posting.findFirst({ where: { id: postingId, orgId: ctx.orgId }, select: { id: true } });

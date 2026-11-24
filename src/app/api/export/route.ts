@@ -67,7 +67,7 @@ function collections(db: Tx, orgId: string): [string, Batch][] {
     ['consents', (c) => db.consentRecord.findMany({ where: org, ...page(c) })],
     ['events', (c) => db.event.findMany({ where: org, ...page(c) })],
     ['tasks', (c) => db.task.findMany({ where: org, ...page(c) })],
-    ['offers', (c) => db.offer.findMany({ where: org, ...page(c) })],
+    ['offers', (c) => db.offer.findMany({ where: org, omit: { token: true }, ...page(c) })],
     ['requisitions', (c) => db.requisition.findMany({ where: org, ...page(c) })],
     ['customFieldDefs', (c) => db.customFieldDef.findMany({ where: org, ...page(c) })],
     ['planSteps', (c) => db.interviewPlanStep.findMany({ where: org, ...page(c) })],

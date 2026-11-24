@@ -71,6 +71,8 @@ const { handlers, signIn } = await import('@/lib/auth');
 const { chooseWorkspace, finishGoogleSignup, googleSignIn, login, signup } = await import('@/app/(auth)/actions');
 const { readPendingGoogle, writePendingGoogle } = await import('@/server/google-auth');
 const { createWorkspace } = await import('@/server/workspace');
+const { ensureSamplePresentation } = await import('@/server/sample-boards');
+const { demoEnabled, ensureDemoOrg } = await import('@/server/demo');
 const { DEFAULT_STAGES, DEFAULT_ARCHIVE_REASONS } = await import('@/server/org-defaults');
 const { DEFAULT_TEMPLATES } = await import('@/server/email');
 
@@ -282,6 +284,40 @@ describe.skipIf(!hasDb)('Continue with Google', () => {
     jar.clear();
     expect((await continueWithGoogle(claims(sub, email))).location).toBe(`${ORIGIN}/dashboard`);
     expect(fields(await session())).toEqual(fields(passwordSession));
+  });
+
+  it('blocks both signup actions and new Google accounts in single-workspace mode but admits existing invitees', async () => {
+    const email = address();
+    const { orgId } = await passwordWorkspace(email);
+    const allowed = await extraWorkspaceUser(address(), 'RGA invitee');
+    const forms = new FormData();
+    forms.set('name', 'Example');
+    forms.set('orgName', 'Extra workspace');
+    forms.set('email', address());
+    forms.set('password', 'a-fake-password');
+    const before = await db.organization.count();
+    vi.stubEnv('RGA_SINGLE_WORKSPACE', 'true');
+    try {
+      await expect(signup(undefined, forms)).resolves.toMatchObject({ error: expect.stringContaining('cadastro público está fechado') });
+      await expect(createWorkspace({ orgName: 'Extra', name: 'Example', email: address(), passwordHash: null })).rejects.toThrow(/cadastro público está fechado/);
+      const unknownEmail = address();
+      const rejected = await continueWithGoogle(claims(googleSub(), unknownEmail));
+      expect(rejected.location).toBe(`${ORIGIN}/login?error=google-signup-closed`);
+      expect(jar.has(PENDING_COOKIE)).toBe(false);
+      await writePendingGoogle({ sub: googleSub(), email: unknownEmail, hd: null, name: 'Example', returnTo: '/dashboard' });
+      await expect(finishGoogleSignup(undefined, forms)).resolves.toMatchObject({ error: expect.stringContaining('cadastro público está fechado') });
+      expect(demoEnabled()).toBe(false);
+      await expect(ensureDemoOrg()).rejects.toThrow(/cadastro público está fechado/);
+      await ensureSamplePresentation();
+      expect(await db.organization.count()).toBe(before);
+
+      jar.clear();
+      expect((await continueWithGoogle(claims(googleSub(), allowed.email))).location).toBe(`${ORIGIN}/dashboard`);
+      expect(await session()).toMatchObject({ orgId: allowed.orgId, accessRole: 'TEAM_MEMBER' });
+      expect(allowed.orgId).not.toBe(orgId);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('refuses a callback whose state was not the one it sent', async () => {
@@ -536,14 +572,14 @@ describe.skipIf(!hasDb)('Continue with Google', () => {
     });
   });
 
-  it('tells a Google-only user on the password form to use Google', async () => {
+  it('returns the same password error for Google-only and password accounts', async () => {
     const email = address();
     await continueWithGoogle(claims(googleSub(), email));
     await redirectOf(finishGoogleSignup(undefined, form({ orgName: 'Only Google', name: 'Ada' })));
     jar.clear();
 
     expect(await login(undefined, form({ email, password: 'anything-at-all' }))).toEqual({
-      error: 'Esta conta usa o Google. Selecione Continuar com o Google.',
+      error: 'E-mail ou senha inválidos.',
     });
     const withPassword = address();
     await passwordWorkspace(withPassword);

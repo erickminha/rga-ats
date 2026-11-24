@@ -1,9 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { setNetworkConsent } from '@/server/portal';
+import { setPortalPreference } from '@/server/portal';
 
-export async function setNetworkConsentAction(token: string, granted: boolean) {
-  await setNetworkConsent(token, granted);
-  revalidatePath(`/portal/${token}`);
+export async function setPortalPreferenceAction(token: string, granted: boolean, profileStorage: boolean) {
+  await setPortalPreference(token, granted === true, profileStorage === true);
+  revalidatePath('/portal/view');
 }

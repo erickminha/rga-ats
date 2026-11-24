@@ -158,7 +158,7 @@ function scopeOf(orgId: ParseOpts['orgId']): Prisma.StoredFileWhereInput {
 }
 
 /** A live candidate's current resume, and that candidate has its text. */
-const readyResume: Prisma.StoredFileWhereInput = { contacts: { some: { isAnonymized: false, resumeText: { not: null } } } };
+const readyResume: Prisma.StoredFileWhereInput = { deletePendingAt: null, contacts: { some: { isAnonymized: false, resumeText: { not: null } } } };
 
 /** Files of organizations left out on this server (RESUME_PARSER_EXCLUDE_ORGS), by id or slug. */
 function excludedWhere(orgs: string[]): Prisma.StoredFileWhereInput {
@@ -487,7 +487,7 @@ async function parseFile(
   } catch (err) {
     if (!(err instanceof ResumeParseError)) throw err;
     addTokens(ctx.run.tokens, err.usage);
-    const base = { code: err.code, httpStatus: err.status, calls: err.calls, requestId: err.requestId, ...err.usage };
+    const base = { code: err.code, httpStatus: err.status, calls: err.calls, ...err.usage };
     if (err.code === 'deadline' || PAUSE_MS[err.code] !== undefined || SUSPECT_PAUSE_MS[err.code] !== undefined) {
       return { kind: 'error', code: err.code, retryAfterMs: err.retryAfterMs, claimedAt, log, base };
     }
@@ -541,7 +541,6 @@ async function parseFile(
     mode: result.mode,
     calls: result.calls,
     salvaged: result.salvaged || undefined,
-    requestId: result.requestId,
     ...result.usage,
     filled: f?.filled ?? [],
     added: f?.added ?? { phones: 0, links: 0 },

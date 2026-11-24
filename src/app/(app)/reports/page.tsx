@@ -206,9 +206,9 @@ export default async function ReportsPage({
             <a href="/reports/builder" className={btnSecondary}>
               Report builder
             </a>
-            <a href="/api/reports/export" className={btnSecondary}>
-              Export CSV
-            </a>
+            {isAdmin ? <a href="/api/reports/export" className={btnSecondary}>
+              Exportar CSV
+            </a> : null}
           </>
         }
       />
