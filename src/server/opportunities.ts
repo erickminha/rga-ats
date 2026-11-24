@@ -27,6 +27,31 @@ export type CreateCandidateInput = {
 };
 
 export class CandidateResumeError extends Error {}
+export class ExistingCandidateError extends Error {}
+
+/** Open a participation by contact ID, without creating or editing a contact. */
+export async function addExistingCandidate(ctx: SessionContext, input: { contactId: string; postingId: string; stageId: string }) {
+  requireRecruitingAccess(ctx);
+  if (!input.contactId || !input.postingId || !input.stageId) throw new ExistingCandidateError('Selecione o candidato, a vaga e a etapa.');
+  const result = await db.$transaction(async (tx) => {
+    if (!await lockIdentifiableContact(tx, ctx.orgId, input.contactId)) throw new ExistingCandidateError('Cadastro não encontrado ou anonimizado.');
+    const [contact, posting, stage] = await Promise.all([
+      tx.contact.findFirst({ where: { id: input.contactId, orgId: ctx.orgId, isAnonymized: false }, select: { id: true, name: true } }),
+      tx.posting.findFirst({ where: { id: input.postingId, orgId: ctx.orgId, state: { not: 'CLOSED' } }, select: { id: true } }),
+      tx.stage.findFirst({ where: { id: input.stageId, orgId: ctx.orgId, type: { not: 'HIRED' } }, select: { id: true, name: true } }),
+    ]);
+    if (!contact || !posting || !stage) throw new ExistingCandidateError('Candidato, vaga aberta ou etapa indisponível.');
+    const existing = await tx.opportunity.findFirst({ where: { orgId: ctx.orgId, contactId: contact.id, postingId: posting.id } });
+    if (existing) throw new ExistingCandidateError('Este candidato já possui uma participação nesta vaga. Consulte o histórico ou reabra a participação existente.');
+    const opportunity = await tx.opportunity.create({ data: { orgId: ctx.orgId, contactId: contact.id, postingId: posting.id, stageId: stage.id, origin: 'SOURCED', source: 'Banco de talentos', ownerId: ctx.userId } });
+    await tx.stageTransition.create({ data: { opportunityId: opportunity.id, toStageId: stage.id, actorId: ctx.userId } });
+    await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'opportunity.created', subjectType: 'opportunity', subjectId: opportunity.id, payload: { contactName: contact.name, stageName: stage.name } });
+    return opportunity;
+  });
+  invalidatePipelineCounts(ctx.orgId);
+  invalidateContactCounts(ctx.orgId);
+  return result;
+}
 
 /**
  * Add a candidate: reuses an existing contact when the email matches
