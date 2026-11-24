@@ -8,8 +8,11 @@ Atualização de 24/11/2026. A situação se refere ao fluxo completo descrito n
 | 5A | Inclusão coletiva do banco de talentos | Implementada parcialmente | Duas inclusões autorizadas no teste local. Falta conciliar as preferências históricas |
 | 5A | Cadastro de empresas e vagas | Implementada, mas não testada | Conferir abertura de vaga vinculada a cliente na revisão publicada |
 | 5A | Portal público de vagas | Implementada, mas não testada | Publicação e ocultação de rascunho verificadas localmente |
-| 5A | Consentimento e histórico de seleção | Implementada parcialmente | ImportRef e prévia existentes. Falta conciliação com evidência e confirmação do lote |
-| 5A | Currículos históricos e sincronização diária | Implementada parcialmente | Armazenamento privado e versões no código. Falta conciliar arquivos e testar retomada |
+| 5A | Consentimentos históricos | Implementada parcialmente | PR #17. Prévia e confirmação testadas em PostgreSQL local. Lote real aguarda evidência e autorização |
+| 5A | Visualização de currículo | Implementada, mas não testada | PR #18. PDF fictício consultado em desktop e celular. Aceite na revisão de homologação pendente |
+| 5A | Sincronização do Banco de Talentos | Implementada parcialmente | PR #19. Botão e processamento incremental testados. Faltam configuração do agendamento e validação com a identidade do serviço |
+| 5A | Recuperação privada dos documentos do Drive | Implementada parcialmente | PR #20. Confirmação individual e em lote com fontes simuladas. Faltam transferência aprovada e conferência no R2 real |
+| 5A | Conciliação de vagas, empresas e histórico de seleção | Implementada parcialmente | PR #21. Conciliação por ID da vaga, cargo e empresa testada. Reconstrução das seleções aguarda correspondências comprovadas |
 | 5B | Ficha de seleção e entrevista por competências | Implementada parcialmente | Roteiro existente. Falta validar uso dentro da central da vaga |
 | 5B | Aplicação e acompanhamento do DISC | Implementada parcialmente | Registro de resultado e PDF por participação. Identificar instrumento licenciado e validar envio, prazo e retorno |
 | 5B | Parecer profissional, comparação e apresentação de finalistas | Implementada parcialmente | Edição, PDF e compartilhamento existentes. Simular três finalistas e retorno do cliente |
@@ -24,3 +27,5 @@ Atualização de 24/11/2026. A situação se refere ao fluxo completo descrito n
 | 5F | Jornada integral da consultoria | Não implementada | Aceite depende das etapas anteriores e de simulação em desktop e celular |
 
 O estado “Implementada, mas não testada” se refere ao aceite na revisão publicada. As evidências locais do PR #16 estão em [evidências do PR](evidencias-pr16/).
+
+A simulação integrada usou uma conta administrativa local, uma fonte de planilha simulada e um PDF fictício. O navegador confirmou a importação cadastral, a prévia em lote de currículos e a criação da versão privada. [Prévia cadastral em desktop](evidencias-5a/rga-m5a-preview-desktop.jpg) · [Confirmação de currículo no celular](evidencias-5a/rga-m5a-preview-mobile.jpg)
