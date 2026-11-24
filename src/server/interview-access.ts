@@ -13,15 +13,24 @@ export function interviewAccess(ctx: SessionContext): Prisma.InterviewWhereInput
   };
 }
 
-/** Only the current resume of an assigned candidate, never their other files. */
+/** Match the kit: use the application file when available, otherwise the profile file. */
 export function resumeAccess(ctx: SessionContext): Prisma.StoredFileWhereInput {
+  const assigned = { orgId: ctx.orgId, interviews: { some: interviewAccess(ctx) } };
   return {
     orgId: ctx.orgId,
+    deletePendingAt: null,
     ...(canManageRecruiting(ctx) ? {} : {
-      contacts: { some: {
-        orgId: ctx.orgId, isAnonymized: false,
-        opportunities: { some: { orgId: ctx.orgId, interviews: { some: interviewAccess(ctx) } } },
-      } },
+      OR: [
+        { applicationResumes: { some: assigned } },
+        { contacts: { some: {
+          orgId: ctx.orgId, isAnonymized: false,
+          opportunities: { some: { ...assigned, OR: [
+            { applicationResumeId: null },
+            { applicationResume: { deletePendingAt: { not: null } } },
+            { applicationResume: { orgId: { not: ctx.orgId } } },
+          ] } },
+        } } },
+      ],
     }),
   };
 }

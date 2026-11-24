@@ -114,6 +114,14 @@ describe.skipIf(!hasDb)('Perfis e funil RGA', () => {
       return file;
     };
     const [allowedFile, deniedFile] = await Promise.all([makeResume(assigned.contact.id), makeResume(other.contact.id)]);
+    const applicationFile = (contactId: string) => db.storedFile.create({
+      data: { orgId: org.id, contactId, key: crypto.randomUUID(), filename: 'curriculo-candidatura.pdf', mime: 'application/pdf', size: 1 },
+    });
+    const [assignedResume, otherResume] = await Promise.all([applicationFile(assigned.contact.id), applicationFile(assigned.contact.id)]);
+    await db.opportunity.update({ where: { id: assigned.opportunity.id }, data: { applicationResumeId: assignedResume.id } });
+    await db.opportunity.create({
+      data: { orgId: org.id, contactId: assigned.contact.id, stageId: stages[0].id, applicationResumeId: otherResume.id },
+    });
     const people = await Promise.all([activeUser(org.id, 'LIMITED_TEAM_MEMBER'), activeUser(org.id, 'INTERVIEWER')]);
     const interview = (opportunityId: string, panelists: { id: string }[]) => db.interview.create({ data: {
       orgId: org.id, opportunityId, panelists: { connect: panelists.map(({ id }) => ({ id })) }, title: 'Entrevista fictícia', startAt: new Date(),
@@ -133,7 +141,9 @@ describe.skipIf(!hasDb)('Perfis e funil RGA', () => {
       expect((await protect(new NextRequest(origin + '/api/lists/contacts', { headers: { cookie } }))).status).toBe(403);
       expect(await db.interview.findMany({ where: interviewAccess(ctx), select: { id: true } })).toEqual([{ id: included.id }]);
       expect(await db.storedFile.findFirst({ where: { ...resumeAccess(ctx), id: deniedFile.id } })).toBeNull();
-      expect(await db.storedFile.findFirst({ where: { ...resumeAccess(ctx), id: allowedFile.id } })).not.toBeNull();
+      expect(await db.storedFile.findFirst({ where: { ...resumeAccess(ctx), id: assignedResume.id } })).not.toBeNull();
+      expect(await db.storedFile.findFirst({ where: { ...resumeAccess(ctx), id: otherResume.id } })).toBeNull();
+      expect(await db.storedFile.findFirst({ where: { ...resumeAccess(ctx), id: allowedFile.id } })).toBeNull();
       const feedback = { summary: 'Avaliação fictícia', overallRating: 3 };
       await expect(submitFeedback(ctx, { ...feedback, opportunityId: other.opportunity.id, interviewId: excluded.id })).rejects.toThrow();
       await expect(submitFeedback(ctx, { ...feedback, opportunityId: assigned.opportunity.id })).rejects.toThrow();
@@ -144,6 +154,9 @@ describe.skipIf(!hasDb)('Perfis e funil RGA', () => {
         expect(await createRecruitingShare(ctx, scope, assigned.opportunity.id)).toHaveProperty('error');
       }
     }
+    await db.storedFile.update({ where: { id: assignedResume.id }, data: { deletePendingAt: new Date() } });
+    expect(await db.storedFile.findFirst({ where: { ...resumeAccess(context(people[0])), id: allowedFile.id } })).not.toBeNull();
+    expect(await db.storedFile.findFirst({ where: { ...resumeAccess(context(people[0])), id: assignedResume.id } })).toBeNull();
     expect((await setInterviewState(context(admin), included.id, 'COMPLETED')).state).toBe('COMPLETED');
     await db.interview.update({ where: { id: included.id }, data: { panelists: { disconnect: { id: people[0].id } } } });
     expect(await db.storedFile.findFirst({ where: { ...resumeAccess(context(people[0])), id: allowedFile.id } })).toBeNull();

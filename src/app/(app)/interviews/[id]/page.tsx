@@ -34,6 +34,7 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
       opportunity: {
         include: {
           contact: { include: { resumeFile: true } },
+          applicationResume: true,
           posting: true,
           stage: true,
           feedback: { where: operator ? undefined : { interviewId: id, authorId: ctx.userId! }, orderBy: { createdAt: 'desc' }, include: { author: true, interview: true } },
@@ -57,6 +58,8 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
   const { opportunity } = interview;
   const state = STATE_BADGES[interview.state] ?? { label: interview.state, tone: 'neutral' as Tone };
   const { contact } = opportunity;
+  const resume = [opportunity.applicationResume, contact.resumeFile]
+    .find((file) => file?.orgId === ctx.orgId && !file.deletePendingAt);
   const mustSubmitFirst =
     !!org?.hideFeedbackUntilSubmitted &&
     !opportunity.feedback.some((f) => f.authorId === ctx.userId);
@@ -99,9 +102,9 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
                 .filter(Boolean)
                 .join(' · ')}
             </p>
-            {contact.resumeFile ? (
+            {resume ? (
               <a
-                href={`/api/files/${contact.resumeFile.id}`}
+                href={`/api/files/${resume.id}`}
                 target="_blank"
                 className={buttonClass({ variant: 'tonal', size: 'sm', className: 'mt-3' })}
               >
