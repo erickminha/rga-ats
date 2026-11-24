@@ -78,7 +78,7 @@ export function EmailSection({
         action={
           toEmail ? (
             <button onClick={() => setOpen((v) => !v)} className={btnGhost}>
-              <Mail /> {open ? "Cancelar" : 'Compose'}
+              <Mail /> {open ? "Cancelar" : 'Escrever e-mail'}
             </button>
           ) : null
         }
@@ -117,7 +117,7 @@ export function EmailSection({
           {state?.error ? <p className="text-sm text-critical">{state.error}</p> : null}
           <div className="flex justify-end">
             <button type="submit" disabled={pending} className={btnPrimary}>
-              <TextSwap>{pending ? "Enviando…" : 'Send'}</TextSwap>
+              <TextSwap>{pending ? "Enviando…" : 'Enviar'}</TextSwap>
             </button>
           </div>
         </form>
@@ -131,7 +131,7 @@ export function EmailSection({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{m.subject}</p>
                   <p className="mt-0.5 text-xs text-ink-2">
-                    {m.automated ? 'Automation' : 'Manual'} · para {m.toEmail} ·{' '}
+                    {m.automated ? 'Automático' : 'Manual'} · para {m.toEmail} ·{' '}
                     {m.status === 'SCHEDULED' && m.scheduledAt ? (
                       <>
                         envio <LocalTime date={m.scheduledAt} options={EMAIL_TIME} />

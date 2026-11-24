@@ -33,7 +33,7 @@ export function TaskRow({
             startTransition,
             () => setCompleted(!completed),
             () => setTaskCompletedAction(task.id, !completed),
-            completed ? 'Reopening the task' : 'Completing the task',
+            completed ? 'Reabrindo a tarefa' : 'Concluindo a tarefa',
           )
         }
         aria-label={`Mark "${task.title}" ${completed ? 'incomplete' : 'complete'}`}

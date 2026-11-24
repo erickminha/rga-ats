@@ -14,12 +14,12 @@ import { DitherBar } from '@/components/ui/dither';
 
 const GROUP_DIMENSIONS = [
   { value: 'stage', label: "Etapa" },
-  { value: 'origin', label: 'Origin' },
-  { value: 'source', label: 'Source' },
+  { value: 'origin', label: 'Origem' },
+  { value: 'source', label: 'Fonte' },
   { value: 'posting', label: "Vaga" },
-  { value: 'archiveReason', label: 'Archive reason' },
+  { value: 'archiveReason', label: 'Motivo do encerramento' },
   { value: 'owner', label: "Responsável" },
-  { value: 'month', label: 'Month added' },
+  { value: 'month', label: 'Mês de cadastro' },
 ] as const;
 
 type Params = {
@@ -100,7 +100,7 @@ export default async function ReportBuilderPage({
               name="status"
               defaultValue={params.status ?? ''}
               options={[
-                { value: '', label: 'Any' },
+                { value: '', label: 'Qualquer' },
                 { value: 'ACTIVE', label: "Ativos" },
                 { value: 'HIRED', label: "Contratados" },
                 { value: 'ARCHIVED', label: "Encerrados" },
@@ -112,7 +112,7 @@ export default async function ReportBuilderPage({
               name="posting"
               defaultValue={params.posting ?? ''}
               options={[
-                { value: '', label: 'Any' },
+                { value: '', label: 'Qualquer' },
                 ...postings.map((p) => ({ value: p.id, label: p.title })),
               ]}
             />

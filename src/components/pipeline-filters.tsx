@@ -34,7 +34,7 @@ export function PipelineFilters({
       <Dropdown
         label="Vaga"
         value={nav.input.posting ?? ''}
-        allLabel="All postings"
+        allLabel="Todas as vagas"
         options={postings.map((p) => ({ value: p.id, label: p.title }))}
         onSelect={(value) => nav.go({ posting: value })}
       />

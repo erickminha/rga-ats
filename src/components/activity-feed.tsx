@@ -11,7 +11,7 @@ function describe(event: FeedEvent): string {
   const p = event.payload ?? {};
   switch (event.verb) {
     case 'opportunity.created':
-      return `Added to pipeline in ${p.stageName ?? 'a stage'}`;
+      return `Adicionado ao funil na etapa ${p.stageName ?? 'não informada'}`;
     case 'opportunity.stage_changed':
       return `Da etapa ${p.from} para ${p.to}${p.note ? ` · ${p.note}` : ''}`;
     case 'opportunity.hired':
@@ -21,61 +21,61 @@ function describe(event: FeedEvent): string {
     case 'opportunity.unarchived':
       return 'Participação reaberta';
     case 'note.added':
-      return 'Note added';
+      return 'Anotação adicionada';
     case 'application.received':
-      return `Applied to ${p.postingTitle ?? 'a posting'} via careers site`;
+      return `Candidatura a ${p.postingTitle ?? 'uma vaga'} pela página de carreiras`;
     case 'interview.scheduled':
-      return `Interview scheduled: ${p.title}${Array.isArray(p.panel) && p.panel.length ? ` with ${(p.panel as string[]).join(', ')}` : ''}`;
+      return `Entrevista agendada: ${p.title}${Array.isArray(p.panel) && p.panel.length ? ` com ${(p.panel as string[]).join(', ')}` : ''}`;
     case 'interview.completed':
-      return `Interview completed: ${p.title}`;
+      return `Entrevista concluída: ${p.title}`;
     case 'interview.canceled':
-      return `Interview canceled: ${p.title}`;
+      return `Entrevista cancelada: ${p.title}`;
     case 'feedback.submitted':
-      return `Feedback submitted — ${p.rating}`;
+      return `Avaliação enviada — ${p.rating}`;
     case 'email.sent':
-      return `Email sent: ${p.subject}`;
+      return `E-mail enviado: ${p.subject}`;
     case 'email.scheduled':
-      return `Email scheduled: ${p.subject}`;
+      return `E-mail agendado: ${p.subject}`;
     case 'email.canceled':
-      return `Scheduled email canceled: ${p.subject}`;
+      return `Envio de e-mail cancelado: ${p.subject}`;
     case 'ai.evaluation_completed':
-      return `AI evaluation completed (${p.model})`;
+      return `Avaliação por IA concluída (${p.model})`;
     case 'task.created':
-      return `Task added: ${p.title}`;
+      return `Tarefa adicionada: ${p.title}`;
     case 'task.completed':
-      return `Task completed: ${p.title}`;
+      return `Tarefa concluída: ${p.title}`;
     case 'opportunity.snoozed':
-      return `Snoozed until ${p.until ? new Date(String(p.until)).toLocaleDateString() : 'later'}`;
+      return `Adiado até ${p.until ? new Date(String(p.until)).toLocaleDateString('pt-BR') : 'mais tarde'}`;
     case 'opportunity.unsnoozed':
-      return 'Snooze removed';
+      return 'Adiamento removido';
     case 'offer.created':
-      return `Offer drafted: ${p.jobTitle}`;
+      return `Proposta em rascunho: ${p.jobTitle}`;
     case 'offer.approval_requested':
-      return `Offer sent for approval: ${p.jobTitle}`;
+      return `Proposta enviada para aprovação: ${p.jobTitle}`;
     case 'offer.pending_approval':
-      return `Offer awaiting approval: ${p.jobTitle}`;
+      return `Proposta aguardando aprovação: ${p.jobTitle}`;
     case 'offer.sent':
-      return `Offer sent: ${p.jobTitle}`;
+      return `Proposta enviada: ${p.jobTitle}`;
     case 'offer.accepted':
-      return `Offer accepted 🎉 ${p.jobTitle}`;
+      return `Proposta aceita 🎉 ${p.jobTitle}`;
     case 'offer.declined':
-      return `Offer declined: ${p.jobTitle}`;
+      return `Proposta recusada: ${p.jobTitle}`;
     case 'offer.withdrawn':
-      return `Offer withdrawn: ${p.jobTitle}`;
+      return `Proposta retirada: ${p.jobTitle}`;
     case 'referral.submitted':
-      return `Referral submitted by ${p.referrerName ?? 'a teammate'}`;
+      return `Indicação recebida de ${p.referrerName ?? 'um membro da equipe'}`;
     case 'scheduling.link_created':
-      return `Booking link created: ${p.title}`;
+      return `Link de agendamento criado: ${p.title}`;
     case 'interview.self_scheduled':
-      return `Candidate booked: ${p.title}`;
+      return `Agendamento pelo candidato: ${p.title}`;
     case 'contact.merged':
-      return `Merged duplicate profile: ${p.mergedName}`;
+      return `Perfil duplicado unificado: ${p.mergedName}`;
     case 'contact.tagged':
-      return `Tags updated: ${Array.isArray(p.tags) ? (p.tags as string[]).join(', ') : ''}`;
+      return `Etiquetas atualizadas: ${Array.isArray(p.tags) ? (p.tags as string[]).join(', ') : ''}`;
     case 'opportunity.imported':
-      return `Imported from ${p.source ?? 'another ATS'}`;
+      return `Importado de ${p.source ?? 'outro ATS'}`;
     default:
-      return event.verb.replace(/[._]/g, ' ');
+      return `Atividade registrada (${event.verb})`;
   }
 }
 

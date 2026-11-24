@@ -200,7 +200,7 @@ export default async function ReportsPage({
     { label: "Aceite de propostas", value: acceptanceRate !== null ? `${acceptanceRate}%` : '—' },
   ];
 
-  const dimLabel = { posting: 'Posting', department: 'Department', owner: 'Owner' } as const;
+  const dimLabel = { posting: 'Vaga', department: 'Departamento', owner: 'Responsável' } as const;
 
   return (
     <div>
@@ -428,7 +428,7 @@ export default async function ReportsPage({
                 name="recipients"
                 type="text"
                 required
-                placeholder="you@company.com, cofounder@company.com"
+                placeholder="voce@empresa.com.br, equipe@empresa.com.br"
                 className={cn(inputClass, 'min-w-64 flex-1')}
               />
               <button type="submit" className={btnTonal}>

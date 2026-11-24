@@ -77,7 +77,7 @@ function Picker({
   useEffect(() => {
     let live = true;
     request.current ??= recordingsNearInterviewAction(interview.id).catch(
-      (): PickerResult => ({ ok: false, error: "Couldn't reach your notetakers. Try again." }),
+      (): PickerResult => ({ ok: false, error: "Não foi possível acessar os serviços de transcrição. Tente novamente." }),
     );
     request.current.then((result) => live && setData(result));
     return () => {
@@ -108,7 +108,7 @@ function Picker({
         <div>
           <Dialog.Title className="text-md font-medium text-ink">Anexada a {interview.title}</Dialog.Title>
           <Dialog.Description className="mt-1 text-sm text-ink-2">
-            {choice.title || 'The recording'} is on {candidateName}&apos;s profile now, with this interview.
+            {choice.title || 'A gravação'} está no perfil de {candidateName}, vinculada a esta entrevista.
           </Dialog.Description>
         </div>
         <div className="flex w-full justify-end">
@@ -193,10 +193,10 @@ function Picker({
                         {m.attached ? (
                           <p className="mt-1 text-xs text-ink-2">
                             {m.attached.here
-                              ? 'Already attached to this interview'
+                              ? 'Já anexada a esta entrevista'
                               : m.attached.to
-                                ? `Already attached to ${m.attached.to.contactName}${m.attached.to.interviewTitle ? ` · ${m.attached.to.interviewTitle}` : ''}`
-                                : 'Already attached once; that transcript was deleted'}
+                                ? `Já anexada ao perfil de ${m.attached.to.contactName}${m.attached.to.interviewTitle ? ` · ${m.attached.to.interviewTitle}` : ''}`
+                                : 'Já foi anexada anteriormente; a transcrição foi excluída'}
                           </p>
                         ) : m.suggested ? (
                           <p className="mt-1 text-xs text-ink-2">{m.suggested.text}</p>

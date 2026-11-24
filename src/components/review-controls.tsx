@@ -22,7 +22,7 @@ export function BatchEvaluateButton({ postingId }: { postingId?: string }) {
     <span className="flex items-center gap-3">
       {pending ? (
         <span className="text-xs">
-          <ThinkingStates lines={['Reading applications…', 'Scoring against each role…', 'Ranking the queue…']} />
+          <ThinkingStates lines={['Lendo candidaturas…', 'Avaliando os requisitos de cada vaga…', 'Organizando a fila de análise…']} />
         </span>
       ) : status ? (
         <span className="text-xs text-ink-2">

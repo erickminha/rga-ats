@@ -19,8 +19,8 @@ const LABEL: Record<Kind, string> = { emails: 'email', phones: 'phone', location
 const PLACEHOLDER: Record<Kind, string> = {
   emails: 'name@example.com',
   phones: '+1 555 010 0000',
-  location: 'City, region',
-  links: 'linkedin.com/in/…, portfolio, GitHub',
+  location: 'Cidade, estado',
+  links: 'linkedin.com/in/…, portfólio, GitHub',
 };
 
 const valuesOf = (d: Details, kind: Kind): string[] => (kind === 'location' ? (d.location ? [d.location] : []) : d[kind]);

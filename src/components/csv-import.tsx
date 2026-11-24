@@ -82,7 +82,7 @@ export function CsvImport() {
       {summary ? <p className="text-sm text-positive">{summary}</p> : null}
       {errors.map((e, i) => (
         <p key={i} className="text-sm text-critical">
-          {e}
+          {e.replace(/^Missing required/, 'Campo obrigatório ausente')}
         </p>
       ))}
     </div>

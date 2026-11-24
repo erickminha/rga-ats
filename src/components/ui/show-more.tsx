@@ -35,7 +35,7 @@ export function ShowMore({
           onClick={() => setOpen((o) => !o)}
           className={cn(buttonClass({ variant: 'ghost', size: 'xs' }), buttonClassName)}
         >
-          {open ? 'Show less' : `Show ${hidden} ${noun}`}
+          {open ? 'Mostrar menos' : `Show ${hidden} ${noun}`}
         </button>
       ) : null}
     </>

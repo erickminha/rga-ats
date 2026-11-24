@@ -138,7 +138,7 @@ export function InterviewSection({
                 }}
                 className={btnGhost}
               >
-                <Link2 /> {linkOpen ? "Cancelar" : 'Self-schedule link'}
+                <Link2 /> {linkOpen ? "Cancelar" : 'Link de autoagendamento'}
               </button>
               <button
                 onClick={() => {
@@ -491,7 +491,7 @@ function BookingPagePanel({
         </div>
         <p className="text-xs text-ink-2">
           {prefilled
-            ? `The link fills in ${candidate.name.split(' ')[0]}’s name and email, so they only pick a time. `
+            ? `O link preenche o nome e o e-mail de ${candidate.name.split(' ')[0]}, que só precisa escolher um horário. `
             : ''}
           Depois que a pessoa escolher um horário na sua agenda externa, registre a entrevista no RGA ATS.
         </p>

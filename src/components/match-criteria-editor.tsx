@@ -24,7 +24,7 @@ export function MatchCriteriaEditor({
   postingTitle,
   criteria,
   aiEnabled,
-  label = 'Edit criteria',
+  label = 'Editar critérios',
   variant = 'ghost',
   size = 'sm',
 }: {
@@ -85,7 +85,7 @@ export function MatchCriteriaEditor({
           >
             {suggesting ? (
               <div className="rounded-field bg-muted px-4 py-3 text-sm">
-                <ThinkingStates lines={['Reading the job description…', 'Picking out what to screen for…', 'Marking the must-haves…']} />
+                <ThinkingStates lines={['Lendo a descrição da vaga…', 'Identificando os critérios de triagem…', 'Identificando os requisitos obrigatórios…']} />
               </div>
             ) : (
               rows.map((r, i) => (
@@ -104,13 +104,13 @@ export function MatchCriteriaEditor({
                     type="button"
                     aria-pressed={r.must}
                     onClick={() => update(r.id, { must: !r.must })}
-                    title={r.must ? 'Must-have: counts double' : 'Nice to have'}
+                    title={r.must ? 'Obrigatório: vale o dobro' : 'Desejável'}
                     className={cn(
                       'selectable inline-flex h-9 w-[104px] shrink-0 items-center justify-center rounded-full text-xs',
                       r.must ? 'is-selected font-medium' : 'bg-muted text-ink-2 hover:text-ink',
                     )}
                   >
-                    {r.must ? 'Must-have' : 'Nice to have'}
+                    {r.must ? 'Obrigatório' : 'Desejável'}
                   </button>
                   <button
                     type="button"
@@ -140,7 +140,7 @@ export function MatchCriteriaEditor({
                       startSuggest(async () => {
                         const result = await suggestMatchCriteriaAction(postingId);
                         if (result.error || !result.criteria) {
-                          setError(result.error ?? 'Couldn’t suggest criteria.');
+                          setError(result.error ?? 'Não foi possível sugerir critérios.');
                           return;
                         }
                         setError(null);
@@ -166,7 +166,7 @@ export function MatchCriteriaEditor({
           <div className="flex justify-end gap-2 px-6 pb-6 pt-5">
             <Dialog.Close className={buttonClass({ variant: 'ghost' })}>Cancelar</Dialog.Close>
             <button type="submit" form="criteria-form" disabled={saving || suggesting} className={buttonClass({ variant: 'primary' })}>
-              {saving ? "Salvando…" : 'Save criteria'}
+              {saving ? "Salvando…" : 'Salvar critérios'}
             </button>
           </div>
         </Dialog.Content>

@@ -17,73 +17,73 @@ import {
 const DOCS = 'https://github.com/adamperlis/Source/blob/main/docs/resume-parsing.md';
 
 const MISCONFIGURED: Record<NonNullable<ResumeParserDescription['reason']>, (d: ResumeParserDescription) => string> = {
-  model_required: () => 'RESUME_PARSER_BASE_URL is set, but no model is. Set RESUME_PARSER_MODEL, for example gpt-oss:20b on Ollama.',
-  bad_base_url: () => "RESUME_PARSER_BASE_URL isn't a valid http or https URL.",
-  key_required: (d) => `${d.providerLabel ?? d.host ?? 'This provider'} needs an API key. Set RESUME_PARSER_API_KEY.`,
+  model_required: () => 'RESUME_PARSER_BASE_URL está configurada, mas falta o modelo. Configure RESUME_PARSER_MODEL, por exemplo gpt-oss:20b no Ollama.',
+  bad_base_url: () => "RESUME_PARSER_BASE_URL não é um endereço HTTP ou HTTPS válido.",
+  key_required: (d) => `${d.providerLabel ?? d.host ?? 'Este provedor'} precisa de uma chave de API. Configure RESUME_PARSER_API_KEY.`,
 };
 
 function hints(d: ResumeParserDescription, s: ResumeParseSummary): string[] {
-  const provider = d.providerLabel ?? 'The provider';
+  const provider = d.providerLabel ?? 'O provedor';
   const out: string[] = [];
   switch (s.pauseCode) {
     case 'provider_auth':
-      out.push(`${provider} rejected the API key.`);
+      out.push(`${provider} rejeitou a chave de API.`);
       break;
     case 'provider_not_found':
-      out.push(`${provider} doesn't recognize the model ${d.model}.`);
+      out.push(`${provider} não reconhece o modelo ${d.model}.`);
       break;
     case 'provider_model_retired':
-      out.push(`${provider} has retired the model ${d.model}. Set RESUME_PARSER_MODEL to a current one.`);
+      out.push(`${provider} descontinuou o modelo ${d.model}. Configure RESUME_PARSER_MODEL com um modelo atual.`);
       break;
     case 'provider_quota':
-      out.push(`${provider} says the account is out of credit or over its quota. Waiting resumes are parsed once that's sorted out.`);
+      out.push(`${provider} informa que a conta está sem créditos ou excedeu sua cota. A análise dos currículos pendentes será retomada após a regularização.`);
       break;
     case 'provider_rate_limited':
-      out.push(`${provider} is limiting requests. Waiting resumes are parsed as the limit resets.`);
+      out.push(`${provider} está limitando as solicitações. Os currículos pendentes serão analisados após a renovação do limite.`);
       break;
     case 'provider_unavailable':
-      out.push(`${provider} isn't answering. Waiting resumes are parsed once it's back.`);
+      out.push(`${provider} não está respondendo. Os currículos pendentes serão analisados quando o serviço retornar.`);
       break;
     case 'provider_timeout':
-      out.push(`${provider} isn't answering in time. Waiting resumes are parsed once it's back. For a model on your own server, raise RESUME_PARSER_TIMEOUT_MS.`);
+      out.push(`${provider} não está respondendo a tempo. A análise será retomada quando o serviço voltar. Se utilizar servidor próprio, aumente RESUME_PARSER_TIMEOUT_MS.`);
       break;
     case 'provider_bad_request':
-      out.push(`${provider} is turning down requests for the model ${d.model}. Waiting resumes are tried again; see the troubleshooting table.`);
+      out.push(`${provider} está recusando solicitações para o modelo ${d.model}. Os currículos pendentes serão processados novamente; consulte a tabela de solução de problemas.`);
       break;
     case 'provider_redirect':
-      out.push(`${provider} answered with a redirect instead of a result. Check RESUME_PARSER_BASE_URL.`);
+      out.push(`${provider} respondeu com um redirecionamento em vez de um resultado. Verifique RESUME_PARSER_BASE_URL.`);
       break;
   }
   switch (s.lastFileError) {
     case 'provider_too_large':
-      out.push("Resumes are too long for your plan's per-request limit. Lower RESUME_PARSER_MAX_CHARS.");
+      out.push("Os currículos excedem o limite por solicitação do seu plano. Reduza RESUME_PARSER_MAX_CHARS.");
       break;
     case 'provider_timeout':
-      out.push('The model took too long to answer. For a model on your own server, raise RESUME_PARSER_TIMEOUT_MS.');
+      out.push('O modelo demorou demais para responder. Se estiver em servidor próprio, aumente RESUME_PARSER_TIMEOUT_MS.');
       break;
     case null:
       break;
     default:
-      out.push("The model's answer for some resumes couldn't be used. Each one is tried up to 3 times.");
+      out.push("Não foi possível aproveitar a resposta do modelo para alguns currículos. São realizadas até três tentativas para cada um.");
   }
-  if (d.dailyLimit === 0) out.push('Parsing is paused: RESUME_PARSER_DAILY_LIMIT is 0.');
+  if (d.dailyLimit === 0) out.push('Análise pausada: RESUME_PARSER_DAILY_LIMIT está em 0.');
   else if (s.usedToday >= d.dailyLimit && s.waiting > 0) {
-    out.push(`Today's limit of ${d.dailyLimit.toLocaleString()} resumes is reached. The rest are parsed tomorrow (UTC).`);
+    out.push(`O limite diário de ${d.dailyLimit.toLocaleString('pt-BR')} currículos foi atingido. Os demais serão analisados amanhã (UTC).`);
   }
   return out;
 }
 
 function stats(s: ResumeParseSummary): string {
   const parts = [
-    [s.last30.OK, 'read'],
-    [s.last30.EMPTY, 'with nothing usable'],
-    [s.last30.FAILED, 'failed'],
-    [s.last30.SKIPPED, 'skipped'],
-    [s.waiting, 'waiting'],
+    [s.last30.OK, 'lidos'],
+    [s.last30.EMPTY, 'sem conteúdo aproveitável'],
+    [s.last30.FAILED, 'com falha'],
+    [s.last30.SKIPPED, 'ignorados'],
+    [s.waiting, 'aguardando'],
   ]
     .filter(([n]) => Number(n) > 0)
-    .map(([n, label]) => `${Number(n).toLocaleString()} ${label}`);
-  return parts.length ? `Last 30 days: ${parts.join(' · ')}` : 'No resumes read yet.';
+    .map(([n, label]) => `${Number(n).toLocaleString('pt-BR')} ${label}`);
+  return parts.length ? `Últimos 30 dias: ${parts.join(' · ')}` : 'Nenhum currículo lido até o momento.';
 }
 
 function Status({ tone, label }: { tone: 'positive' | 'neutral' | 'caution'; label: string }) {
@@ -132,10 +132,10 @@ export async function ResumeParsingStatus({ orgId }: { orgId: string }) {
   }
 
   const summary = await resumeParseSummary(orgId);
-  const title = d.thirdParty ? `${d.providerLabel} · ${d.model}` : `Your own server (${d.host}) · ${d.model}`;
+  const title = d.thirdParty ? `${d.providerLabel} · ${d.model}` : `Servidor próprio (${d.host}) · ${d.model}`;
   const destination = d.thirdParty
-    ? `To do this, the text of each resume is sent to ${d.providerLabel}.`
-    : `Resume text is sent to ${d.host} on your own network; nothing goes to a third party unless that server forwards it.`;
+    ? `Para isso, o texto de cada currículo é enviado a ${d.providerLabel}.`
+    : `O texto do currículo é enviado a ${d.host}, em sua própria rede. Nenhum dado vai a terceiros, a menos que esse servidor o encaminhe.`;
   const problems = hints(d, summary);
 
   return (

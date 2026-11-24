@@ -54,7 +54,7 @@ export function PostingStateScope({
       startTransition,
       () => setState(gated && next === 'PUBLISHED' ? 'PENDING_APPROVAL' : next),
       () => setPostingStateAction(postingId, next),
-      'Updating the posting',
+      'Atualizando a vaga',
     );
 
   return (
@@ -98,7 +98,7 @@ export function PostingStateMenu() {
       ) : null}
       {state !== 'PUBLISHED' && state !== 'CLOSED' && state !== 'PENDING_APPROVAL' && (
         <button onClick={() => set('PUBLISHED')} className={forwardClass}>
-          {gated ? "Solicitar aprovação" : 'Publish'}
+          {gated ? "Solicitar aprovação" : 'Publicar'}
         </button>
       )}
       {state === 'PUBLISHED' && (
@@ -108,7 +108,7 @@ export function PostingStateMenu() {
       )}
       {state === 'CLOSED' && (
         <button onClick={() => set('PUBLISHED')} className={quietClass}>
-          {gated ? 'Request reopen' : 'Reopen'}
+          {gated ? 'Solicitar reabertura' : 'Reabrir'}
         </button>
       )}
     </span>

@@ -97,7 +97,7 @@ export function SlotPicker({ token, slots }: { token: string; slots: string[] })
 
       <div>
         <button type="submit" disabled={!selected || pending} className={buttonClass({ variant: 'primary', size: 'lg' })}>
-          <TextSwap>{pending ? 'Booking…' : selected ? 'Confirm this time' : 'Pick a time'}</TextSwap>
+          <TextSwap>{pending ? 'Agendando…' : selected ? 'Confirmar este horário' : 'Escolha um horário'}</TextSwap>
         </button>
       </div>
     </form>

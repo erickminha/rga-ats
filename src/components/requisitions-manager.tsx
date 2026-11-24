@@ -21,8 +21,8 @@ const STATE_TONES: Record<string, Tone> = {
 
 const STATE_LABELS: Record<string, string> = {
   OPEN: "Abrir",
-  ON_HOLD: 'On hold',
-  CLOSED: 'Closed',
+  ON_HOLD: 'Em espera',
+  CLOSED: 'Encerrada',
 };
 
 export type RequisitionItem = {
@@ -54,7 +54,7 @@ export function RequisitionsManager({ requisitions }: { requisitions: Requisitio
           </p>
         </div>
         <button onClick={() => setOpen((v) => !v)} className={buttonClass({ variant: 'secondary', size: 'sm' })}>
-          <Plus /> {open ? "Cancelar" : 'New requisition'}
+          <Plus /> {open ? "Cancelar" : 'Nova requisição'}
         </button>
       </div>
 
@@ -65,7 +65,7 @@ export function RequisitionsManager({ requisitions }: { requisitions: Requisitio
               <input {...noAutofill} name="code" required placeholder="ENG-042" className={inputClass} />
             </Field>
             <Field label="Título">
-              <input {...noAutofill} name="title" required placeholder="Staff Engineer" className={inputClass} />
+              <input {...noAutofill} name="title" required placeholder="Analista de engenharia" className={inputClass} />
             </Field>
             <Field label="Posições">
               <input {...noAutofill} name="openings" type="number" min="1" defaultValue="1" className={inputClass} />
@@ -80,7 +80,7 @@ export function RequisitionsManager({ requisitions }: { requisitions: Requisitio
           {state?.error ? <p className="text-sm text-critical">{state.error}</p> : null}
           <div className="flex justify-end">
             <button type="submit" disabled={pending} className={btnTonal}>
-              <TextSwap>{pending ? "Criando…" : 'Create requisition'}</TextSwap>
+              <TextSwap>{pending ? "Criando…" : 'Criar requisição'}</TextSwap>
             </button>
           </div>
         </form>
@@ -116,7 +116,7 @@ export function RequisitionsManager({ requisitions }: { requisitions: Requisitio
                     }
                     className={btnGhost}
                   >
-                    {r.state === 'OPEN' ? 'Hold' : 'Reopen'}
+                    {r.state === 'OPEN' ? 'Colocar em espera' : 'Reabrir'}
                   </button>
                 ) : null}
               </div>

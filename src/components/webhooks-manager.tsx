@@ -66,14 +66,14 @@ export function WebhooksManager({ endpoints }: { endpoints: EndpointItem[] }) {
                   className={buttonClass({ variant: 'tonal', size: 'xs' })}
                 >
                   <StatusDot tone={e.active ? 'positive' : 'neutral'} />
-                  {e.active ? "Ativos" : 'Paused'}
+                  {e.active ? "Ativos" : 'Pausado'}
                 </button>
                 <button
                   title="Excluir endpoint"
                   aria-label="Excluir endpoint"
                   disabled={pending}
                   onClick={() => {
-                    if (!confirm('Delete this webhook endpoint? Deliveries stop immediately.')) return;
+                    if (!confirm('Excluir este endpoint de webhook? Os envios serão interrompidos imediatamente.')) return;
                     startTransition(() => deleteWebhookAction(e.id));
                   }}
                   className={buttonClass({ variant: 'ghost', size: 'sm', icon: true, className: 'hover:text-critical' })}

@@ -87,7 +87,7 @@ export function AiEvaluationSection({
               }
               className={btnGhost}
             >
-              <TextSwap>{pending ? 'Evaluating…' : evaluations.length ? 'Re-run' : 'Run evaluation'}</TextSwap>
+              <TextSwap>{pending ? 'Avaliando…' : evaluations.length ? 'Avaliar novamente' : 'Iniciar avaliação'}</TextSwap>
             </button>
             </span>
           ) : null
@@ -99,7 +99,7 @@ export function AiEvaluationSection({
       {pending ? (
         <p className="animate-fade-rise mb-3 text-sm">
           <ThinkingStates
-            lines={['Reading the resume…', 'Checking the application note…', 'Weighing the scorecards…']}
+            lines={['Lendo o currículo…', 'Verificando as observações da candidatura…', 'Considerando as fichas de avaliação…']}
           />
         </p>
       ) : null}
@@ -228,7 +228,7 @@ function CriteriaChips({ results }: { results: CriterionResult[] }) {
           <span className="font-medium text-ink">{shown.label}</span>
           {shown.must ? ' · must-have' : ''}
           {' — '}
-          {shown.evidence || 'Nothing in the resume, application or interviews speaks to this yet.'}
+          {shown.evidence || 'O currículo, a candidatura e as entrevistas ainda não fornecem informações sobre este critério.'}
         </p>
       ) : null}
     </div>

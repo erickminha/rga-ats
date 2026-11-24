@@ -21,11 +21,11 @@ import { LocalTime } from '@/components/local-time';
  */
 
 const PRESETS = [
-  { label: 'Tomorrow', days: 1 },
-  { label: 'In 3 days', days: 3 },
-  { label: 'In a week', days: 7 },
-  { label: 'In 2 weeks', days: 14 },
-  { label: 'In a month', days: 30 },
+  { label: 'Amanhã', days: 1 },
+  { label: 'Em 3 dias', days: 3 },
+  { label: 'Em uma semana', days: 7 },
+  { label: 'Em 2 semanas', days: 14 },
+  { label: 'Em um mês', days: 30 },
 ];
 
 /**
@@ -74,7 +74,7 @@ export function SnoozeControl({
         setPicking(false);
       },
       () => snoozeOpportunityAction(opportunityId, next?.toISOString() ?? null),
-      next ? 'Snoozing' : 'Unsnoozing',
+      next ? 'Adiando' : 'Removendo adiamento',
     );
 
   // The menu hands focus back to its trigger as it closes, after the date

@@ -29,12 +29,12 @@ export async function signup(_prev: AuthFormState, formData: FormData): Promise<
     .trim();
   const password = String(formData.get('password') ?? '');
 
-  if (!name || !orgName || !email || !password) return { error: 'All fields are required.' };
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: 'Enter a valid email address.' };
-  if (password.length < 8) return { error: 'Password must be at least 8 characters.' };
+  if (!name || !orgName || !email || !password) return { error: 'Preencha todos os campos.' };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: 'Informe um e-mail válido.' };
+  if (password.length < 8) return { error: 'A senha deve ter pelo menos 8 caracteres.' };
 
   const existing = await db.user.findFirst({ where: { email } });
-  if (existing) return { error: 'An account with this email already exists.' };
+  if (existing) return { error: 'Já existe uma conta com este e-mail.' };
 
   const passwordHash = await bcrypt.hash(password, 12);
   try {
@@ -69,7 +69,7 @@ export async function login(_prev: AuthFormState, formData: FormData): Promise<A
  * then goes through the normal credentials flow — not an auth bypass.
  */
 export async function demoLogin(): Promise<void> {
-  if (!demoEnabled()) throw new Error('Demo mode is not enabled.');
+  if (!demoEnabled()) throw new Error('O modo de demonstração está desativado.');
   const { email, password } = await ensureDemoOrg();
   await signIn('credentials', { email, password, redirectTo: '/dashboard' });
 }
@@ -121,7 +121,7 @@ export async function finishGoogleSignup(_prev: AuthFormState, formData: FormDat
 
   const orgName = String(formData.get('orgName') ?? '').trim();
   const name = String(formData.get('name') ?? '').trim();
-  if (!orgName || !name) return { error: 'All fields are required.' };
+  if (!orgName || !name) return { error: 'Preencha todos os campos.' };
 
   try {
     await createWorkspace({
@@ -145,7 +145,7 @@ export async function finishGoogleSignup(_prev: AuthFormState, formData: FormDat
     await signIn(GOOGLE_CONTINUE_PROVIDER, { redirectTo: '/onboarding' });
   } catch (error) {
     if (error instanceof AuthError) {
-      return { error: 'Your workspace is ready, but sign-in didn’t finish. Continue with Google to sign in.' };
+      return { error: 'Seu espaço de trabalho está pronto, mas a autenticação não foi concluída. Entre com o Google.' };
     }
     throw error;
   }

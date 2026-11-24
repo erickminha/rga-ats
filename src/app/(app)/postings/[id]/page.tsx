@@ -296,7 +296,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
           </div>
           <p className="mb-4 text-sm text-ink-2">
             Critérios para avaliar as candidaturas da vaga. Requisitos obrigatórios têm peso duplo.
-            {criteria.length ? null : ' With none set, the first evaluation drafts them from the job description.'}
+            {criteria.length ? null : ' Se nenhum critério for definido, a primeira avaliação sugerirá critérios a partir da descrição da vaga.'}
           </p>
           {criteria.length ? (
             <div className="flex flex-wrap gap-1.5">
