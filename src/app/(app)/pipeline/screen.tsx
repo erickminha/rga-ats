@@ -1,13 +1,13 @@
 import { RecruitingBoard } from '@/components/recruiting-board';
 import Link from 'next/link';
-import { Kanban, Plus } from 'lucide-react';
+import { Kanban } from 'lucide-react';
+import { AddExistingCandidate } from '@/components/add-existing-candidate';
 import type { loadPipelinePage } from '@/app/(app)/page-loaders';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/empty-state';
 import { PipelineFilters } from '@/components/pipeline-filters';
 import { PipelineList } from '@/components/pipeline-list';
 import { PipelineNavProvider } from '@/components/pipeline-nav';
-import { btnPrimary } from '@/components/form-controls';
 
 export function PipelineScreen({ data }: { data: Awaited<ReturnType<typeof loadPipelinePage>> }) {
   const listInput = {
@@ -34,9 +34,7 @@ export function PipelineScreen({ data }: { data: Awaited<ReturnType<typeof loadP
             <Link href={`/pipeline?${query}${data.board ? '' : '&view=kanban'}`} className="text-sm underline">
               {data.board ? 'Lista' : 'Kanban'}
             </Link>
-            <Link href="/contacts/new?mode=application" className={btnPrimary}>
-              <Plus /> Adicionar candidato
-            </Link>
+            {!data.archived && <AddExistingCandidate postings={data.selectablePostings} stages={data.stages.filter((s) => s.type !== 'HIRED')} postingId={data.postingFilter} stageId={data.stageFilter} />}
           </div>
         </div>
 
@@ -53,7 +51,7 @@ export function PipelineScreen({ data }: { data: Awaited<ReturnType<typeof loadP
           <EmptyState
             icon={Kanban}
             title="O funil está vazio"
-            description="Adicione uma candidatura para acompanhar sua evolução pelas etapas."
+            description="Adicione um profissional do banco de talentos a uma vaga para acompanhar sua evolução pelas etapas."
           />
         ) : (
           <PipelineList
