@@ -410,7 +410,7 @@ export function PipelineList({
     link.focus();
   });
   useEffect(() => {
-    if (store.status === 'error') setAnnouncement("Couldn't load more candidates. Retry is available.");
+    if (store.status === 'error') setAnnouncement("Não foi possível carregar mais candidatos. Tente novamente.");
   }, [store.status]);
   const announcedKey = useRef(committedKey);
   useEffect(() => {
@@ -449,7 +449,7 @@ export function PipelineList({
     filters.push({ key: 'stage', label: "Etapa", value: name, clear: { stage: '' } });
   }
   if (nav.input.status === 'archived') {
-    filters.push({ key: 'status', label: "Exibindo", value: 'Archived', clear: { status: '', stage: '' } });
+    filters.push({ key: 'status', label: "Exibindo", value: 'Encerrados', clear: { status: '', stage: '' } });
   }
   function clearSearch() {
     setQDraft({ from: committedQ, value: '' });
@@ -672,7 +672,7 @@ export function PipelineList({
                     run: (chunk, final) => bulkMoveStageAction(chunk, stageId, final),
                     onChunkSaved: (chunk) => commitOp({ type: 'move', ids: chunk, stageId }),
                     refresh: revalidateListsAction,
-                    copy: { failure: `Moving ${candidates(ids.length)}`, done: 'Moved', skipped: "couldn't be moved" },
+                    copy: { failure: `Moving ${candidates(ids.length)}`, done: 'Movidos', skipped: "não puderam ser movidos" },
                     onFailure: reselect,
                   });
                 }}
@@ -699,7 +699,7 @@ export function PipelineList({
                       run: (chunk, final) => bulkArchiveAction(chunk, reasonId, final),
                       onChunkSaved: (chunk) => commitOp({ type: 'remove', ids: chunk }),
                       refresh: revalidateListsAction,
-                      copy: { failure: `Archiving ${candidates(ids.length)}`, done: 'Archived', skipped: "couldn't be archived" },
+                      copy: { failure: `Archiving ${candidates(ids.length)}`, done: 'Encerrados', skipped: "não puderam ser encerrados" },
                       onFailure: reselect,
                     });
                   }}
@@ -721,7 +721,7 @@ export function PipelineList({
                   size: BULK_LIMIT,
                   run: (chunk, final) => bulkTagAction(chunk, tag, final),
                   refresh: revalidateListsAction,
-                  copy: { failure: 'Tagging', done: 'Tagged', skipped: "couldn't be tagged" },
+                  copy: { failure: 'Adicionando etiquetas', done: 'Etiquetados', skipped: "não puderam ser etiquetados" },
                   onSuccess: () => {
                     setTagDraft({ key: displayKey, value: '' });
                     clear();
@@ -801,10 +801,10 @@ export function PipelineList({
                 </th>
                 {[
                   "Nome completo",
-                  'Profiles',
+                  'Perfis',
                   "Título profissional",
-                  'Organization',
-                  'Location',
+                  'Empresa',
+                  'Localidade',
                   "Etapa",
                   "Tempo na etapa",
                 ].map((h) => (
@@ -897,7 +897,7 @@ const PipelineRail = memo(function PipelineRail({
   groups: { label: string | null; postings: { id: string; title: string }[] }[];
   fallbackGroupLabel: string;
   onGo: (postingId: string, e: React.MouseEvent) => void;
-  intent: (key: string, withCounts: boolean) => Record<string, () => void>;
+  intent: (key: string, withCounts: boolean) => Registro<string, () => void>;
 }) {
   const baseInput = inputFromKey(base, PIPELINE_KEYS);
   const keyFor = (posting: string) => listKey({ ...baseInput, posting }, PIPELINE_KEYS);

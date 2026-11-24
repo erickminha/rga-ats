@@ -553,7 +553,7 @@ export async function CandidateProfile({ id }: { id: string }) {
                             ? 'Lendo currículo digitalizado…'
                             : resumeFile.textStatus === 'EMPTY'
                               ? 'O currículo pode conter apenas uma imagem. Abra o arquivo para conferir.'
-                              : 'The text of this resume couldn’t be read.'
+                              : 'Não foi possível ler o texto deste currículo.'
                         : resumeFile.ocrStatus === 'OK'
                           ? 'Texto extraído de imagem. Confira possíveis erros.'
                           : null,

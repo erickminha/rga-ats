@@ -13,22 +13,22 @@ import { Orb } from '@/components/ui/orb';
 import { Badge, Card, Chip, SectionHeader, Segmented, StatusDot } from '@/components/ui/primitives';
 
 const COMMITMENT_LABELS: Record<string, string> = {
-  FULL_TIME: 'Full-time',
-  PART_TIME: 'Part-time',
-  CONTRACT: 'Contract',
-  INTERNSHIP: 'Internship',
+  FULL_TIME: 'Tempo integral',
+  PART_TIME: 'Meio período',
+  CONTRACT: 'Contrato',
+  INTERNSHIP: 'Estágio',
 };
 
 const WORKPLACE_LABELS: Record<string, string> = {
-  ONSITE: 'In-office',
-  HYBRID: 'Hybrid',
-  REMOTE: 'Remote',
+  ONSITE: 'Presencial',
+  HYBRID: 'Híbrida',
+  REMOTE: 'Remota',
 };
 
 const VISIBILITY = [
   { key: '', label: 'Todas as vagas abertas', tone: 'neutral' },
-  { key: 'PUBLISHED', label: 'External', tone: 'positive' },
-  { key: 'INTERNAL', label: 'Internal only', tone: 'info' },
+  { key: 'PUBLISHED', label: 'Externa', tone: 'positive' },
+  { key: 'INTERNAL', label: 'Somente interna', tone: 'info' },
 ] as const;
 
 export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadPostingsPage>> }) {
@@ -105,7 +105,7 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
             title={data.archived ? 'Nenhuma vaga encerrada' : 'Nenhuma vaga corresponde aos filtros'}
             description={
               data.archived
-                ? 'Closed roles will appear here.'
+                ? 'As vagas encerradas aparecerão aqui.'
                 : 'Crie uma vaga para começar a receber candidaturas.'
             }
           />
@@ -115,14 +115,14 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
               <thead>
                 <tr className="border-b border-line text-left">
                   {[
-                    'Role',
-                    'Organization',
+                    'Cargo',
+                    'Empresa',
                     'Link',
-                    'Work arrangement',
-                    'Employment type',
-                    'Location',
-                    'Req',
-                    'State',
+                    'Modalidade',
+                    'Tipo de contratação',
+                    'Localidade',
+                    'Requisição',
+                    'Situação',
                     '',
                   ].map((h) => (
                     <th key={h} className="whitespace-nowrap px-4 py-3 text-xs font-medium text-ink-2">

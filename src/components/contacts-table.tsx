@@ -136,7 +136,7 @@ export function ContactsTable({
       size: POOL_BULK_LIMIT,
       run: (chunk, final) => addContactsToPoolAction(poolId, chunk, final),
       refresh: revalidateListsAction,
-      copy: { failure: `Adding ${people(ids.length)} to the pool`, done: 'Added', skipped: "couldn't be added" },
+      copy: { failure: `Adding ${people(ids.length)} to the pool`, done: 'Adicionados', skipped: "não puderam ser adicionados" },
       onFailure: reselect,
     });
   };
@@ -150,7 +150,7 @@ export function ContactsTable({
       run: (chunk, final) => removeContactsFromPoolAction(poolId, chunk, final),
       onChunkSaved: (chunk) => applyCommitted((rows) => rows.filter((r) => !chunk.includes(r.id))),
       refresh: revalidateListsAction,
-      copy: { failure: `Removing ${people(ids.length)} from the pool`, done: 'Removed', skipped: "couldn't be removed" },
+      copy: { failure: `Removing ${people(ids.length)} from the pool`, done: 'Removidos', skipped: "não puderam ser removidos" },
       onFailure: reselect,
     });
   };
@@ -219,7 +219,7 @@ export function ContactsTable({
     target.focus();
   });
   useEffect(() => {
-    if (store.status === 'error') setAnnouncement("Couldn't load more contacts. Retry is available.");
+    if (store.status === 'error') setAnnouncement("Não foi possível carregar mais contatos. Tente novamente.");
   }, [store.status]);
 
   if (visible.length === 0 && !stale) {
@@ -227,11 +227,11 @@ export function ContactsTable({
     return (
       <EmptyState
         icon={Users}
-        title={filtered ? 'No contacts match' : 'No contacts yet'}
+        title={filtered ? 'Nenhum contato corresponde aos filtros' : 'Nenhum contato cadastrado'}
         description={
           filtered
-            ? 'Adjust the search, or add people to this pool from All contacts.'
-            : 'Add a candidate manually, or share your careers page to start collecting applications.'
+            ? 'Ajuste a pesquisa ou adicione pessoas a este grupo pelo banco de talentos.'
+            : 'Cadastre um candidato ou compartilhe a página de vagas para receber candidaturas.'
         }
       />
     );
@@ -320,7 +320,7 @@ export function ContactsTable({
                   aria-label={`Select all ${fmt(visible.length)} loaded`}
                 />
               </th>
-              {['Name', 'Email', 'Tags', 'Latest opportunity', 'Stage'].map((h) => (
+              {['Nome', 'E-mail', 'Etiquetas', 'Última participação', 'Etapa'].map((h) => (
                 <th key={h} className={`${headCell} text-xs font-medium text-ink-2`}>
                   {h}
                 </th>
