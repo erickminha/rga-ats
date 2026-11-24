@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation';
 import { AccessRole, Prisma, type OrgKind, type StageType } from '@prisma/client';
 import { isDefaultBrand, readBrand } from '@/lib/brand';
 import { db } from '@/lib/db';
+import { EEOEnabled, talentNetworkAllowed } from '@/server/privacy-options';
 import { requireRecruitingAccess, requireSession, revalidateOrgNav } from '@/lib/session';
 import { writeOrgNavCookie } from '@/lib/org-nav-cookie';
 import {
@@ -229,6 +230,7 @@ export async function deleteCustomFieldAction(defId: string) {
 export async function setCollectEeoAction(enabled: boolean) {
   const ctx = await requireSession();
   if (ctx.accessRole !== 'SUPER_ADMIN' && ctx.accessRole !== 'ADMIN') return;
+  if (enabled && !EEOEnabled()) return;
   await db.organization.update({ where: { id: ctx.orgId }, data: { collectEeo: enabled } });
   // No revalidatePath here: callers router.refresh() after the action
   // resolves. revalidatePath inside the action trips a Next 15 regression
@@ -303,6 +305,7 @@ export async function setFeedbackVisibilityAction(enabled: boolean) {
 
 export async function setTalentNetworkAction(enabled: boolean) {
   const ctx = await requireAdmin();
+  if (enabled && !talentNetworkAllowed()) return;
   await db.organization.update({
     where: { id: ctx.orgId },
     data: { talentNetworkEnabled: enabled },

@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
+import { emailPublicOrigin } from '@/lib/base-url';
 import { db } from '@/lib/db';
 
 /**
@@ -10,12 +11,15 @@ import { db } from '@/lib/db';
 /** CRON_SECRET bearer auth. When the secret is unset (local dev), the endpoint is open. */
 export function cronAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
-  return !secret || request.headers.get('authorization') === `Bearer ${secret}`;
+  if (!secret?.trim()) return process.env.NODE_ENV !== 'production' && !process.env.K_SERVICE && !process.env.VERCEL;
+  const hash = (value: string) => createHash('sha256').update(value).digest();
+  return timingSafeEqual(hash(request.headers.get('authorization') ?? ''), hash(`Bearer ${secret}`));
 }
 
 /** Where this deployment can reach itself: the production domain, not the protected per-deploy URL. */
 export function selfOrigin(): string | null {
-  if (process.env.AUTH_URL) return process.env.AUTH_URL.replace(/\/$/, '');
+  if (process.env.NODE_ENV === 'production' || process.env.K_SERVICE) return emailPublicOrigin();
+  if (process.env.AUTH_URL) return emailPublicOrigin();
   if (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_PROJECT_PRODUCTION_URL) {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   }
@@ -37,6 +41,7 @@ export async function chainCron(path: string) {
       authorization: `Bearer ${secret}`,
       ...(bypass ? { 'x-vercel-protection-bypass': bypass } : {}),
     },
+    redirect: 'error',
     signal: AbortSignal.timeout(5_000),
   }).catch(() => undefined);
 }

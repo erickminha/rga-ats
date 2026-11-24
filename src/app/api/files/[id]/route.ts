@@ -11,7 +11,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const file = await db.storedFile.findFirst({
-    where: { ...resumeAccess(ctx), id },
+    where: { ...resumeAccess(ctx), id, deletePendingAt: null },
   });
   if (!file) return NextResponse.json({ error: 'not found' }, { status: 404 });
 

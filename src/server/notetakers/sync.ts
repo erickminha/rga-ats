@@ -1,3 +1,4 @@
+import { notetakersAllowed } from '@/server/privacy-options';
 import { auth, OAuthError, UnauthorizedError, type AuthProvider, type FetchLike } from '@modelcontextprotocol/client';
 import type { TranscriptConnection } from '@prisma/client';
 import { db } from '@/lib/db';
@@ -167,6 +168,7 @@ export async function withConnectionSession<T>(
   fn: (session: McpSession) => Promise<T>,
   opts: { fetchFn?: FetchLike; timeoutMs?: number } = {},
 ): Promise<T> {
+  if (!notetakersAllowed()) throw new Error('Integração de transcrições desativada.');
   const { authProvider, oauth } = authForConnection(conn, opts.fetchFn);
   if (oauth?.accessTokenExpired() && oauth.hasRefreshToken()) {
     await auth(oauth, {
@@ -502,7 +504,7 @@ async function dueConnections(now: Date, ids?: string[]) {
 export async function syncTranscriptConnections(opts: SyncOptions = {}): Promise<SyncSummary> {
   const now = opts.now ?? new Date();
   const deadline = opts.deadline ?? Date.now() + TRANSCRIPTS_CRON_BUDGET_MS;
-  const due = await dueConnections(now, opts.connectionIds);
+  const due = notetakersAllowed() ? await dueConnections(now, opts.connectionIds) : [];
   const summary: SyncSummary = { connections: due.length, synced: 0, idle: 0, failed: 0, busy: 0, attached: [], suggested: 0, more: false };
   for (const conn of due) {
     if (Date.now() > deadline) {

@@ -1,0 +1,46 @@
+# RGA ATS — consolidação de segurança e privacidade
+
+Esta revisão complementa o PR #7. Os controles usam os papéis e o isolamento por organização já adotados no ATS. A validação usa PostgreSQL local, dados fictícios e transporte de e-mail simulado.
+
+## Matriz de auditoria
+
+| Risco | Controle | Cobertura |
+| --- | --- | --- |
+| Perfis limitados acessam dados fora da entrevista | A ficha completa, as listas e as ações de recrutamento exigem perfil operacional. O kit de entrevista e o currículo vigente exigem atribuição à entrevista do candidato. Downloads validam organização e estado do arquivo. | `rga-access-pipeline.test.ts`, `rga-restricted-actions.test.ts` |
+| Elevação de papel e sessões antigas | Mantidos os controles do último `SUPER_ADMIN`, da promoção a esse papel e da versão da sessão. As importações completas e a exportação organizacional são administrativas. A exportação CSV detalhada também é administrativa. | `rga-access-pipeline.test.ts`, `rga-spreadsheet-import.test.ts`, `exports.test.ts` |
+| Candidatura imita contato existente | Dados cadastrais, currículo principal e preferências anteriores ficam preservados. O arquivo recebido pertence à nova candidatura. O portal vincula mudanças de preferências ao endereço verificado. Submissões para a mesma vaga e endereço em 15 minutos reutilizam a primeira candidatura, inclusive quando simultâneas. | `applications.test.ts`, `public-careers.test.ts`, `resume-parse-e2e.test.ts` |
+| Compartilhamento externo indiscriminado | Criação e revogação exigem papel operacional. Links novos usam hash no banco e expiram em 7 dias por padrão. Vaga e cliente exibem totais e etapas. O perfil individual é limitado e respeita confidencialidade e anonimização. | `rga-privacy.test.ts`, `rga-restricted-actions.test.ts` |
+| Persistência e exclusão de documentos | S3 explícito em implantação hospedada, verificação de tipo e tamanho, análise de malware antes de disponibilizar novas cargas, cache privado e exclusão física com nova tentativa registrada. | `storage.test.ts`, `applications.test.ts`, `rga-privacy.test.ts`, `resume-parse-locks.test.ts` |
+| Dados pessoais ficam em registros relacionados | A anonimização remove ou reduz dados em arquivos, notas, mensagens, avaliações, transcrições, metadados importados, referências e eventos relacionados. Preserva etapas, transições, resultados agregáveis e o bloqueio de reimportação. Bloqueios no contato serializam a retenção com novas candidaturas ou reabertura. A retenção pode ser suspensa por administradores. | `rga-privacy.test.ts`, `resume-parse-e2e.test.ts`, `loader.test.ts` |
+| Abuso de endpoints públicos e tokens em URLs | Contadores no PostgreSQL por identidade e operação, com chave derivada do segredo da aplicação. Credenciais inválidas e contas exclusivas do Google recebem a mesma resposta quando usam senha. Acompanhamento, compartilhamento, agendamento, oferta e recuperação usam fragmento nos links novos. | `rga-privacy.test.ts`, `public-careers.test.ts`, `password-reset.test.ts`, `google-auth.test.ts` |
+| Execuções automáticas sem autenticação ou em paralelo | As nove rotinas cron exigem segredo em ambiente hospedado. Envios agendados, lembretes, resumos e boletins reservam o trabalho antes do SMTP. Operações de retenção validam novamente o estado dentro da transação. | `rga-privacy.test.ts`, `email-delivery.test.ts`, `engine.test.ts` |
+| Transferência de dados para IA e serviços de transcrição | Recursos externos exigem habilitação explícita. A coleta EEO e a rede externa ficam desativadas por padrão. E-mails transacionais continuam pelo Nodemailer com SMTP ou Resend. | `ai-client.test.ts`, `config.test.ts`, `notetaker-sync.test.ts`, `email-delivery.test.ts` |
+| Regressão no pipeline ou histórico | Preservadas as oito etapas RGA, a entrada por Candidatura e as transições. Pinpoint limita a estimativa de entrada na etapa ao período anterior à contratação registrada. | `rga-access-pipeline.test.ts`, `pinpoint.test.ts` |
+
+## Migração
+
+`20261124150000_privacy_integrity` adiciona o vínculo do currículo à candidatura, marcadores de exclusão de arquivo e de envio, revogação de compartilhamento, retenção manual e uma trava transacional para impedir a reativação de um cadastro anonimizado. Os links curtos que já possuem registro continuam válidos até a revogação ou expiração. Os links assinados antigos sem registro devem ser gerados novamente para permitir revogação. O exportador de portabilidade continua sem incluir os binários. Preserve o bucket e seu inventário separadamente ao migrar uma instalação.
+
+## Configuração pendente para homologação operacional
+
+- Configure `AUTH_URL` com a origem pública HTTPS e compartilhe o mesmo `AUTH_SECRET` entre instâncias. Verifique redirecionamentos e desative reescrita de links sensíveis no provedor de e-mail.
+- Configure S3 com `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` e, se necessário, `S3_REGION`. Cloudflare R2 é compatível. Use bucket privado, desative URL pública e conceda ao serviço somente leitura, gravação e exclusão no bucket escolhido. Antes de trocar origem, inventarie os arquivos existentes, copie os objetos preservando chaves e verifique os downloads. Revogue acesso anterior a documentos publicados por outro adaptador.
+- Configure o ClamAV com assinaturas atualizadas e conectividade privada por `FILE_SCAN_HOST` e `FILE_SCAN_PORT` (3310 por padrão). A aplicação recusa a gravação se o serviço não estiver disponível ou se não responder que o arquivo está limpo. Valide a capacidade e o limite `StreamMaxLength` com o maior arquivo aceito.
+- Disponibilize `CRON_SECRET` aos agendadores e acompanhe falhas SMTP, os estados de entrega incerta e os arquivos pendentes da rotina de retenção. Preserve TLS na chamada HTTP e exclua cabeçalhos de credencial, corpo das ações e caminhos com tokens legados de logs e rastreamento. Os links novos chegam em fragmentos.
+- Mantenha `RGA_ALLOW_EXTERNAL_AI`, `RGA_ALLOW_NOTETAKERS`, `RGA_ENABLE_EEO` e `RGA_ENABLE_TALENT_NETWORK` desativados até a aprovação adequada. Configure `RGA_SHARE_TTL_DAYS` somente se a RGA aprovar outra validade entre 1 e 30 dias.
+- Use Cloudflare WAF para limitar rajadas por rota e sinais do proxy, com regras separadas para login, recuperação, candidatura e acompanhamento. Preserve formulários e webhooks autorizados. Restrinja acesso à origem antes de confiar em cabeçalhos de rede do proxy e preserve o bypass de cache para tokens e downloads.
+- Para MFA administrativa, prefira Google Workspace com verificação em duas etapas imposta pela organização. Vincule e teste as contas administrativas e a recuperação de acesso. A RGA deve decidir como eliminar a alternativa por senha para essas contas. O ATS não impõe MFA nativo.
+
+## Decisões da RGA
+
+- Validar o texto do aviso de privacidade, o controlador de dados, a base legal por finalidade, os operadores, os prazos e o canal oficial. Configure `RGA_PRIVACY_CONTACT` com o e-mail aprovado. Valide também os critérios de comunicação de vagas e separação de comunicações promocionais.
+- Definir quem recebe e valida pedidos de titulares. Após verificar a identidade, um administrador pode gerar o JSON e revisar dados de terceiros antes de repassar, corrigir pelo cadastro ou anonimizar após fechar as seleções considerando obrigações de retenção. Use o bloqueio de retenção durante disputas ou exigências legais. Habilite prazos automáticos somente após essa revisão.
+- Antes de ativar IA externa, revisar contrato, retenção, treinamento, jurisdição e minimização. A análise de currículo pode enviar texto ao endpoint OpenAI compatível. O provedor de avaliações recebe material pertinente à vaga, ao currículo, a anotações, a avaliações e a transcrições. A integração de transcrição acessa reuniões no provedor conectado. Extração textual, OCR e o provedor de demonstração funcionam localmente. A decisão de contratação ou reprovação cabe à equipe.
+
+## Riscos residuais
+
+- Revogar um link bloqueia novos acessos. Cópias já baixadas, links legados em logs e dados em provedores, caixas postais, exportações, backups e versões de objetos precisam de tratamento fora do ATS.
+- O histórico estruturado e os identificadores externos mínimos servem ao funil, às auditorias e à deduplicação. Revise identificadores de fontes que usem e-mail como ID, PII em texto livre de registros sem vínculo e dados de terceiros antes de entregar uma exportação ou encerrar uma solicitação.
+- Os contadores por identidade podem ser contornados por alternância de endereços. O controle complementar depende das regras do WAF e da proteção da origem. Os contadores ainda limitam tentativas legítimas para o endereço sob ataque.
+- Após uma falha entre a aceitação pelo SMTP e a confirmação local, o envio reservado pode ficar com entrega incerta. Confirme no provedor antes de reenviar. Eventos entregues a webhooks de terceiros devem ser tratados de forma idempotente pelo destinatário.
+- A análise de malware reduz risco e tem falsos negativos. Faça uma análise dos objetos antigos antes de reutilizá-los e registre a política de retenção e exclusão de backups. A validação local não comprova os controles de rede, bucket, scanner, e-mail ou MFA da homologação.

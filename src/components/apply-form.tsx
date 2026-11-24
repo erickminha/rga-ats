@@ -6,22 +6,7 @@ import { Field, inputLgClass, selectClass, textareaClass } from '@/components/fo
 import { buttonClass } from '@/components/ui/button';
 import { TextSwap } from '@/components/ui/motion';
 import { Checkbox } from '@/components/ui/checkbox';
-import { candidate } from '@/lib/i18n/pt-BR/candidate';
-
-const EEO_QUESTIONS = [
-  { name: 'eeo_gender', label: 'Gênero', options: { Female: 'Feminino', Male: 'Masculino', 'Non-binary': 'Não binário' } },
-  {
-    name: 'eeo_race', label: 'Raça ou etnia',
-    options: {
-      'American Indian or Alaska Native': 'Indígena americano ou nativo do Alasca',
-      Asian: 'Asiática', 'Black or African American': 'Negra ou afro-americana',
-      'Hispanic or Latino': 'Hispânica ou latina', 'Native Hawaiian or Other Pacific Islander': 'Nativa do Havaí ou de outra ilha do Pacífico',
-      White: 'Branca', 'Two or more races': 'Duas ou mais raças ou etnias',
-    },
-  },
-  { name: 'eeo_veteran', label: 'Condição de veterano', options: { 'Protected veteran': 'Veterano protegido', 'Not a protected veteran': 'Não sou veterano protegido' } },
-  { name: 'eeo_disability', label: 'Deficiência', options: { 'Yes, I have a disability': 'Tenho deficiência', 'No, I do not have a disability': 'Não tenho deficiência' } },
-] as const;
+import { candidate, EEO_QUESTIONS } from '@/lib/i18n/pt-BR/candidate';
 
 export function ApplyForm({
   orgSlug,
@@ -108,7 +93,9 @@ export function ApplyForm({
 
       <fieldset className="grid gap-3 border-t border-line pt-4">
         <legend className="pr-2 text-sm font-semibold">Privacidade e preferências</legend>
-        <p className="text-sm text-ink-2">{candidate.privacy}</p>
+        <p className="text-sm text-ink-2">{candidate.privacy}{' '}
+          <a href="/careers/privacidade" className="underline">Leia o aviso de privacidade</a>.
+        </p>
         <label className="flex cursor-pointer items-start gap-2.5 rounded-field bg-muted p-3">
           <Checkbox name="storeProfile" checked={storeProfile} onChange={(event) => setStoreProfile(event.target.checked)} className="mt-0.5" />
           <span className="text-xs text-ink-2">

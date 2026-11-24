@@ -65,6 +65,20 @@ describe.skipIf(!hasDb)('email history and delivery', () => {
     expect(await db.event.count({ where: { orgId: org.id, verb: 'email.sent' } })).toBe(0);
   });
 
+  it('claims a scheduled delivery once across simultaneous workers', async () => {
+    const { org } = await createOrg();
+    const sendMail = vi.fn().mockResolvedValue({});
+    vi.spyOn(nodemailer, 'createTransport').mockReturnValue({ sendMail } as unknown as ReturnType<typeof nodemailer.createTransport>);
+    vi.stubEnv('SMTP_URL', 'smtp://127.0.0.1:2525');
+    const scheduled = await sendEmail({
+      orgId: org.id, toEmail, subject: 'Fixture', body: 'Teste fictício', scheduledAt: new Date(Date.now() + 60_000),
+    });
+    await db.emailMessage.update({ where: { id: scheduled!.id }, data: { scheduledAt: new Date(0) } });
+    await Promise.all([processDueEmails(), processDueEmails(), processDueEmails()]);
+    expect(sendMail).toHaveBeenCalledTimes(1);
+    expect(await db.emailMessage.findUnique({ where: { id: scheduled!.id } })).toMatchObject({ status: 'SENT' });
+  });
+
   it('keeps only a sanitized provider error in persistent history', async () => {
     const { org } = await createOrg();
     const sendMail = vi.fn().mockRejectedValue(Object.assign(new Error('private raw contents'), { code: 'EAUTH' }));

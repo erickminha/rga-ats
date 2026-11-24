@@ -234,7 +234,10 @@ vi.mock('@/lib/import-providers', () => ({
       ? { id: 'acme', name: 'Acme ATS', domain: 'acme.test', fields: [{ key: 'apiKey', label: 'API key', kind: 'secret' }] }
       : undefined,
 }));
-vi.mock('@/lib/session', () => ({ isAdmin: (ctx: { accessRole: string }) => ['ADMIN', 'SUPER_ADMIN'].includes(ctx.accessRole) }));
+vi.mock('@/lib/session', async (original) => ({
+  ...(await original<typeof import('@/lib/session')>()),
+  isAdmin: (ctx: { accessRole: string }) => ['ADMIN', 'SUPER_ADMIN'].includes(ctx.accessRole),
+}));
 
 const { db } = await import('@/lib/db');
 const jobs = await import('@/server/imports/jobs');

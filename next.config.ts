@@ -62,6 +62,20 @@ function sourceRevision(): string {
 }
 
 const nextConfig: NextConfig = {
+  logging: {
+    serverFunctions: false,
+    incomingRequests: { ignore: [/^\/(share|portal|schedule|offer|unsubscribe)\/(?!view(?:[/?]|$))/] },
+  },
+  async headers() {
+    return ['/share/:path*', '/portal/:path*', '/schedule/:path*', '/offer/:path*'].map((source) => ({
+      source,
+      headers: [
+        { key: 'Cache-Control', value: 'private, no-store' },
+        { key: 'Referrer-Policy', value: 'no-referrer' },
+        { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+      ],
+    }));
+  },
   env: { RGA_ATS_SOURCE_REVISION: sourceRevision() },
   // Keep the Docker self-host path honest (see docs/03-architecture.md).
   output: process.env.DOCKER_BUILD ? 'standalone' : undefined,

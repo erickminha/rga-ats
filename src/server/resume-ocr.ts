@@ -73,7 +73,7 @@ function describeError(err: unknown): string {
 }
 
 /** Some live contact's resume, and that contact has no text yet. */
-const pendingResume: Prisma.StoredFileWhereInput = { contacts: { some: { resumeText: null, isAnonymized: false } } };
+const pendingResume: Prisma.StoredFileWhereInput = { deletePendingAt: null, contacts: { some: { resumeText: null, isAnonymized: false } } };
 
 /** Text extraction is done with this file and found nothing OCR can't try. */
 const scannedLooking = (textVersion: number): Prisma.StoredFileWhereInput => ({

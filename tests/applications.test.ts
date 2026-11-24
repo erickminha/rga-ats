@@ -86,33 +86,34 @@ describe.skipIf(!hasDb)('applying with a resume', () => {
     expect(contact.resumeText).toContain('Rowan Q. Testperson');
   });
 
-  it('replaces the text with the new resume on a re-application, and both files stay the contact’s', async () => {
+  it('serializes duplicate submissions without overwriting the profile or its consents', async () => {
     const first = await apply('resume.odt');
-    const again = await submitApplication({
-      orgSlug,
-      postingSlug,
-      name: 'Rowan Q. Testperson',
-      email: first.contact.emails[0],
-      resume: { data: fixture('resume.pdf'), filename: 'resume.pdf' },
+    const { contact, opportunity } = first;
+    const originalConsent = await db.consentRecord.create({
+      data: { orgId: contact.orgId, contactId: contact.id, purpose: 'PROFILE_STORAGE' },
     });
-    const contact = await db.contact.findUniqueOrThrow({ where: { id: again.contactId } });
-    expect(contact.id).toBe(first.contact.id);
-    expect(contact.resumeFileId).not.toBe(first.file.id);
-    expect(contact.resumeText).toContain('Staff Platform Engineer'); // resume.pdf's headline, not the ODT's
-    expect(await db.storedFile.count({ where: { contactId: contact.id } })).toBe(2);
-  });
+    const unverified = {
+      orgSlug, postingSlug, name: 'Different public input', location: 'Another location',
+      email: contact.emails[0], storeProfile: false, networkOptIn: true,
+      resume: { data: fixture('resume.pdf'), filename: 'resume.pdf' },
+    };
+    const repeats = await Promise.all([submitApplication(unverified), submitApplication(unverified)]);
+    expect(repeats.map((row) => row.id)).toEqual([opportunity.id, opportunity.id]);
+    expect(await db.storedFile.count({ where: { orgId: contact.orgId, deletePendingAt: { not: null } } })).toBe(0);
 
-  it('gives a replaced resume stored before files had an owner to the contact', async () => {
-    const first = await apply('resume.odt');
-    await db.storedFile.update({ where: { id: first.file.id }, data: { contactId: null } });
-    await submitApplication({
-      orgSlug,
-      postingSlug,
-      name: 'Rowan Q. Testperson',
-      email: first.contact.emails[0],
-      resume: { data: fixture('resume.pdf'), filename: 'resume.pdf' },
+    const other = await db.posting.create({
+      data: { orgId: contact.orgId, slug: `other-${randomUUID()}`, title: 'Another role', state: 'PUBLISHED' },
     });
-    expect(await db.storedFile.findUniqueOrThrow({ where: { id: first.file.id } })).toMatchObject({ contactId: first.contact.id });
+    const separate = await submitApplication({ ...unverified, postingSlug: other.slug });
+    expect(separate.id).not.toBe(opportunity.id);
+    expect(separate.applicationResumeId).not.toBe(first.file.id);
+    expect(await db.contact.findUnique({ where: { id: contact.id } })).toMatchObject({
+      name: contact.name, location: contact.location, resumeFileId: first.file.id, resumeText: contact.resumeText,
+    });
+    expect(await db.consentRecord.findMany({
+      where: { contactId: contact.id, purpose: { not: 'APPLICATION' } },
+    })).toEqual([originalConsent]);
+    expect(await db.storedFile.count({ where: { contactId: contact.id } })).toBe(2);
   });
 
   it("keeps links behind an employer's or school's name off the contact, and profiles on it", async () => {

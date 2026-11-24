@@ -22,7 +22,7 @@ export async function setContactTags(
   const updated = await db.$transaction(async (tx) => {
     const contact = await tx.contact.findFirst({ where: { id: contactId, orgId: ctx.orgId } });
     if (!contact) throw new Error('Contact not found');
-    const updated = await tx.contact.update({ where: { id: contact.id }, data: { tags: clean } });
+    const updated = await tx.contact.update({ where: { id: contact.id, orgId: ctx.orgId, isAnonymized: false }, data: { tags: clean } });
     await emitEvent(tx, {
       orgId: ctx.orgId,
       ...actorOf(ctx),
@@ -93,7 +93,7 @@ export async function updateContactDetails(ctx: SessionContext, contactId: strin
   await db.$transaction(async (tx) => {
     const contact = await tx.contact.findFirst({ where: { id: contactId, orgId: ctx.orgId }, select: { id: true } });
     if (!contact) throw new ContactDetailsError('Contact not found.');
-    await tx.contact.update({ where: { id: contact.id }, data });
+    await tx.contact.update({ where: { id: contact.id, orgId: ctx.orgId, isAnonymized: false }, data });
     await emitEvent(tx, {
       orgId: ctx.orgId,
       ...actorOf(ctx),
@@ -130,13 +130,18 @@ export async function findDuplicates(
  * happened for the audit trail.
  */
 export async function mergeContacts(ctx: SessionContext, primaryId: string, duplicateId: string) {
+  requireRecruitingAccess(ctx);
   if (primaryId === duplicateId) throw new Error('Cannot merge a contact into itself');
   const merged = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`
+      SELECT id FROM "Contact" WHERE "orgId" = ${ctx.orgId} AND id IN (${primaryId}, ${duplicateId})
+      ORDER BY id FOR NO KEY UPDATE
+    `;
     const [primary, duplicate] = await Promise.all([
       tx.contact.findFirst({ where: { id: primaryId, orgId: ctx.orgId } }),
       tx.contact.findFirst({ where: { id: duplicateId, orgId: ctx.orgId } }),
     ]);
-    if (!primary || !duplicate) throw new Error('Contact not found');
+    if (!primary || !duplicate || primary.isAnonymized || duplicate.isAnonymized) throw new Error('Contact not found');
 
     await tx.opportunity.updateMany({
       where: { contactId: duplicate.id },
@@ -190,6 +195,7 @@ export async function mergeContacts(ctx: SessionContext, primaryId: string, dupl
         // Unsubscribed or bounced as either: a merge never signs someone back up
         emailOptOutAt: primary.emailOptOutAt ?? duplicate.emailOptOutAt,
         emailBouncedAt: primary.emailBouncedAt ?? duplicate.emailBouncedAt,
+        retentionHold: primary.retentionHold || duplicate.retentionHold,
       },
     });
     // Newsletter copies follow the person; where both got the same one, keep the primary's

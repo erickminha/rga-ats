@@ -1,3 +1,4 @@
+import { lockIdentifiableContact } from '@/server/contact-lock';
 import type { InterviewState } from '@prisma/client';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
@@ -23,7 +24,7 @@ export async function scheduleInterview(ctx: SessionContext, input: ScheduleInte
       where: { id: input.opportunityId, orgId: ctx.orgId },
       include: { contact: true },
     });
-    if (!opportunity) throw new Error('Opportunity not found');
+    if (!opportunity || !await lockIdentifiableContact(tx, ctx.orgId, opportunity.contactId)) throw new Error('Opportunity not found');
 
     const panelists = await tx.user.findMany({
       where: { id: { in: input.panelistIds }, orgId: ctx.orgId },

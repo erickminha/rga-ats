@@ -589,7 +589,10 @@ export function createLoader(deps: LoaderDeps): Loader {
     // least one, and the last must be the current stage.
     const last = transitions[transitions.length - 1];
     if (!last) transitions.push({ stageId, at: createdAt, actorId: null });
-    else if (last.stageId !== stageId) transitions.push({ stageId, at: new Date(last.at.getTime() + 1), actorId: null });
+    else if (last.stageId !== stageId
+      && !(status === 'HIRED' && a.archivedAt && (await stageType(stageId)) !== 'HIRED')) {
+      transitions.push({ stageId, at: new Date(last.at.getTime() + 1), actorId: null });
+    }
     if (status === 'HIRED' && (await stageType(stageId)) !== 'HIRED') {
       const prev = transitions[transitions.length - 1].at;
       const hiredAt = a.archivedAt && a.archivedAt > prev ? a.archivedAt : new Date(prev.getTime() + 1);

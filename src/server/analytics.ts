@@ -380,6 +380,12 @@ export async function processReportSchedules(): Promise<number> {
     if (!schedule.recipients.length) continue;
 
     const digest = await buildReportDigest(schedule.orgId);
+    // Claim the cadence before SMTP, which may accept a message before the worker stops.
+    const claimed = await db.reportSchedule.updateMany({
+      where: { id: schedule.id, active: true, lastSentAt: schedule.lastSentAt },
+      data: { lastSentAt: new Date(now) },
+    });
+    if (!claimed.count) continue;
     const subject = `Hiring digest — ${new Date(now).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
     for (const toEmail of schedule.recipients) {
       await sendEmail({
@@ -390,10 +396,6 @@ export async function processReportSchedules(): Promise<number> {
       });
       sent += 1;
     }
-    await db.reportSchedule.update({
-      where: { id: schedule.id },
-      data: { lastSentAt: new Date(now) },
-    });
   }
   return sent;
 }

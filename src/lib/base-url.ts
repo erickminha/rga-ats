@@ -14,6 +14,11 @@ export function appBaseUrl(): string {
 
 /** Prefer the incoming request host so local/preview deploys get the right links. */
 export async function requestBaseUrl(): Promise<string> {
+  if (process.env.NODE_ENV === 'production' || process.env.K_SERVICE) {
+    const origin = emailPublicOrigin();
+    if (!origin) throw new Error('PUBLIC_ORIGIN_NOT_CONFIGURED');
+    return origin;
+  }
   try {
     const h = await headers();
     const proto = h.get('x-forwarded-proto') ?? 'http';
@@ -30,12 +35,13 @@ export function emailPublicOrigin(): string | null {
   const configured = process.env.AUTH_URL
     || (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null);
-  if (!configured && process.env.NODE_ENV === 'production') return null;
+  const hosted = process.env.NODE_ENV === 'production' || !!process.env.K_SERVICE;
+  if (!configured && hosted) return null;
   try {
     const url = new URL(configured ?? 'http://localhost:3000');
-    if (url.username || url.password) return null;
+    if (url.username || url.password || url.search || url.hash) return null;
     if (url.protocol === 'https:') return url.origin;
-    if (process.env.NODE_ENV !== 'production' && url.protocol === 'http:'
+    if (!hosted && url.protocol === 'http:'
       && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return url.origin;
   } catch {
     // Configuration may be absent on an instance that does not deliver email.

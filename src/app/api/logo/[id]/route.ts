@@ -10,7 +10,7 @@ import { fileResponseHeaders, openStoredFile, StoredFileMissingError } from '@/s
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const file = await db.storedFile.findUnique({ where: { id } });
-  if (!file || file.contactId || !file.mime.startsWith('image/')) return new NextResponse('Not found', { status: 404 });
+  if (!file || file.deletePendingAt || file.contactId || !file.mime.startsWith('image/')) return new NextResponse('Not found', { status: 404 });
 
   const [org, postings] = await Promise.all([
     db.organization.findFirst({ where: { id: file.orgId, logoFileId: id }, select: { id: true } }),

@@ -1,3 +1,4 @@
+import { scanUpload } from '@/server/file-scan';
 import { createReadStream } from 'fs';
 import { access, mkdir, unlink, writeFile } from 'fs/promises';
 import path from 'path';
@@ -11,9 +12,7 @@ import { db } from '@/lib/db';
  *     when S3_BUCKET, S3_ENDPOINT and S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY
  *     are set. The recommended setup: private bucket, no egress fees, and
  *     the same code for the managed deployment and self-hosters.
- *   - Vercel Blob when BLOB_READ_WRITE_TOKEN is set.
- *   - Local disk otherwise (dev + Docker — mount .data as a volume). Not
- *     on Vercel, whose filesystem doesn't persist.
+ *   - Local disk in development and tests. Hosted deployments require S3.
  * Downloads always go through /api/files/[id], which enforces org scoping,
  * so buckets stay private whichever backend is in use.
  */
@@ -26,6 +25,11 @@ type S3Config = { endpoint: string; bucket: string; region: string; accessKeyId:
 function s3Config(): S3Config | null {
   const { S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_REGION } = process.env;
   if (!S3_ENDPOINT || !S3_BUCKET || !S3_ACCESS_KEY_ID || !S3_SECRET_ACCESS_KEY) return null;
+  const endpoint = new URL(S3_ENDPOINT);
+  if ((process.env.NODE_ENV === 'production' || process.env.K_SERVICE) && endpoint.protocol !== 'https:') {
+    throw new Error('FILE_STORAGE_REQUIRES_HTTPS');
+  }
+  if (endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw new Error('FILE_STORAGE_ENDPOINT_INVALID');
   return {
     endpoint: S3_ENDPOINT.replace(/\/+$/, ''),
     bucket: S3_BUCKET,
@@ -37,8 +41,8 @@ function s3Config(): S3Config | null {
 
 function backend(): 's3' | 'blob' | 'local' | 'none' {
   if (s3Config()) return 's3';
-  if (process.env.BLOB_READ_WRITE_TOKEN) return 'blob';
-  return process.env.VERCEL === '1' ? 'none' : 'local';
+  if (process.env.NODE_ENV !== 'production' && !process.env.K_SERVICE && !process.env.VERCEL && process.env.BLOB_READ_WRITE_TOKEN) return 'blob';
+  return process.env.NODE_ENV === 'production' || process.env.K_SERVICE || process.env.VERCEL ? 'none' : 'local';
 }
 
 let s3: { key: string; client: AwsClient } | null = null;
@@ -61,18 +65,20 @@ function objectUrl(cfg: S3Config, key: string): string {
 }
 
 export class StoredFileMissingError extends Error {
-  constructor(key: string) {
-    super(`Stored file not found: ${key}`);
+  constructor(_key: string) {
+    super('Stored file not found');
     this.name = 'StoredFileMissingError';
   }
 }
 
 /** Whether uploads can be persisted here. Vercel with no bucket or Blob store can't keep files. */
 export function fileStorageAvailable(): boolean {
-  return backend() !== 'none';
+  const configured = backend();
+  return configured === 's3' || configured === 'local';
 }
 
 async function putBytes(key: string, data: Buffer, mime: string) {
+  await scanUpload(data);
   switch (backend()) {
     case 's3': {
       const cfg = s3Config()!;
@@ -82,11 +88,6 @@ async function putBytes(key: string, data: Buffer, mime: string) {
         headers: { 'content-type': mime },
       });
       if (!res.ok) throw new Error(`File storage rejected the upload (HTTP ${res.status})`);
-      return;
-    }
-    case 'blob': {
-      const { put } = await import('@vercel/blob');
-      await put(key, data, { access: 'public', contentType: mime, addRandomSuffix: false, allowOverwrite: true });
       return;
     }
     case 'local': {
@@ -116,19 +117,60 @@ export async function putFileBytes(key: string, data: Buffer, mime: string) {
   await putBytes(key, data, mime);
 }
 
-export async function storeFile(input: StoreFileInput) {
-  const safeName = input.filename.replace(/[^\w.\-]+/g, '_').slice(0, 120);
-  const key = `${input.orgId}/${crypto.randomUUID()}-${safeName}`;
-  await putBytes(key, input.data, input.mime);
-  return db.storedFile.create({
+export async function storeFile(input: StoreFileInput, { staged = false } = {}) {
+  const key = `${input.orgId}/${crypto.randomUUID()}`;
+  // Persist the cleanup record before writing bytes. A crash cannot make an
+  // unfinished upload accessible or leave it without a retry.
+  const file = await db.storedFile.create({
     data: {
-      orgId: input.orgId,
-      key,
-      filename: input.filename,
-      mime: input.mime,
-      size: input.data.byteLength,
+      orgId: input.orgId, key, filename: input.filename, mime: input.mime,
+      size: input.data.byteLength, deletePendingAt: new Date(Date.now() + 30 * 60_000),
     },
   });
+  try {
+    await putBytes(key, input.data, input.mime);
+    if (staged) return file;
+    return await db.storedFile.update({
+      where: { id: file.id, deletePendingAt: { gt: new Date() } }, data: { deletePendingAt: null },
+    });
+  } catch (error) {
+    await discardUnlinkedFile(input.orgId, file.id).catch(() => undefined);
+    throw error;
+  }
+}
+
+/** Queue only files still unlinked. A commit whose result was lost is preserved. */
+export async function discardUnlinkedFile(orgId: string, id: string) {
+  const result = await db.storedFile.updateMany({
+    where: { orgId, id, contactId: null, contacts: { none: {} }, applicationResumes: { none: {} },
+      postingLogoOf: { none: {} }, orgLogoOf: { none: {} } },
+    data: { deletePendingAt: new Date() },
+  });
+  if (result.count) await retryPendingFileDeletion(orgId, id);
+}
+
+/** Keep the storage key and retry if the physical delete fails. */
+export async function retryPendingFileDeletion(orgId?: string, id?: string) {
+  const files = await db.storedFile.findMany({
+    where: { orgId, id, deletePendingAt: { lte: new Date() } },
+    orderBy: { deletePendingAt: 'asc' }, take: 100,
+    select: { id: true, orgId: true, key: true },
+  });
+  let pending = 0;
+  for (const file of files) {
+    try {
+      await deleteStoredFileBytes(file.key);
+      await db.storedFile.deleteMany({ where: { id: file.id, orgId: file.orgId, deletePendingAt: { not: null } } });
+    } catch {
+      // Back off to give other pending files a chance to be retried.
+      await db.storedFile.updateMany({
+        where: { id: file.id, deletePendingAt: { not: null } },
+        data: { deletePendingAt: new Date(Date.now() + 15 * 60_000) },
+      });
+      pending++;
+    }
+  }
+  return { pending };
 }
 
 /** Types a browser may render in place. Everything else downloads. */
@@ -187,13 +229,14 @@ export async function openStoredFile(key: string): Promise<ReadableStream<Uint8A
       if (!res.ok || !res.body) throw new Error(`File storage returned HTTP ${res.status}`);
       return res.body;
     }
-    default: {
+    case 'local': {
       const filePath = path.join(LOCAL_ROOT, key);
       await access(filePath).catch(() => {
         throw new StoredFileMissingError(key);
       });
       return Readable.toWeb(createReadStream(filePath)) as ReadableStream<Uint8Array>;
     }
+    default: throw new Error('FILE_STORAGE_NOT_CONFIGURED');
   }
 }
 
@@ -216,9 +259,11 @@ export async function deleteStoredFileBytes(key: string): Promise<void> {
       await del(key);
       return;
     }
-    default:
+    case 'local':
       await unlink(path.join(LOCAL_ROOT, key)).catch((err: NodeJS.ErrnoException) => {
         if (err.code !== 'ENOENT') throw err;
       });
+      return;
+    default: throw new Error('FILE_STORAGE_NOT_CONFIGURED');
   }
 }

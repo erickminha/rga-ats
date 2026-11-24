@@ -10,8 +10,9 @@ describe('resume parser configuration', () => {
     expect(describeResumeParser({})).toMatchObject({ state: 'off', providerLabel: null, model: null });
   });
 
-  it('uses Groq and gpt-oss-20b when only GROQ_API_KEY is set', () => {
-    const cfg = resumeParserConfig({ GROQ_API_KEY: KEY });
+  it('requires explicit opt-in before using Groq and its default model', () => {
+    expect(resumeParserConfig({ GROQ_API_KEY: KEY })).toEqual({ state: 'off' });
+    const cfg = resumeParserConfig({ RGA_ALLOW_EXTERNAL_AI: 'true', GROQ_API_KEY: KEY });
     expect(cfg).toMatchObject({
       state: 'on',
       baseUrl: 'https://api.groq.com/openai/v1',
@@ -29,11 +30,11 @@ describe('resume parser configuration', () => {
   });
 
   it('switches to gpt-oss-120b with one setting', () => {
-    expect(resumeParserConfig({ GROQ_API_KEY: KEY, RESUME_PARSER_MODEL: 'openai/gpt-oss-120b' })).toMatchObject({ model: 'openai/gpt-oss-120b' });
+    expect(resumeParserConfig({ RGA_ALLOW_EXTERNAL_AI: 'true', GROQ_API_KEY: KEY, RESUME_PARSER_MODEL: 'openai/gpt-oss-120b' })).toMatchObject({ model: 'openai/gpt-oss-120b' });
   });
 
   it('prefers RESUME_PARSER_API_KEY over GROQ_API_KEY', () => {
-    const cfg = resumeParserConfig({ GROQ_API_KEY: 'groq-key', RESUME_PARSER_API_KEY: 'parser-key' });
+    const cfg = resumeParserConfig({ RGA_ALLOW_EXTERNAL_AI: 'true', GROQ_API_KEY: 'groq-key', RESUME_PARSER_API_KEY: 'parser-key' });
     expect(cfg.state === 'on' && cfg.apiKey).toBe('parser-key');
   });
 
@@ -44,7 +45,7 @@ describe('resume parser configuration', () => {
   });
 
   it('falls back to GROQ_API_KEY for a base URL on api.groq.com', () => {
-    const cfg = resumeParserConfig({ RESUME_PARSER_BASE_URL: 'https://api.groq.com/openai/v1/', GROQ_API_KEY: KEY });
+    const cfg = resumeParserConfig({ RGA_ALLOW_EXTERNAL_AI: 'true', RESUME_PARSER_BASE_URL: 'https://api.groq.com/openai/v1/', GROQ_API_KEY: KEY });
     expect(cfg).toMatchObject({ state: 'on', profile: 'groq', baseUrl: 'https://api.groq.com/openai/v1', model: 'openai/gpt-oss-20b' });
   });
 
@@ -59,18 +60,18 @@ describe('resume parser configuration', () => {
   });
 
   it('needs a key for a known hosted provider', () => {
-    expect(resumeParserConfig({ RESUME_PARSER_BASE_URL: 'https://api.deepinfra.com/v1/openai' })).toMatchObject({
+    expect(resumeParserConfig({ RGA_ALLOW_EXTERNAL_AI: 'true', RESUME_PARSER_BASE_URL: 'https://api.deepinfra.com/v1/openai' })).toMatchObject({
       state: 'misconfigured',
       reason: 'key_required',
       host: 'api.deepinfra.com',
       providerLabel: 'DeepInfra',
     });
     // GROQ_API_KEY is Groq's, never sent to another host.
-    expect(resumeParserConfig({ RESUME_PARSER_BASE_URL: 'https://openrouter.ai/api/v1', GROQ_API_KEY: KEY })).toMatchObject({
+    expect(resumeParserConfig({ RGA_ALLOW_EXTERNAL_AI: 'true', RESUME_PARSER_BASE_URL: 'https://openrouter.ai/api/v1', GROQ_API_KEY: KEY })).toMatchObject({
       state: 'misconfigured',
       reason: 'key_required',
     });
-    expect(resumeParserConfig({ RESUME_PARSER_BASE_URL: 'https://openrouter.ai/api/v1', RESUME_PARSER_API_KEY: KEY })).toMatchObject({
+    expect(resumeParserConfig({ RGA_ALLOW_EXTERNAL_AI: 'true', RESUME_PARSER_BASE_URL: 'https://openrouter.ai/api/v1', RESUME_PARSER_API_KEY: KEY })).toMatchObject({
       state: 'on',
       profile: 'openrouter',
       model: 'openai/gpt-oss-20b',
@@ -78,7 +79,7 @@ describe('resume parser configuration', () => {
   });
 
   it('shows another hosted endpoint by its hostname, as a third party', () => {
-    expect(resumeParserConfig({ RESUME_PARSER_BASE_URL: 'https://llm.example.com/v1', RESUME_PARSER_MODEL: 'm' })).toMatchObject({
+    expect(resumeParserConfig({ RGA_ALLOW_EXTERNAL_AI: 'true', RESUME_PARSER_BASE_URL: 'https://llm.example.com/v1', RESUME_PARSER_MODEL: 'm' })).toMatchObject({
       state: 'on',
       profile: 'generic',
       providerLabel: 'llm.example.com',
@@ -97,7 +98,7 @@ describe('resume parser configuration', () => {
   );
 
   it('clamps the tuning values', () => {
-    const on = (extra: Record<string, string>) => resumeParserConfig({ GROQ_API_KEY: KEY, ...extra });
+    const on = (extra: Record<string, string>) => resumeParserConfig({ RGA_ALLOW_EXTERNAL_AI: 'true', GROQ_API_KEY: KEY, ...extra });
     expect(on({ RESUME_PARSER_DAILY_LIMIT: '0' })).toMatchObject({ dailyLimit: 0 });
     expect(on({ RESUME_PARSER_DAILY_LIMIT: '-5' })).toMatchObject({ dailyLimit: 0 });
     expect(on({ RESUME_PARSER_DAILY_LIMIT: 'lots' })).toMatchObject({ dailyLimit: 500 });

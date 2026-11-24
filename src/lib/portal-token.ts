@@ -5,7 +5,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
  * Payload: contactId + orgId + expiry, HMAC'd with AUTH_SECRET.
  */
 
-type PortalPayload = { contactId: string; orgId: string; exp: number };
+type PortalPayload = { contactId: string; orgId: string; exp: number; emailProof?: string };
 
 function secret(): string {
   const s = process.env.AUTH_SECRET;
@@ -17,10 +17,15 @@ function sign(data: string): string {
   return createHmac('sha256', secret()).update(data).digest('base64url');
 }
 
-export function createPortalToken(contactId: string, orgId: string, ttlDays = 14): string {
+export function portalEmailProof(email: string) {
+  return sign(`portal-email:${email.trim().toLowerCase()}`);
+}
+
+export function createPortalToken(contactId: string, orgId: string, ttlDays = 14, email?: string): string {
   const payload: PortalPayload = {
     contactId,
     orgId,
+    ...(email ? { emailProof: portalEmailProof(email) } : {}),
     exp: Date.now() + ttlDays * 86_400_000,
   };
   const data = Buffer.from(JSON.stringify(payload)).toString('base64url');

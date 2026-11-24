@@ -114,20 +114,22 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
             <PublicClientIdentityForm key={linkedClient.id} postingId={posting.id} clientId={linkedClient.id} allowed={!!publicClientName(posting)} />
           </div> : null}
         </div> : null}
-        {canRecruit && posting.state === 'PUBLISHED' ? (
+        {canRecruit ? (
         <div className="mt-6">
           <p className="mb-2 text-xs text-ink-2">
-            Compartilhe com o cliente um link de consulta com os nomes dos candidatos e suas etapas. Anotações, avaliações e remuneração ficam privadas.
+            Compartilhe com o cliente os totais e as etapas do processo seletivo.
           </p>
           <div className="flex flex-wrap gap-2">
             <ShareLinkButton
               scope="posting"
               id={posting.id}
+              canCreate={posting.state === 'PUBLISHED'}
               subject={{ name: posting.title, detail: posting.location, seed: posting.id }}
             />
-            {linkedClient?.active ? (
+            {linkedClient ? (
               <ShareLinkButton
                 scope="client"
+                canCreate={linkedClient.active}
                 id={linkedClient.id}
                 label={`Todas as vagas de ${linkedClient?.name ?? organization.client.singular}`}
                 subject={{

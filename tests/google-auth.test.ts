@@ -572,14 +572,14 @@ describe.skipIf(!hasDb)('Continue with Google', () => {
     });
   });
 
-  it('tells a Google-only user on the password form to use Google', async () => {
+  it('returns the same password error for Google-only and password accounts', async () => {
     const email = address();
     await continueWithGoogle(claims(googleSub(), email));
     await redirectOf(finishGoogleSignup(undefined, form({ orgName: 'Only Google', name: 'Ada' })));
     jar.clear();
 
     expect(await login(undefined, form({ email, password: 'anything-at-all' }))).toEqual({
-      error: 'Esta conta usa o Google. Selecione Continuar com o Google.',
+      error: 'E-mail ou senha inválidos.',
     });
     const withPassword = address();
     await passwordWorkspace(withPassword);

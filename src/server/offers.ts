@@ -1,3 +1,4 @@
+import { capabilityPath } from '@/lib/capability-links';
 import { randomBytes } from 'crypto';
 import type { OfferStatus, RequisitionState } from '@prisma/client';
 import { db } from '@/lib/db';
@@ -282,13 +283,22 @@ export async function sendOfferToCandidate(ctx: SessionContext, offerId: string,
         payload: { contactName: offer.opportunity.contact.name, jobTitle: offer.jobTitle },
       });
     });
-    return { url: `/offer/${offer.token}`, pendingApproval: true };
+    return { url: capabilityPath('offer', offer.token), pendingApproval: true };
   }
 
   if (offer.status === 'DRAFT' || offer.status === 'PENDING_APPROVAL') {
     await setOfferStatus(ctx, offer.id, 'SENT');
   }
 
+  const body = [
+    `Hi ${offer.opportunity.contact.name.split(' ')[0]},`,
+    '',
+    `We're excited to share your offer for ${offer.jobTitle} at ${offer.org.name}.`,
+    '',
+    `Review and sign it here: ${baseUrl}${capabilityPath('offer', offer.token)}`,
+    '',
+    `If anything looks off, just reply to this email.`,
+  ].join('\n');
   await sendEmail({
     orgId: ctx.orgId,
     actorId: ctx.userId ?? undefined,
@@ -296,17 +306,9 @@ export async function sendOfferToCandidate(ctx: SessionContext, offerId: string,
     opportunityId: offer.opportunityId,
     toEmail,
     subject: `Your offer from ${offer.org.name}`,
-    body: [
-      `Hi ${offer.opportunity.contact.name.split(' ')[0]},`,
-      '',
-      `We're excited to share your offer for ${offer.jobTitle} at ${offer.org.name}.`,
-      '',
-      `Review and sign it here: ${baseUrl}/offer/${offer.token}`,
-      '',
-      `If anything looks off, just reply to this email.`,
-    ].join('\n'),
-  });
-  return { url: `/offer/${offer.token}` };
+    body: 'Mensagem de proposta com link individual omitido do histórico.',
+  }, body);
+  return { url: capabilityPath('offer', offer.token) };
 }
 
 /** Public fetch for the offer page; stamps first view. */

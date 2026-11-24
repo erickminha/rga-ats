@@ -1,137 +1,169 @@
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
-import { deleteStoredFileBytes } from '@/server/storage';
+import { isAdmin, type SessionContext } from '@/lib/session';
+import { actorOf, emitEvent } from '@/server/events';
+import { retryPendingFileDeletion } from '@/server/storage';
 import { invalidateContactCounts, invalidatePipelineCounts } from '@/server/lists/cache';
 
-/**
- * GDPR retention: when an org sets retentionMonths, candidates whose every
- * opportunity has been archived longer than the window are anonymized —
- * identity fields cleared, record kept for aggregate reporting
- * (docs/02 §1 "Data retention & anonymization"). Hired candidates are
- * exempt (employment records have their own retention rules).
- *
- * Second pass: candidates who explicitly DECLINED profile storage at apply
- * time are anonymized as soon as every opportunity is archived — no
- * retention window, that was the deal on the apply form.
- */
+const importing: Prisma.OrganizationWhereInput = {
+  importJobs: { some: { status: { in: ['DISCOVERING', 'REVIEW', 'RUNNING'] } } },
+};
+const archived: Prisma.ContactWhereInput = { opportunities: { every: { status: 'ARCHIVED' } } };
+const eligible: Prisma.ContactWhereInput = { isAnonymized: false, retentionHold: false, org: { NOT: importing } };
 
-async function anonymizeContact(
-  orgId: string,
-  contact: { id: string; resumeFileId: string | null },
-  reason: Record<string, string | number | null>,
-) {
-  // The resume IS the PII — anonymization must take the file with it, and
-  // every other file that is theirs (imported cover letters, older resumes).
-  const files = await db.storedFile.findMany({
-    where: {
-      orgId,
-      OR: [{ contactId: contact.id }, ...(contact.resumeFileId ? [{ id: contact.resumeFileId }] : [])],
-    },
-    select: { id: true, key: true },
-  });
-  for (const file of files) {
-    await deleteStoredFileBytes(file.key).catch(() => {});
-  }
-  await db.$transaction(async (tx) => {
-    if (files.length) {
-      await tx.contact.update({
-        where: { id: contact.id },
-        data: { resumeFileId: null },
-      });
-      await tx.storedFile.deleteMany({ where: { id: { in: files.map((f) => f.id) }, orgId } });
-      // Notes that only point at those files (imported attachments) name them — often after the candidate.
-      for (const f of files) {
-        await tx.note.deleteMany({ where: { orgId, body: { contains: `/api/files/${f.id}` } } });
-      }
-    }
-    // Interview transcripts are verbatim candidate speech — same PII bar
-    await tx.transcript.deleteMany({
-      where: { orgId, opportunity: { contactId: contact.id } },
+async function anonymizeContact(orgId: string, id: string, rule: Prisma.ContactWhereInput, ctx?: SessionContext) {
+  const changed = await db.$transaction(async (tx) => {
+    // Opportunity creation/activation takes the same lock in the database trigger.
+    await tx.$queryRaw`SELECT id FROM "Contact" WHERE id = ${id} AND "orgId" = ${orgId} FOR NO KEY UPDATE`;
+    const contact = await tx.contact.findFirst({
+      where: { id, orgId, AND: [eligible, archived, rule] },
+      select: { id: true, resumeFileId: true, emails: true, opportunities: { select: { id: true, applicationResumeId: true } } },
     });
-    // Case studies point at their own portfolio: theirs, and identifying
-    await tx.caseStudy.deleteMany({ where: { orgId, contactId: contact.id } });
-    // Newsletter copies keep the address each went to
-    await tx.newsletterRecipient.deleteMany({ where: { orgId, contactId: contact.id } });
+    if (!contact) return false;
+    const ids = contact.opportunities.map((opportunity) => opportunity.id);
+    const byOpportunity = { orgId, opportunityId: { in: ids } };
+    const emails = { orgId, OR: [
+      { contactId: id }, { opportunityId: { in: ids } },
+      { contactId: null, opportunityId: null, toEmail: { in: contact.emails } },
+    ] };
+    if (await tx.emailMessage.count({
+      where: { ...emails, status: 'SCHEDULED', deliveryClaimedAt: { gt: new Date(Date.now() - 30 * 60_000) } },
+    })) return false;
+    const attachments = [
+      ...(contact.resumeFileId ? [contact.resumeFileId] : []),
+      ...contact.opportunities.flatMap(({ applicationResumeId }) => applicationResumeId ? [applicationResumeId] : []),
+    ];
+    const files = await tx.storedFile.findMany({
+      where: {
+        orgId, OR: [{ contactId: id }, { id: { in: attachments } }],
+        contacts: { none: { id: { not: id } } },
+        applicationResumes: { none: { contactId: { not: id } } },
+        orgLogoOf: { none: {} }, postingLogoOf: { none: {} },
+      }, select: { id: true },
+    });
+    const fileIds = files.map((file) => file.id);
+    const [interviews, transcripts, offers, feedback, notes, meetings, tasks, referrals, links, works] = await Promise.all([
+      tx.interview.findMany({ where: byOpportunity, select: { id: true } }),
+      tx.transcript.findMany({ where: byOpportunity, select: { id: true } }),
+      tx.offer.findMany({ where: byOpportunity, select: { id: true } }),
+      tx.feedbackSubmission.findMany({ where: byOpportunity, select: { id: true } }),
+      tx.note.findMany({ where: byOpportunity, select: { id: true } }),
+      tx.externalMeeting.findMany({
+        where: { orgId, OR: [
+          { interview: { opportunityId: { in: ids } } },
+          { transcript: { opportunityId: { in: ids } } },
+          { attendeeEmails: { hasSome: contact.emails } },
+        ] }, select: { id: true },
+      }),
+      tx.task.findMany({ where: byOpportunity, select: { id: true } }),
+      tx.referral.findMany({ where: { orgId, contactId: id }, select: { id: true } }),
+      tx.schedulingLink.findMany({ where: byOpportunity, select: { id: true } }),
+      tx.caseStudy.findMany({ where: { orgId, contactId: id }, select: { id: true } }),
+    ]);
+    const relatedIds = [id, ...ids, ...fileIds, ...[
+      interviews, transcripts, offers, feedback, notes, meetings, tasks, referrals, links, works,
+    ].flat().map((r) => r.id)];
+    await tx.externalMeeting.updateMany({
+      where: { orgId, id: { in: meetings.map((r) => r.id) } },
+      data: { title: 'Reunião anonimizada', attendeeNames: [], attendeeEmails: [], transcriptId: null, status: 'DISMISSED' },
+    });
+    await tx.transcript.deleteMany({ where: byOpportunity });
+    await tx.note.deleteMany({ where: byOpportunity });
+    await tx.task.deleteMany({ where: byOpportunity });
+    await tx.schedulingLink.deleteMany({ where: byOpportunity });
+    await tx.caseStudy.deleteMany({ where: { orgId, contactId: id } });
+    await tx.newsletterRecipient.deleteMany({ where: { orgId, contactId: id } });
+    await tx.emailMessage.deleteMany({ where: emails });
+    await tx.consentRecord.deleteMany({ where: { orgId, contactId: id } });
+    await tx.referral.updateMany({ where: { orgId, contactId: id }, data: { relationship: null, notes: null } });
+    await tx.interview.updateMany({ where: byOpportunity, data: { title: 'Entrevista anonimizada', location: null, focusAreas: [] } });
+    await tx.feedbackSubmission.updateMany({ where: byOpportunity, data: { summary: '', answers: Prisma.DbNull } });
+    await tx.aiEvaluation.updateMany({
+      where: byOpportunity, data: { summary: '', strengths: [], concerns: [], questions: [], criteria: Prisma.DbNull, highlights: Prisma.DbNull },
+    });
+    await tx.offer.updateMany({
+      where: byOpportunity,
+      data: { notes: null, token: null, signedName: null, letterBody: null, equity: null, jobTitle: 'Proposta anonimizada' },
+    });
+    // Keep provider identifiers as tombstones so external imports cannot recreate erased profiles.
+    await tx.importRef.updateMany({ where: { orgId, internalId: { in: relatedIds } }, data: { snapshot: Prisma.DbNull, fingerprint: null } });
+    await tx.event.updateMany({
+      where: { orgId, OR: [{ subjectId: { in: relatedIds } }, { actorType: 'candidate', actorId: id }] },
+      data: { payload: Prisma.DbNull },
+    });
+    await tx.shareLink.updateMany({
+      where: { orgId, scope: 'candidate', targetId: { in: ids }, revokedAt: null }, data: { revokedAt: new Date() },
+    });
+    await tx.opportunity.updateMany({
+      where: { orgId, id: { in: ids } }, data: { source: null, customFields: Prisma.DbNull, applicationResumeId: null },
+    });
     await tx.contact.update({
-      where: { id: contact.id },
+      where: { id },
       data: {
-        name: 'Anonymized candidate',
-        headline: null,
-        location: null,
-        emails: [],
-        phones: [],
-        links: [],
-        resumeFileId: null,
-        resumeText: null,
-        isAnonymized: true,
+        name: 'Candidato anonimizado', headline: null, location: null, emails: [], phones: [], links: [], tags: [],
+        resumeFileId: null, resumeText: null, isAnonymized: true, emailOptOutAt: null, emailBouncedAt: null,
+        pools: { set: [] },
       },
     });
-    await tx.event.create({
-      data: {
-        orgId,
-        actorType: 'system',
-        verb: 'contact.anonymized',
-        subjectType: 'contact',
-        subjectId: contact.id,
-        payload: reason,
-      },
+    await tx.storedFile.updateMany({
+      where: { orgId, id: { in: fileIds } },
+      data: { filename: 'arquivo-em-exclusao', parsed: Prisma.DbNull, textError: null, parseError: null, ocrError: null, deletePendingAt: new Date() },
+    });
+    await emitEvent(tx, {
+      orgId, ...(ctx ? actorOf(ctx) : { actorType: 'system' as const }),
+      verb: 'contact.anonymized', subjectType: 'contact', subjectId: id,
+    });
+    return true;
+  });
+  if (changed) {
+    invalidatePipelineCounts(orgId);
+    invalidateContactCounts(orgId);
+  }
+  return changed;
+}
+
+export async function setRetentionHold(ctx: SessionContext, id: string, hold: boolean) {
+  if (!isAdmin(ctx)) throw new Error('Apenas administradores podem definir retenção.');
+  await db.$transaction(async (tx) => {
+    const changed = await tx.contact.updateMany({
+      where: { id, orgId: ctx.orgId, isAnonymized: false, retentionHold: !hold },
+      data: { retentionHold: hold },
+    });
+    if (changed.count) await emitEvent(tx, {
+      orgId: ctx.orgId, ...actorOf(ctx), verb: hold ? 'contact.retention_held' : 'contact.retention_released',
+      subjectType: 'contact', subjectId: id,
     });
   });
-  // The name changed, which search counts see.
-  invalidatePipelineCounts(orgId);
-  invalidateContactCounts(orgId);
+}
+
+export async function eraseCandidateData(ctx: SessionContext, id: string) {
+  if (!isAdmin(ctx)) throw new Error('Apenas administradores podem anonimizar cadastros.');
+  const done = await anonymizeContact(ctx.orgId, id, {}, ctx);
+  if (done) await retryPendingFileDeletion(ctx.orgId);
+  return done;
 }
 
 export async function processRetention(): Promise<number> {
   let anonymized = 0;
-
-  // Pass 1: org-configured retention windows
-  // Orgs mid-import are skipped: a candidate whose old applications are past
-  // the window may still have active ones on the way, and anonymizing them
-  // now would make the import drop those as erased.
-  const importing: Prisma.OrganizationWhereInput = {
-    importJobs: { some: { status: { in: ['DISCOVERING', 'REVIEW', 'RUNNING'] } } },
-  };
-  const orgs = await db.organization.findMany({
+  const windowed = await db.organization.findMany({
     where: { retentionMonths: { not: null }, NOT: importing },
     select: { id: true, retentionMonths: true },
   });
-  for (const org of orgs) {
+  for (const org of windowed) {
     const cutoff = new Date();
     cutoff.setMonth(cutoff.getMonth() - (org.retentionMonths ?? 0));
-
-    const candidates = await db.contact.findMany({
-      where: {
-        orgId: org.id,
-        isAnonymized: false,
-        opportunities: { some: {}, every: { status: 'ARCHIVED', archivedAt: { lte: cutoff } } },
-      },
-      select: { id: true, resumeFileId: true },
-      take: 100,
-    });
-    for (const contact of candidates) {
-      await anonymizeContact(org.id, contact, { retentionMonths: org.retentionMonths });
-      anonymized++;
-    }
+    const rule = { opportunities: { some: {}, every: { status: 'ARCHIVED' as const, archivedAt: { lte: cutoff } } } };
+    const candidates = await db.contact.findMany({ where: { orgId: org.id, ...eligible, ...rule }, select: { id: true }, take: 100 });
+    for (const { id } of candidates) if (await anonymizeContact(org.id, id, rule)) anonymized++;
   }
-
-  // Pass 2: explicit "don't store my profile" refusals — anonymize as soon
-  // as every process has ended, regardless of any retention window.
-  const refused = await db.contact.findMany({
-    where: {
-      isAnonymized: false,
-      consents: { some: { purpose: 'PROFILE_STORAGE' } },
-      NOT: { consents: { some: { purpose: 'PROFILE_STORAGE', withdrawnAt: null } } },
-      opportunities: { some: {}, every: { status: 'ARCHIVED' } },
-      org: { NOT: importing },
-    },
-    select: { id: true, orgId: true, resumeFileId: true },
-    take: 100,
-  });
-  for (const contact of refused) {
-    await anonymizeContact(contact.orgId, contact, { reason: 'profile_storage_declined' });
-    anonymized++;
-  }
-
+  const declined: Prisma.ContactWhereInput = {
+    consents: { some: { purpose: 'PROFILE_STORAGE' } },
+    NOT: { consents: { some: { purpose: 'PROFILE_STORAGE', withdrawnAt: null } } },
+    opportunities: { some: {}, every: { status: 'ARCHIVED' } },
+  };
+  const candidates = await db.contact.findMany({ where: { ...eligible, ...declined }, select: { id: true, orgId: true }, take: 100 });
+  for (const { orgId, id } of candidates) if (await anonymizeContact(orgId, id, declined)) anonymized++;
+  await retryPendingFileDeletion();
+  await db.passwordResetLimit.deleteMany({ where: { expiresAt: { lte: new Date() } } });
   return anonymized;
 }

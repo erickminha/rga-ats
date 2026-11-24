@@ -11,6 +11,7 @@ import {
   careersPath, formatPublicSalary, jsonLd, noIndex, publicClientName, publicPostingLogo, publicPostingText,
 } from '@/lib/public-careers';
 import { careersOrganization, careersOrigin, isDemoCareers, publicationDate, publishedPosting } from '@/server/public-careers';
+import { EEOEnabled, talentNetworkAllowed } from '@/server/privacy-options';
 import { isSampleSlug } from '@/server/sample-boards';
 
 type Params = Promise<{ org: string; posting: string }>;
@@ -119,7 +120,7 @@ export default async function PostingPage({ params, searchParams }: { params: Pa
         ) : (
           <>
             <h2 id="apply-title" className="mb-5 text-xl font-medium">Candidate-se a esta vaga</h2>
-            <ApplyForm orgSlug={orgSlug} postingSlug={slug} networkOptIn={org.talentNetworkEnabled} collectEeo={org.collectEeo}
+            <ApplyForm orgSlug={orgSlug} postingSlug={slug} networkOptIn={talentNetworkAllowed() && org.talentNetworkEnabled} collectEeo={EEOEnabled() && org.collectEeo}
               utm={{ source: utm_source, medium: utm_medium, campaign: utm_campaign }} />
           </>
         )}

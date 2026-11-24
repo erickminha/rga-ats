@@ -24,6 +24,7 @@ import { PostingApprovalToggle } from '@/components/posting-approval-toggle';
 import { SettingsSwitch } from '@/components/settings-switch';
 import { NotetakerConnections } from '@/components/notetaker-connections';
 import { myNotetakerConnections, orgNotetakerOverview, suggestedMeetingCount } from '@/server/notetakers/connections';
+import { EEOEnabled, talentNetworkAllowed } from '@/server/privacy-options';
 import { isDemoOrg } from '@/server/notetakers/sync';
 import {
   addScorecardQuestionAction,
@@ -319,7 +320,7 @@ export default async function SettingsPage({
           <ControlRow
             description={settings.controls.eeoDescription}
           >
-            <EeoToggle enabled={org?.collectEeo ?? false} />
+            {EEOEnabled() ? <EeoToggle enabled={org?.collectEeo ?? false} /> : <span>Desativado nesta implantação</span>}
           </ControlRow>
         </Group>
         ) : null}
@@ -339,7 +340,7 @@ export default async function SettingsPage({
           <ControlRow
             description={settings.controls.networkDescription}
           >
-            <TalentNetworkToggle enabled={org?.talentNetworkEnabled ?? false} />
+            {talentNetworkAllowed() ? <TalentNetworkToggle enabled={org?.talentNetworkEnabled ?? false} /> : <span>Desativado nesta implantação</span>}
           </ControlRow>
         </Group>
         ) : null}

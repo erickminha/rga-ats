@@ -46,3 +46,18 @@ export const candidate = {
     'Application received': 'Candidatura recebida',
   },
 } as const;
+
+export const EEO_QUESTIONS = [
+  { name: 'eeo_gender', label: 'Gênero', options: { Female: 'Feminino', Male: 'Masculino', 'Non-binary': 'Não binário' } },
+  {
+    name: 'eeo_race', label: 'Raça ou etnia',
+    options: {
+      'American Indian or Alaska Native': 'Indígena americano ou nativo do Alasca',
+      Asian: 'Asiática', 'Black or African American': 'Negra ou afro-americana',
+      'Hispanic or Latino': 'Hispânica ou latina', 'Native Hawaiian or Other Pacific Islander': 'Nativa do Havaí ou de outra ilha do Pacífico',
+      White: 'Branca', 'Two or more races': 'Duas ou mais raças ou etnias',
+    },
+  },
+  { name: 'eeo_veteran', label: 'Condição de veterano', options: { 'Protected veteran': 'Veterano protegido', 'Not a protected veteran': 'Não sou veterano protegido' } },
+  { name: 'eeo_disability', label: 'Deficiência', options: { 'Yes, I have a disability': 'Tenho deficiência', 'No, I do not have a disability': 'Não tenho deficiência' } },
+] as const;

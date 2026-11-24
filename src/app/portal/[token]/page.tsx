@@ -73,10 +73,13 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
         )}
       </section>
 
-      {data.networkEnabled || data.networkOptIn ? (
+      {data.verifiedPreferences ? (
         <section className="mt-8">
           <h2 className={`mb-3 ${sectionLabel}`}>Minhas preferências</h2>
-          <NetworkConsentToggle token={token} optedIn={data.networkOptIn} />
+          <div className="grid gap-3">
+            <NetworkConsentToggle token={token} optedIn={data.profileStorage} profileStorage />
+            {data.networkEnabled || data.networkOptIn ? <NetworkConsentToggle token={token} optedIn={data.networkOptIn} /> : null}
+          </div>
         </section>
       ) : null}
 

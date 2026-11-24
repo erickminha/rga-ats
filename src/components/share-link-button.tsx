@@ -5,7 +5,7 @@ import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { unstable_rethrow } from 'next/navigation';
 import { ArrowUpRight, Link2, Presentation, RotateCcw, X } from 'lucide-react';
-import { createShareLinkAction } from '@/app/(app)/actions';
+import { createShareLinkAction, revokeShareLinksAction } from '@/app/(app)/actions';
 import { btnGhost, inputClass, noAutofill } from '@/components/form-controls';
 import { buttonClass } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
@@ -43,21 +43,21 @@ const COPY: Record<
     ready: 'Apresentação pronta',
     open: 'Abrir apresentação',
     note: (name) =>
-      `Resumo de ${firstName(name)} com histórico, links e dados de contato. Anotações, avaliações e remuneração ficam privadas.`,
+      `Exibe o nome de ${firstName(name)} e a vaga vinculada ou o título profissional.`,
   },
   posting: {
     working: () => ['Contando candidatos por etapa…', 'Ocultando anotações e avaliações…', 'Gerando o link…'],
     ready: 'Link pronto para compartilhar',
     open: 'Abrir página compartilhada',
     note: () =>
-      'Acompanhe os candidatos e suas etapas nesta vaga. Anotações, avaliações e remuneração ficam privadas.',
+      'Consulte os totais e as etapas desta vaga.',
   },
   client: {
     working: () => ['Contando candidatos por etapa…', 'Ocultando anotações e avaliações…', 'Gerando o link…'],
     ready: 'Link pronto para compartilhar',
     open: 'Abrir página compartilhada',
     note: (name) =>
-      `Acompanhe os candidatos e suas etapas nas vagas de ${name}. Anotações, avaliações e remuneração ficam privadas.`,
+      `Consulte os totais e as etapas das vagas de ${name}.`,
   },
 };
 
@@ -71,17 +71,36 @@ export function ShareLinkButton({
   scope,
   id,
   label = 'Link para o cliente',
+  canCreate = true,
   subject,
 }: {
   scope: Scope;
   id: string;
   label?: string;
+  canCreate?: boolean;
   /** What's being shared, for the preview: a candidate, a role, or a client. */
   subject: { name: string; detail?: string | null; seed?: string };
 }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<State>({ kind: 'idle' });
   const copy = COPY[scope];
+  const [notice, setNotice] = useState('');
+  const [revoking, setRevoking] = useState(false);
+
+  async function revoke() {
+    if (!window.confirm('Revogar todos os links ativos deste registro?')) return;
+    setRevoking(true);
+    try {
+      await revokeShareLinksAction(scope, id);
+      setState({ kind: 'idle' });
+      setOpen(false);
+      setNotice('Links anteriores revogados.');
+    } catch {
+      setNotice('Não foi possível revogar os links.');
+    } finally {
+      setRevoking(false);
+    }
+  }
 
   async function generate() {
     setState({ kind: 'working' });
@@ -91,7 +110,7 @@ export function ShareLinkButton({
       result = await createShareLinkAction(scope, id);
     } catch (error) {
       unstable_rethrow(error);
-      console.error(error);
+
     }
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const hold = reduced ? 0 : MIN_WORKING_MS - (performance.now() - started);
@@ -106,6 +125,7 @@ export function ShareLinkButton({
   const working = state.kind === 'idle' || state.kind === 'working';
 
   return (
+    <div className="flex flex-wrap items-center gap-2">
     <Dialog.Root
       open={open}
       onOpenChange={(next) => {
@@ -113,11 +133,11 @@ export function ShareLinkButton({
         if (next && (state.kind === 'idle' || state.kind === 'error')) void generate();
       }}
     >
-      <Dialog.Trigger asChild>
+      {canCreate ? <Dialog.Trigger asChild>
         <button type="button" className={btnGhost}>
           {scope === 'candidate' ? <Presentation /> : <Link2 />} {label}
         </button>
-      </Dialog.Trigger>
+      </Dialog.Trigger> : null}
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay fixed inset-0 z-[300] bg-ink/10" />
         <Dialog.Content className="dialog-animate fixed left-1/2 top-[max(16px,16vh)] z-[300] w-[min(420px,calc(100vw-32px))] -translate-x-1/2 rounded-dialog bg-surface p-6 shadow-float outline-none">
@@ -235,5 +255,10 @@ export function ShareLinkButton({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+      <button type="button" className={btnGhost} onClick={() => void revoke()} disabled={revoking}>
+        Revogar links
+      </button>
+      {notice ? <span role="status" className="text-xs text-ink-2">{notice}</span> : null}
+    </div>
   );
 }

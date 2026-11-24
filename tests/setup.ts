@@ -13,5 +13,5 @@ process.env.TEXT_EXTRACT_WORKER ??= '0';
 // a developer's .env must never make tests send anything. Suites that test
 // them pass their own.
 for (const name of Object.keys(process.env)) {
-  if (name === 'GROQ_API_KEY' || name === 'RESUME_PARSER' || name.startsWith('RESUME_PARSER_') || name.startsWith('AI_')) delete process.env[name];
+  if (name === 'RGA_ALLOW_EXTERNAL_AI' || name === 'RGA_ALLOW_NOTETAKERS' || name === 'GROQ_API_KEY' || name === 'RESUME_PARSER' || name.startsWith('RESUME_PARSER_') || name.startsWith('AI_')) delete process.env[name];
 }

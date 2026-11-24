@@ -57,23 +57,10 @@ export async function login(_prev: AuthFormState, formData: FormData): Promise<A
     });
   } catch (error) {
     if (error instanceof AuthError) {
-      if (googleAuthEnabled() && (await signsInWithGoogleOnly(email))) {
-        return { error: 'Esta conta usa o Google. Selecione Continuar com o Google.' };
-      }
       return { error: 'E-mail ou senha inválidos.' };
     }
     throw error; // successful signIn throws a redirect — let it through
   }
-}
-
-/** Every active account at this address is password-less (made by Google sign-up). */
-async function signsInWithGoogleOnly(rawEmail: string): Promise<boolean> {
-  const email = rawEmail.toLowerCase().trim();
-  if (!email) return false;
-  const [row] = await db.$queryRaw<{ googleOnly: boolean | null }[]>`
-    SELECT bool_and("passwordHash" IS NULL) AS "googleOnly"
-    FROM "User" WHERE lower(email) = ${email} AND "deactivatedAt" IS NULL`;
-  return row?.googleOnly === true;
 }
 
 /**

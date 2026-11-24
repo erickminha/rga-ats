@@ -1,4 +1,5 @@
-import { createHash, createHmac, randomBytes } from 'node:crypto';
+import { reserveRequest } from '@/server/request-limit';
+import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 import { emailPublicOrigin } from '@/lib/base-url';
@@ -18,19 +19,6 @@ export function validResetPassword(password: string) {
   return password.length >= 8 && Buffer.byteLength(password, 'utf8') <= 72;
 }
 
-async function reserve(key: string, limit: number, now: Date) {
-  const expiresAt = new Date(now.getTime() + HOUR);
-  const result = await db.$executeRaw`
-    INSERT INTO "PasswordResetLimit" ("key", "count", "expiresAt")
-    VALUES (${key}, 1, ${expiresAt})
-    ON CONFLICT ("key") DO UPDATE
-    SET "count" = CASE WHEN "PasswordResetLimit"."expiresAt" <= ${now} THEN 1 ELSE "PasswordResetLimit"."count" + 1 END,
-        "expiresAt" = CASE WHEN "PasswordResetLimit"."expiresAt" <= ${now} THEN ${expiresAt} ELSE "PasswordResetLimit"."expiresAt" END
-    WHERE "PasswordResetLimit"."expiresAt" <= ${now} OR "PasswordResetLimit"."count" < ${limit}
-  `;
-  return result === 1;
-}
-
 export async function requestPasswordReset(email: string) {
   const normalized = resetEmailAddress(email);
   const origin = emailPublicOrigin();
@@ -42,9 +30,7 @@ export async function requestPasswordReset(email: string) {
   }
 
   const now = new Date();
-  if (!await reserve('global', 300, now)) return;
-  const addressKey = createHmac('sha256', secret).update(`password-reset:${normalized}`).digest('hex');
-  if (!await reserve(addressKey, 3, now)) return;
+  if (!await reserveRequest('password-reset', [normalized], 3, HOUR)) return;
 
   await db.passwordResetLimit.deleteMany({ where: { expiresAt: { lte: now } } });
   await db.passwordResetToken.deleteMany({ where: { expiresAt: { lte: now } } });

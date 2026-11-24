@@ -1,3 +1,4 @@
+import { capabilityPath } from '@/lib/capability-links';
 import { allowsAutomaticScheduling } from '@/server/rga-pipeline';
 import { randomBytes } from 'crypto';
 import type { StageType } from '@prisma/client';
@@ -206,6 +207,15 @@ export async function maybeAutoSendSchedulingLink(
   }
 
   const first = opportunity.contact.name.split(' ')[0] || opportunity.contact.name;
+  const body = [
+    `Hi ${first},`,
+    '',
+    `Please pick a time for your ${link.title} with ${org.name}:`,
+    '',
+    `${baseUrl}${capabilityPath('schedule', link.token)}`,
+    '',
+    `Times are shown in your local timezone. If none of the slots work, reply to this email and we'll find another time.`,
+  ].join('\n');
   await sendEmail({
     orgId: ctx.orgId,
     actorId: ctx.userId ?? undefined,
@@ -213,16 +223,8 @@ export async function maybeAutoSendSchedulingLink(
     opportunityId,
     toEmail,
     subject: `Pick a time for your ${link.title} with ${org.name}`,
-    body: [
-      `Hi ${first},`,
-      '',
-      `Please pick a time for your ${link.title} with ${org.name}:`,
-      '',
-      `${baseUrl}/schedule/${link.token}`,
-      '',
-      `Times are shown in your local timezone. If none of the slots work, reply to this email and we'll find another time.`,
-    ].join('\n'),
-  });
+    body: 'Mensagem de agendamento com link individual omitido do histórico.',
+  }, body);
   return link;
 }
 

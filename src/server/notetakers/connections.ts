@@ -1,3 +1,4 @@
+import { notetakersAllowed } from '@/server/privacy-options';
 import { auth, type FetchLike, type OAuthDiscoveryState } from '@modelcontextprotocol/client';
 import type { NotetakerStatus, Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
@@ -88,6 +89,7 @@ export async function startNotetakerOAuth(
   origin: string,
   opts: { fetchFn?: FetchLike; serverUrl?: string } = {},
 ): Promise<{ url: string }> {
+  if (!notetakersAllowed()) throw new Error('Integração de transcrições desativada.');
   const userId = requireUser(ctx);
   const meta = notetakerProvider(providerId);
   if (!meta) throw new Error('Unknown notetaker');
@@ -182,6 +184,7 @@ export async function completeNotetakerOAuth(
   origin: string,
   opts: { fetchFn?: FetchLike } = {},
 ): Promise<CallbackResult> {
+  if (!notetakersAllowed()) return { provider: null, result: 'invalid' };
   const check = await consumeOAuthFlow(params.get('state'), user);
   if (!check.ok) return { provider: null, result: 'invalid' };
   const conn = check.connection;
@@ -231,6 +234,7 @@ export async function connectNotetakerWithApiKey(
   apiKey: string,
   opts: { fetchFn?: FetchLike; serverUrl?: string } = {},
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!notetakersAllowed()) return { ok: false, error: 'Integração de transcrições desativada.' };
   const userId = requireUser(ctx);
   const meta = notetakerProvider(providerId);
   if (!meta?.apiKey) return { ok: false, error: 'This notetaker connects by signing in, not with a key' };

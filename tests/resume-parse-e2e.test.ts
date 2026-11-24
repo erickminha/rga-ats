@@ -224,12 +224,11 @@ describe.skipIf(!hasDb)('resume parsing, end to end', () => {
     it("is in the candidate's data export, for every resume they sent", async () => {
       const first = await apply(AVERY, 'avery.txt');
       await cron();
-      // They apply again with a new resume: both parses stay theirs.
+      const nextPosting = await db.posting.create({
+        data: { orgId: org.id, slug: `second-${randomUUID()}`, title: 'Second role', state: 'PUBLISHED' },
+      });
       await submitApplication({
-        orgSlug: org.slug,
-        postingSlug: posting,
-        name: 'Avery J. Example',
-        email: first.email,
+        orgSlug: org.slug, postingSlug: nextPosting.slug, email: first.email, name: 'Avery J. Example',
         resume: { data: fixture('resume.docx'), filename: 'second.docx' },
       });
       await cron();
@@ -238,10 +237,12 @@ describe.skipIf(!hasDb)('resume parsing, end to end', () => {
       const res = await exportGET(new Request('http://localhost/api/contacts/x/export'), { params: Promise.resolve({ id: first.contactId }) });
       expect(res.status).toBe(200);
       const body = JSON.parse(await res.text());
-      expect(body.contact.resumeFile).toMatchObject({ filename: 'second.docx', parseModel: 'openai/gpt-oss-20b' });
-      expect(body.contact.resumeFile.parsed).toMatchObject({ v: 1, name: 'Rowan Q. Testperson' });
+      expect(body.contact.resumeFile).toMatchObject({ filename: 'avery.txt', parseModel: 'openai/gpt-oss-20b' });
+      expect(body.contact.resumeFile.parsed).toMatchObject({ v: 1, name: 'Avery J. Example' });
       expect(body.contact.files).toHaveLength(2);
-      expect(body.contact.files.map((f: { parsed: { name: string } | null }) => f.parsed?.name).sort()).toEqual(['Avery J. Example', 'Rowan Q. Testperson']);
+      expect(body.contact.opportunities).toEqual(expect.arrayContaining([
+        expect.objectContaining({ applicationResume: expect.objectContaining({ filename: 'second.docx', parsed: null }) }),
+      ]));
       // The storage key names the upload; it stays out of the export.
       expect(JSON.stringify(body.contact.files)).not.toContain('"key"');
     });

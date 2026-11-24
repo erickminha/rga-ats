@@ -21,12 +21,14 @@ function fakeService(responses: (() => Response)[]) {
 }
 
 const on = () => {
+  vi.stubEnv('RGA_ALLOW_EXTERNAL_AI', 'true');
   process.env.AI_SERVICE_URL = 'https://ai.example.com/';
   process.env.AI_SERVICE_TOKEN = TOKEN;
 };
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   for (const name of ['AI_SERVICE_URL', 'AI_SERVICE_TOKEN', 'AI_PROVIDER']) delete process.env[name];
 });
 
@@ -36,11 +38,11 @@ describe('aiProvider', () => {
     expect(aiProvider({ AI_SERVICE_URL: 'https://ai.example.com' })).toBeNull();
     expect(aiProvider({ AI_API_KEY: 'gsk_x', GROQ_API_KEY: 'gsk_y' })).toBeNull();
     expect(aiProvider({ AI_SERVICE_URL: 'ftp://ai.example.com', AI_SERVICE_TOKEN: TOKEN })).toBeNull();
-    expect(aiConfigured({})).toBe(false);
+    expect(aiConfigured({ AI_SERVICE_URL: 'https://ai.example.com', AI_SERVICE_TOKEN: TOKEN })).toBe(false);
   });
 
   it('never shows the token when logged or serialized', () => {
-    const p = aiProvider({ AI_SERVICE_URL: 'https://ai.example.com/', AI_SERVICE_TOKEN: TOKEN });
+    const p = aiProvider({ AI_SERVICE_URL: 'https://ai.example.com/', AI_SERVICE_TOKEN: TOKEN, RGA_ALLOW_EXTERNAL_AI: 'true' });
     expect(p).toMatchObject({ kind: 'service', url: 'https://ai.example.com' });
     expect(JSON.stringify(p)).not.toContain(TOKEN);
     expect(Object.keys(p!)).not.toContain('token');
@@ -69,7 +71,7 @@ describe('runAiTask', () => {
     fakeService([() => Response.json({ error: { code: 'unauthorized', message: 'bad token abc' } }, { status: 401 })]);
     const error = await runAiTask('answer', { question: 'q', excerpts: [] }).catch((e) => e);
     expect(error).toBeInstanceOf(AiUnavailableError);
-    expect(error).toMatchObject({ reason: 'unauthorized', status: 401, message: "AI couldn't answer just now. Try again in a moment." });
+    expect(error).toMatchObject({ reason: 'http_401', status: 401, message: "AI couldn't answer just now. Try again in a moment." });
 
     fakeService([() => new Response('<html>bad gateway</html>', { status: 502 })]);
     await expect(runAiTask('draft-criteria', { role: { title: 't', location: null, content: {} } })).rejects.toMatchObject({ reason: 'http_502' });

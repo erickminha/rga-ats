@@ -84,6 +84,7 @@ function retryable(version: number, at: Date) {
 
 /** Some live contact's resume, and that contact has no text yet. Never a logo or an attachment. */
 const pendingResume: Prisma.StoredFileWhereInput = {
+  deletePendingAt: null,
   contacts: { some: { resumeText: null, isAnonymized: false } },
 };
 

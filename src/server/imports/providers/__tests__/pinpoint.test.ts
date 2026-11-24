@@ -1244,7 +1244,11 @@ describe.skipIf(!hasDb)('pinpoint adapter', () => {
     expect(pinpointRequisitionSalary([{ label: 'Budget', varchar_value: '55000065000000' }], 'GBP')).toEqual({ min: null, max: null, currency: 'GBP' });
   });
 
-  it('imports a whole account, and a re-run adds nothing', async () => {
+  it('imports a whole account, and a re-run adds nothing', async ({ onTestFinished }) => {
+    // The vendor provides elapsed days rather than a timestamp for entering a stage.
+    // Capture the snapshot at a fixed date so the inferred Offer precedes the recorded hire.
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-01T12:00:00Z'));
+    onTestFinished(() => { clock.mockRestore(); });
     denied = new Set();
     const { impl, calls, unmatched } = mockFetch(routes());
     const run = await runImportForTest({ module: provider, credentials, fetchImpl: impl });

@@ -8,7 +8,7 @@ import { generateMetadata as postingMetadata } from '@/app/careers/[org]/[postin
 import { GET as list } from '@/app/api/careers/[org]/postings/route';
 import { GET as feed } from '@/app/api/careers/[org]/feed.xml/route';
 import { GET as logo } from '@/app/api/logo/[id]/route';
-import { getPortalData, requestPortalLink, setNetworkConsent } from '@/server/portal';
+import { getPortalData, requestPortalLink, setNetworkConsent, setPortalPreference } from '@/server/portal';
 import { submitApplication } from '@/server/applications';
 import { setPostingClient, setPublicClientIdentity } from '@/server/client-companies';
 import { storeFile } from '@/server/storage';
@@ -115,7 +115,7 @@ describe.skipIf(!hasDb)('public careers portal', () => {
       expect(message.subject).toContain('Acompanhe sua candidatura');
       expect(message.body).not.toContain('/portal/');
       expect(smtp.messages).toHaveLength(1);
-      token = smtp.messages[0].match(/https:\/\/careers\.example\.test\/portal\/([\w.-]+)/)?.[1];
+      token = smtp.messages[0].match(/https:\/\/careers\.example\.test\/portal#([\w.-]+)/)?.[1];
       expect(token).toBeTruthy();
     } finally {
       await smtp.close();
@@ -127,6 +127,11 @@ describe.skipIf(!hasDb)('public careers portal', () => {
     expect(await getPortalData(token! + 'bad')).toBeNull();
     expect(await getPortalData(token! + '.extra')).toBeNull();
     await setNetworkConsent(token!, true);
+    await expect(setPortalPreference(createPortalToken(contactId, org.id), true, true)).rejects.toThrow();
+    await setPortalPreference(token!, true, true);
+    expect((await getPortalData(token!))?.profileStorage).toBe(true);
+    await setPortalPreference(token!, false, true);
+    expect((await getPortalData(token!))?.profileStorage).toBe(false);
     const grants = await db.consentRecord.findMany({ where: { contactId, withdrawnAt: null } });
     expect(grants.map((grant) => grant.purpose)).toEqual(['APPLICATION']);
   });

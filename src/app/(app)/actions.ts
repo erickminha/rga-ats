@@ -51,9 +51,10 @@ import {
   setRequisitionState,
 } from '@/server/offers';
 import { EncryptedDocumentError } from '@/server/text/types';
-import { requestBaseUrl } from '@/lib/base-url';
+import { capabilityPath } from '@/lib/capability-links';
+import { emailPublicOrigin, requestBaseUrl } from '@/lib/base-url';
 import { normalizeBookingUrl } from '@/lib/booking';
-import { createRecruitingShare } from '@/server/share-links';
+import { createRecruitingShare, revokeRecruitingShares } from '@/server/share-links';
 import { getPendingApproval } from '@/server/approvals';
 import { submitReferral } from '@/server/referrals';
 import { submitFeedback } from '@/server/feedback';
@@ -273,7 +274,7 @@ export async function createSchedulingLinkAction(
         .filter(Boolean),
     });
     revalidatePath(`/candidates/${opportunityId}`);
-    return { url: `/schedule/${link.token}` };
+    return { url: capabilityPath('schedule', link.token) };
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Could not create link.' };
   }
@@ -653,7 +654,7 @@ export async function saveCustomFieldsAction(opportunityId: string, formData: Fo
     } else values[def.key] = raw;
   }
   await db.opportunity.update({
-    where: { id: opportunity.id },
+    where: { id: opportunity.id, orgId: ctx.orgId, contact: { isAnonymized: false } },
     data: { customFields: values as object },
   });
   revalidatePath(`/candidates/${opportunityId}`);
@@ -829,9 +830,15 @@ export async function createShareLinkAction(
   id: string,
 ): Promise<{ url?: string; expiresAt?: string; error?: string }> {
   const ctx = await requireAuthenticatedSession();
+  const origin = emailPublicOrigin();
+  if (!origin) return { error: 'Origem pública não configurada.' };
   const link = await createRecruitingShare(ctx, scope, id);
   if ('error' in link) return { error: link.error };
-  return { url: `${await requestBaseUrl()}/share/${link.code}`, expiresAt: link.expiresAt.toISOString() };
+  return { url: `${origin}/share#${link.code}`, expiresAt: link.expiresAt.toISOString() };
+}
+
+export async function revokeShareLinksAction(scope: 'posting' | 'client' | 'candidate', id: string) {
+  return revokeRecruitingShares(await requireSession(), scope, id);
 }
 
 export async function addTranscriptAction(
