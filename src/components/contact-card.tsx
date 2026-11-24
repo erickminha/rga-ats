@@ -1,5 +1,6 @@
 'use client';
 
+import { ResumePreview } from '@/components/resume-preview';
 import { useOptimistic, useRef, useState, useTransition, type ReactNode } from 'react';
 import { Check, FileText, Mail, MapPin, Pencil, Phone, Plus, X } from 'lucide-react';
 import { updateContactDetailsAction } from '@/app/(app)/actions';
@@ -72,7 +73,7 @@ export function ContactCard({
   opportunityId: string;
   contactId: string;
   details: Details;
-  resume: { href: string; note: string | null } | null;
+  resume: { fileId: string; href: string; note: string | null } | null;
 }) {
   const [optimistic, apply] = useOptimistic(details, (_: Details, next: Details) => next);
   const [editing, setEditing] = useState<Editing>(null);
@@ -153,6 +154,7 @@ export function ContactCard({
               <FileText size={14} className="shrink-0 text-ink-2" />
               <span className="truncate">Currículo</span>
             </a>
+            <div className="px-4 py-2"><ResumePreview key={resume.fileId} fileId={resume.fileId} /></div>
             {resume.note ? <p className="px-4 py-3 text-xs text-ink-3">{resume.note}</p> : null}
           </>
         ) : null}
