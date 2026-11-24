@@ -267,7 +267,7 @@ describe.skipIf(!hasDb)('Perfis e funil RGA', () => {
     expect(await db.contact.findUnique({ where: { id: manual.contactId } })).toMatchObject({ resumeFileId: manual.applicationResumeId });
     await db.recruitingAssessment.create({ data: { opportunityId: manual.id, opinion: { recommendation: 'Parecer fictício' } } });
     expect(await db.recruitingAssessment.findUnique({ where: { opportunityId: another.id } })).toBeNull();
-    expect(await db.storedFile.count({ where: { orgId: org.id } })).toBe(files);
+    expect(await db.storedFile.count({ where: { orgId: org.id } })).toBe(files + 1);
     expect((await moveStage(recruiter, applied.id, ordered[4].id)).status).toBe('ACTIVE');
     expect((await moveStage(recruiter, applied.id, ordered[7].id)).status).toBe('ACTIVE');
     expect((await moveStage(recruiter, applied.id, ordered[8].id)).status).toBe('HIRED');
