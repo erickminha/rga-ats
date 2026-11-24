@@ -60,7 +60,7 @@ export function TranscriptSection({
         title="Transcrições"
         action={
           <button onClick={() => setOpen((v) => !v)} className={btnGhost}>
-            <FileAudio /> {open ? "Cancelar" : 'Add transcript'}
+            <FileAudio /> {open ? "Cancelar" : 'Adicionar transcrição'}
           </button>
         }
       />
@@ -80,7 +80,7 @@ export function TranscriptSection({
               <FormSelect
                 name="interviewId"
                 options={[
-                  { value: '', label: 'Not tied to one interview' },
+                  { value: '', label: 'Sem vínculo com uma entrevista específica' },
                   ...interviews.map((iv) => ({ value: iv.id, label: iv.title })),
                 ]}
               />
@@ -99,11 +99,11 @@ export function TranscriptSection({
           <div className="flex items-center justify-end gap-3">
             {pending && aiEnabled ? (
               <span className="text-sm">
-                <ThinkingStates lines={['Saving the transcript…', 'Finding the questions…', 'Summarizing the answers…']} />
+                <ThinkingStates lines={['Salvando a transcrição…', 'Identificando as perguntas…', 'Resumindo as respostas…']} />
               </span>
             ) : null}
             <button type="submit" disabled={pending} className={btnPrimary}>
-              <TextSwap>{pending ? "Salvando…" : 'Save transcript'}</TextSwap>
+              <TextSwap>{pending ? "Salvando…" : 'Salvar transcrição'}</TextSwap>
             </button>
           </div>
         </form>
@@ -128,7 +128,7 @@ export function TranscriptSection({
                     aria-expanded={expanded === t.id}
                     className={buttonClass({ variant: 'tonal', size: 'xs' })}
                   >
-                    {expanded === t.id ? 'Collapse' : 'Read'}
+                    {expanded === t.id ? 'Recolher' : 'Ler'}
                   </button>
                   <button
                     title="Excluir transcrição"
