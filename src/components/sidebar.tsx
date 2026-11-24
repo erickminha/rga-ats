@@ -15,7 +15,6 @@ import {
   LogOut,
   MoreHorizontal,
   Search,
-  Newspaper,
   Settings,
   Home,
   UserPlus,
@@ -42,7 +41,6 @@ const nav = [
   { href: '/postings', label: navigation.postings, icon: Briefcase },
   { href: '/interviews', label: navigation.interviews, icon: CalendarDays },
   { href: '/tasks', label: navigation.tasks, icon: ListTodo },
-  { href: '/newsletters', label: navigation.newsletters, icon: Newspaper },
   { href: '/reports', label: navigation.reports, icon: BarChart3 },
   { href: '/settings', label: navigation.settings, icon: Settings },
 ];
