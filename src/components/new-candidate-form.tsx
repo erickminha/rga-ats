@@ -23,16 +23,16 @@ export function NewCandidateForm({
     <form action={formAction} className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4">
         <Field label="Nome completo">
-          <input {...noAutofill} name="name" required placeholder="Dana Reyes" className={inputClass} />
+          <input {...noAutofill} name="name" required placeholder="Ex.: Ana Souza" className={inputClass} />
         </Field>
         <Field label="E-mail">
-          <input {...noAutofill} name="email" type="email" placeholder="dana@example.com" className={inputClass} />
+          <input {...noAutofill} name="email" type="email" placeholder="nome@exemplo.com" className={inputClass} />
         </Field>
         <Field label="Cargo ou área">
           <input {...noAutofill} name="headline" placeholder="Designer de Produto Sênior" className={inputClass} />
         </Field>
         <Field label="Localidade">
-          <input {...noAutofill} name="location" placeholder="Brooklyn, NY" className={inputClass} />
+          <input {...noAutofill} name="location" placeholder="Ex.: Manaus, AM" className={inputClass} />
         </Field>
       </div>
 
@@ -68,7 +68,7 @@ export function NewCandidateForm({
           />
         </Field>
         <Field label="Fonte">
-          <input {...noAutofill} name="source" placeholder="linkedin, referral name…" className={inputClass} />
+          <input {...noAutofill} name="source" placeholder="Ex.: LinkedIn, indicação…" className={inputClass} />
         </Field>
       </div>
 

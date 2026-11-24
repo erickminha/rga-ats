@@ -257,7 +257,16 @@ describe.skipIf(!hasDb)('Perfis e funil RGA', () => {
     expect(contact.resumeFile).toMatchObject({ orgId: org.id, contactId: contact.id, filename: 'curriculo-teste.txt' });
     expect(contact.resumeText).toContain('experiência');
     const files = await db.storedFile.count({ where: { orgId: org.id } });
-    await expect(createCandidate(recruiter, manualInput)).rejects.toThrow(/já tem um currículo/);
+    const distinctPosting = await db.posting.create({ data: { orgId: org.id, title: 'Segunda vaga fictícia', slug: 'segunda-vaga-ficticia' } });
+    const another = await createCandidate(recruiter, {
+      ...manualInput, postingId: distinctPosting.id,
+      resume: { filename: 'segunda-versao.txt', data: Buffer.from('Segundo currículo fictício') },
+    });
+    expect(another.contactId).toBe(manual.contactId);
+    expect(another.applicationResumeId).not.toBe(manual.applicationResumeId);
+    expect(await db.contact.findUnique({ where: { id: manual.contactId } })).toMatchObject({ resumeFileId: manual.applicationResumeId });
+    await db.recruitingAssessment.create({ data: { opportunityId: manual.id, opinion: { recommendation: 'Parecer fictício' } } });
+    expect(await db.recruitingAssessment.findUnique({ where: { opportunityId: another.id } })).toBeNull();
     expect(await db.storedFile.count({ where: { orgId: org.id } })).toBe(files);
     expect((await moveStage(recruiter, applied.id, ordered[4].id)).status).toBe('ACTIVE');
     expect((await moveStage(recruiter, applied.id, ordered[7].id)).status).toBe('ACTIVE');

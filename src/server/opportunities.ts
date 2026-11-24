@@ -10,7 +10,6 @@ import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
 import { storeExtractedResume, type ResumeUpload } from '@/server/resume-upload';
 import { discardUnlinkedFile } from '@/server/storage';
 import { MAX_RESUME_BYTES } from '@/server/resume';
-import { parseQueueFields } from '@/server/resume-parse';
 import { textFields } from '@/server/text';
 import { capName } from '@/lib/utils';
 import { invalidateContactCounts, invalidatePipelineCounts } from '@/server/lists/cache';
@@ -52,6 +51,7 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
       if (!posting) throw new Error('Posting not found');
     }
 
+    if (email) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`apply:${ctx.orgId}:${email}`}))`;
     let contact = email
       ? await tx.contact.findFirst({ where: { orgId: ctx.orgId, emails: { has: email } } })
       : null;
@@ -77,15 +77,14 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
     }
 
     if (resume) {
-      const linked = await tx.contact.updateMany({
+      if (!await lockIdentifiableContact(tx, ctx.orgId, contact.id)) throw new CandidateResumeError('Cadastro indisponível para receber arquivos.');
+      await tx.contact.updateMany({
         where: { id: contact.id, orgId: ctx.orgId, isAnonymized: false, resumeFileId: null },
         data: { resumeFileId: resume.file.id, resumeText: resume.extracted.text },
       });
-      if (!linked.count) throw new CandidateResumeError('O perfil já tem um currículo ou não pode receber anexos.');
-      const org = await tx.organization.findUnique({ where: { id: ctx.orgId }, select: { id: true, slug: true } });
       await tx.storedFile.update({
         where: { id: resume.file.id, deletePendingAt: { gt: new Date() } },
-        data: { deletePendingAt: null, contactId: contact.id, ...textFields(resume.extracted, new Date()), ...parseQueueFields(resume.extracted.status, org ?? undefined) },
+        data: { deletePendingAt: null, contactId: contact.id, ...textFields(resume.extracted, new Date()) },
       });
     }
 
@@ -93,6 +92,7 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
       data: {
         orgId: ctx.orgId,
         contactId: contact.id,
+        applicationResumeId: resume?.file.id,
         postingId: input.postingId || null,
         stageId: stage.id,
         origin: input.origin,
