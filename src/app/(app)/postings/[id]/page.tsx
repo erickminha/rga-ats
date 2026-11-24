@@ -1,3 +1,6 @@
+import { CompareFinalists, CompetencyPlanForm } from '@/components/competency-assessment';
+import { readInterview, readPlan, readTemplates } from '@/lib/competency-assessment';
+import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { FinalistsForm } from '@/components/finalists-form';
 import { finalistStageNames } from '@/server/share-links';
 import { outcomeCategory, outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
@@ -73,12 +76,16 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
       select: {
         id: true, confidential: true, contact: { select: { name: true, headline: true } },
         stage: { select: { name: true } },
-        recruitingAssessment: { select: { disc: true, opinionFinalizedAt: true } },
+        recruitingAssessment: { select: { disc: true, opinion: true, opinionFinalizedAt: true, competencyInterview: true } },
         interviews: { where: { orgId: ctx.orgId, state: 'COMPLETED' }, take: 1, select: { id: true } },
       },
       orderBy: { contact: { name: 'asc' } },
     }),
   ]);
+  const [assessmentOrg, scorecardQuestions] = canRecruit ? await Promise.all([
+    db.organization.findUnique({ where: { id: ctx.orgId }, select: { assessmentTemplates: true } }),
+    db.scorecardQuestion.findMany({ where: { orgId: ctx.orgId, archivedAt: null }, orderBy: { order: 'asc' }, select: { label: true }, take: 12 }),
+  ]) : [null, []];
   const summary = { ACTIVE: 0, HIRED: 0, REJECTION: 0, WITHDRAWAL: 0, ADMINISTRATIVE: 0 };
   const byStage = new Map<string, number>();
   const byReason = new Map(reasons.map((reason) => [reason.id, reason]));
@@ -185,6 +192,19 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
             ) : null}
           </div>
 
+      <details id="roteiro-avaliacao" className={`${surface} my-5 p-5`}>
+        <summary className="font-medium">Roteiro de avaliação da vaga</summary>
+        {isAdmin(ctx) && <a className="underline" href="/settings/modelos-avaliacao">Gerenciar modelos de avaliação</a>}
+        <CompetencyPlanForm postingId={posting.id} plan={readPlan(posting.competencyPlan)}
+          templates={readTemplates(assessmentOrg?.assessmentTemplates)} orgQuestions={scorecardQuestions.map((item) => item.label)} />
+      </details>
+      <CompareFinalists finalists={finalists.map((row) => ({
+        id: row.id, name: row.contact.name, headline: row.contact.headline,
+        experience: textRecord(row.recruitingAssessment?.opinion).experience ?? '',
+        review: readInterview(row.recruitingAssessment?.competencyInterview),
+        interview: row.interviews.length > 0, disc: (row.recruitingAssessment?.disc as { complete?: boolean } | null)?.complete === true,
+        opinion: !!row.recruitingAssessment?.opinionFinalizedAt,
+      }))} />
       <section className={`${surface} my-5 p-5`}>
         <h2 className="mb-3 text-lg font-medium">Finalistas e apresentação ao cliente</h2>
         <FinalistsForm id={posting.id} enabled={posting.state === 'PUBLISHED' && !!linkedClient?.active}

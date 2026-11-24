@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { saveCompetencyInterview, saveCompetencyTemplate, savePostingCompetencies } from "@/server/competency-assessment";
 import { requireSession } from '@/lib/session';
 import { saveRecruitingAssessment, type AssessmentPart } from '@/server/recruiting-assessment';
 import { createShortlistShare, revokeRecruitingShares } from '@/server/share-links';
@@ -26,4 +27,21 @@ export async function presentFinalistsAction(id: string, form: FormData) {
 export async function revokeFinalistsAction(id: string) {
   const ctx = await requireSession();
   return revokeRecruitingShares(ctx, 'shortlist', id);
+}
+
+export async function saveCompetencyTemplateAction(form: FormData) {
+  await saveCompetencyTemplate(await requireSession(), form);
+  revalidatePath('/settings/modelos-avaliacao');
+  revalidatePath('/postings/[id]', 'page');
+}
+
+export async function savePostingCompetenciesAction(id: string, form: FormData) {
+  await savePostingCompetencies(await requireSession(), id, form);
+  revalidatePath(`/postings/${id}`);
+}
+
+export async function saveCompetencyInterviewAction(id: string, form: FormData) {
+  await saveCompetencyInterview(await requireSession(), id, form);
+  revalidatePath(`/candidates/${id}`);
+  revalidatePath('/postings/[id]', 'page');
 }

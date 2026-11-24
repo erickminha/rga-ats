@@ -1,3 +1,5 @@
+import { CompetencyInterviewForm } from '@/components/competency-assessment';
+import { readInterview, readPlan } from '@/lib/competency-assessment';
 import { RecruitingAssessmentForm } from '@/components/recruiting-assessment-form';
 import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { outcomeCategory, outcomeNames, dateBR } from '@/lib/i18n/pt-BR/recruiting';
@@ -211,6 +213,14 @@ export async function CandidateProfile({ id }: { id: string }) {
   const resume = readResumeView(resumeFile?.parsed);
   const assessment = opportunity.recruitingAssessment;
   const disc = textRecord(assessment?.disc);
+  const previousDiscs = !contact.isAnonymized && !contact.retentionHold && opportunity.postingId
+    ? await db.recruitingAssessment.findMany({
+      where: { disc: { path: ['complete'], equals: true }, opportunity: { id: { not: id }, orgId: ctx.orgId,
+        contactId: contact.id, confidential: false, posting: { orgId: ctx.orgId } } },
+      orderBy: { updatedAt: 'desc' }, take: 12,
+      select: { opportunityId: true, opportunity: { select: { posting: { select: { title: true } } } } },
+    }) : [];
+
   const discComplete = !!assessment?.disc && typeof assessment.disc === 'object'
     && !Array.isArray(assessment.disc) && assessment.disc.complete === true;
   const author = assessment?.opinionAuthorId ? await db.user.findFirst({
@@ -563,9 +573,14 @@ export async function CandidateProfile({ id }: { id: string }) {
           />
 
           {!contact.isAnonymized && <Link className="text-sm underline" href={`/contacts/${contact.id}#curriculos`}>Gerenciar cadastro e versões de currículo</Link>}
+          {!contact.isAnonymized && <CompetencyInterviewForm key={opportunity.id} id={opportunity.id}
+            plan={readPlan(opportunity.posting?.competencyPlan)} review={readInterview(assessment?.competencyInterview)}
+            requirements={cleanCriteria(opportunity.posting?.matchCriteria)} postingId={opportunity.postingId} />}
           {!contact.isAnonymized && <RecruitingAssessmentForm key={opportunity.id}
             id={opportunity.id} screening={textRecord(assessment?.screening)} disc={disc} discComplete={discComplete}
-            discFileId={assessment?.discFileId ?? null} opinion={textRecord(assessment?.opinion)}
+            discFileId={assessment?.discFileId ?? null} previousDiscs={previousDiscs.map((row) => ({
+              id: row.opportunityId, title: row.opportunity.posting?.title ?? 'Vaga anterior',
+            }))} opinion={textRecord(assessment?.opinion)}
             author={author?.name ?? null} finalized={!!assessment?.opinionFinalizedAt} />}
           {isAdmin(ctx) && !contact.isAnonymized ? (
             <PrivacyControls contactId={contact.id} onHold={contact.retentionHold} />

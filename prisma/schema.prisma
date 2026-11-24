@@ -40,6 +40,7 @@ model Organization {
   talentNetworkEnabled Boolean @default(false)
   // Bias control: hide teammates' scorecards until your own is submitted
   hideFeedbackUntilSubmitted Boolean @default(false)
+  assessmentTemplates Json?
   // GDPR retention: anonymize archived candidates after N months (null = keep forever)
   retentionMonths Int?
   // Show the voluntary EEO/OFCCP self-ID block on apply forms
@@ -344,6 +345,7 @@ model RecruitingAssessment {
   opportunityId      String      @id
   opportunity        Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   screening          Json?
+  competencyInterview Json?
   disc               Json?
   discFileId          String?
   discFile            StoredFile? @relation(fields: [discFileId], references: [id], onDelete: SetNull)
@@ -468,6 +470,7 @@ model Posting {
   // What every candidate for this role is scored on: [{ id, label, must }]
   // (src/lib/match-criteria.ts). Null until set or drafted from the posting.
   matchCriteria Json?
+  competencyPlan Json?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
