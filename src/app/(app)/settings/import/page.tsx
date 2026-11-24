@@ -1,6 +1,7 @@
+import { RGA_IMPORT_PROVIDER } from '@/lib/rga-import';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronRight, FileSpreadsheet } from 'lucide-react';
 import { db } from '@/lib/db';
 import { isAdmin, requireSession } from '@/lib/session';
 import { listImportJobs } from '@/server/imports/jobs';
@@ -12,8 +13,7 @@ import { SiteIcon } from '@/components/site-icon';
 import { buttonClass } from '@/components/ui/button';
 import { Card, SectionHeader, StatusDot } from '@/components/ui/primitives';
 
-/** Settings → Import from another ATS: start a new import, reach the open one, and see past runs. */
-export const metadata = { title: 'Import from another ATS' };
+export const metadata = { title: 'Importações' };
 
 const OPEN_COPY = {
   DISCOVERING: { title: (p: string) => `Reading your ${p} setup`, action: 'View progress' },
@@ -40,12 +40,12 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
           href="/settings?section=data"
           className="inline-flex items-center gap-1.5 text-sm text-ink-2 transition-colors duration-[120ms] hover:text-ink"
         >
-          <ArrowLeft size={14} /> Settings
+          <ArrowLeft size={14} /> Configurações
         </Link>
       </div>
       <PageHeader
-        title="Import from another ATS"
-        subtitle="Bring candidates, postings, and their history into Source. Running it again only adds what's new."
+        title="Importações"
+        subtitle="Traga dados de planilhas ou de outros sistemas de recrutamento para o RGA ATS."
       />
 
       <div className="mx-6 mt-4 flex max-w-3xl flex-col gap-8 pb-8">
@@ -73,6 +73,12 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
           </Card>
         ) : null}
 
+        <Card className="grid gap-3 p-5">
+          <h2 className="text-md font-medium">Planilhas da RGA</h2>
+          <p className="text-sm text-ink-2">Revise o mapeamento e a prévia antes de importar empresas, vagas e candidatos.</p>
+          <Link href="/settings/import/planilha" className={buttonClass({ variant: 'primary', className: 'justify-self-start' })}>Importar planilha</Link>
+        </Card>
+
         <NewImport
           blocked={!!open}
           retentionMonths={org?.retentionMonths ?? null}
@@ -82,7 +88,7 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
 
         {past.length || !open ? (
           <section>
-            <SectionHeader title="Past imports" />
+            <SectionHeader title="Histórico de importações" />
             {past.length ? (
               <Card className="divide-y divide-line overflow-hidden">
                 {past.map((j) => (
@@ -91,20 +97,24 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
                     href={`/settings/import/${j.id}`}
                     className="flex min-h-14 items-center gap-3 px-4 py-3 transition-colors duration-[120ms] hover:bg-muted/60"
                   >
-                    <SiteIcon url={j.domain} size={20} />
+                    {j.provider === RGA_IMPORT_PROVIDER ? <FileSpreadsheet size={20} aria-hidden="true" /> : <SiteIcon url={j.domain} size={20} />}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-ink">
-                        {j.providerName}
+                        {j.provider === RGA_IMPORT_PROVIDER ? 'Planilha RGA' : j.providerName}
                         {j.accountName ? <span className="font-normal text-ink-2"> · {j.accountName}</span> : null}
                       </p>
-                      <p className="mt-0.5 truncate text-xs text-ink-2 tabular-nums">
-                        {formatCount(j.created)} {j.created === 1 ? 'candidate' : 'candidates'} ·{' '}
-                        {j.finishedAt ? `Finished ${timeAgo(j.finishedAt)}` : `Started ${timeAgo(j.startedAt)}`}
-                      </p>
+                      {j.provider === RGA_IMPORT_PROVIDER ? (
+                        <p className="mt-0.5 text-xs text-ink-2">{new Date(j.finishedAt ?? j.startedAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
+                      ) : (
+                        <p className="mt-0.5 truncate text-xs text-ink-2 tabular-nums">
+                          {formatCount(j.created)} {j.created === 1 ? 'candidate' : 'candidates'} ·{' '}
+                          {j.finishedAt ? `Finished ${timeAgo(j.finishedAt)}` : `Started ${timeAgo(j.startedAt)}`}
+                        </p>
+                      )}
                     </div>
                     <span className="flex shrink-0 items-center gap-1.5 text-xs text-ink-2">
                       <StatusDot tone={IMPORT_STATUS[j.status].tone} />
-                      {IMPORT_STATUS[j.status].label}
+                      {j.provider === RGA_IMPORT_PROVIDER ? 'Concluída' : IMPORT_STATUS[j.status].label}
                     </span>
                     <ChevronRight size={14} aria-hidden className="shrink-0 text-ink-3" />
                   </Link>

@@ -13,15 +13,29 @@ import { ZipReader } from '@/server/text/zip';
 const MAX_ROWS = 5_000;
 const MAX_COLUMNS = 50;
 
-export function readSpreadsheet(data: Uint8Array): string[][] | null {
+export function readSpreadsheet(data: Uint8Array, options?: { headerRow: number }): string[][] | null {
+  const strict = !!options;
   const zip = ZipReader.open(data);
-  if (zip) return zip.has('xl/workbook.xml') ? readXlsx(zip) : null;
+  if (zip) return zip.has('xl/workbook.xml') ? readXlsx(zip, strict) : null;
   // Binary that isn't a ZIP (an old .xls, an image) has NULs; text never does.
   if (data.subarray(0, 4096).includes(0) && !isUtf16(data)) return null;
   const text = decodeText(data);
   const firstLine = text.slice(0, text.search(/\r|\n|$/));
-  const delimiter = [',', ';', '\t'].reduce((best, d) => (count(firstLine, d) > count(firstLine, best) ? d : best), ',');
-  return parseCsv(text, delimiter).slice(0, MAX_ROWS).map((row) => row.slice(0, MAX_COLUMNS));
+  const delimiters = [',', ';', '\t'];
+  const selected = options ? detectDelimiter(text, delimiters, options.headerRow) : delimiters.reduce((best, d) => (count(firstLine, d) > count(firstLine, best) ? d : best), ',');
+  const rows = parseCsv(text, selected, strict);
+  if (strict && (rows.length > MAX_ROWS || rows.some((row) => row.length > MAX_COLUMNS))) throw new Error('A planilha excede o limite de 5.000 linhas ou 50 colunas.');
+  return rows.slice(0, MAX_ROWS).map((row) => row.slice(0, MAX_COLUMNS));
+}
+
+function detectDelimiter(text: string, delimiters: string[], headerRow: number) {
+  const sample = text.split(/\r\n|\r|\n/, 240).join('\n');
+  return delimiters.map((delimiter) => {
+    const rows = parseCsv(sample, delimiter, true);
+    const width = rows[headerRow - 1]?.length ?? 0;
+    const matches = rows.slice(headerRow).filter((row) => row.length === width).length;
+    return { delimiter, width, matches };
+  }).sort((a, b) => b.width - a.width || b.matches - a.matches)[0].delimiter;
 }
 
 const count = (s: string, ch: string) => s.split(ch).length - 1;
@@ -34,7 +48,7 @@ const NS: Record<string, string> = {
   'http://purl.oclc.org/ooxml/officeDocument/relationships': 'r',
 };
 
-function readXlsx(zip: ZipReader): string[][] {
+function readXlsx(zip: ZipReader, strict: boolean): string[][] {
   const strings = sharedStrings(zip.text('xl/sharedStrings.xml'));
   const sheet = zip.text(firstSheetPath(zip)) ?? zip.text('xl/worksheets/sheet1.xml');
   if (!sheet) return [];
@@ -48,7 +62,15 @@ function readXlsx(zip: ZipReader): string[][] {
   scanXmlNs(sheet, NS, {
     open(name, attr) {
       if (name === 'x:row') {
-        if (rows.length >= MAX_ROWS) return;
+        if (strict) {
+          const index = Number(attr('r'));
+          if (index > MAX_ROWS) throw new Error('A planilha excede o limite de 5.000 linhas.');
+          while (rows.length < index - 1) rows.push([]);
+        }
+        if (rows.length >= MAX_ROWS) {
+          if (strict) throw new Error('A planilha excede o limite de 5.000 linhas.');
+          return;
+        }
         row = [];
         nextCol = 0;
       } else if (name === 'x:c' && row) {
@@ -71,6 +93,7 @@ function readXlsx(zip: ZipReader): string[][] {
               : cell.type === 'b'
                 ? (value === '1' ? 'TRUE' : 'FALSE')
                 : value;
+        if (strict && cell.col >= MAX_COLUMNS && text) throw new Error('A planilha excede o limite de 50 colunas.');
         if (cell.col < MAX_COLUMNS && text) row[cell.col] = text;
         cell = null;
       } else if (name === 'x:row' && row) {
