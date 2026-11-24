@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { db } from '@/lib/db';
 import { dayBR } from '@/lib/i18n/pt-BR/recruiting';
-import { archiveOpportunity, moveStage, unarchiveOpportunity } from '@/server/opportunities';
+import { archiveOpportunity, createCandidate, moveStage, unarchiveOpportunity } from '@/server/opportunities';
 import { pipelineFilterFor, pipelinePage } from '@/server/lists/pipeline';
 import { candidate, createOrg } from './fixtures';
 import { hasDb } from './setup';
@@ -11,6 +11,9 @@ describe.skipIf(!hasDb)('encerramentos do processo seletivo RGA', () => {
     const { org, admin, stages } = await createOrg();
     const ctx = { orgId: org.id, userId: admin.id, accessRole: 'TEAM_MEMBER' };
     const posting = await db.posting.create({ data: { orgId: org.id, slug: 'teste', title: 'Vaga teste', state: 'PUBLISHED' } });
+    const initial = { name: 'Cadastro fictício', postingId: posting.id, stageId: stages.at(-1)!.id, origin: 'SOURCED' as const };
+    await expect(createCandidate(ctx, initial)).rejects.toThrow('etapa inicial');
+    expect(await db.opportunity.count({ where: { postingId: posting.id } })).toBe(0);
     const first = await candidate(org.id, stages, [[0, 0]], { postingId: posting.id });
     const other = await db.opportunity.create({ data: { orgId: org.id, contactId: first.contact.id, stageId: stages[0].id } });
     const reason = await db.archiveReason.create({

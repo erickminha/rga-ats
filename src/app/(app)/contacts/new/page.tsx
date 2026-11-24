@@ -8,7 +8,7 @@ export default async function NewCandidatePage() {
   const ctx = await requireSession();
   if (!canManageRecruiting(ctx)) notFound();
   const [stages, postings] = await Promise.all([
-    db.stage.findMany({ where: { orgId: ctx.orgId }, orderBy: { order: 'asc' } }),
+    db.stage.findMany({ where: { orgId: ctx.orgId, type: { not: 'HIRED' } }, orderBy: { order: 'asc' } }),
     db.posting.findMany({
       where: { orgId: ctx.orgId, state: { not: 'CLOSED' } },
       orderBy: { title: 'asc' },

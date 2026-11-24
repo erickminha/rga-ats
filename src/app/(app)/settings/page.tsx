@@ -600,7 +600,7 @@ export default async function SettingsPage({
               <form key={reason?.id ?? 'new'} action={saveArchiveReasonAction.bind(null, reason?.id ?? null)} className="flex flex-wrap items-center gap-2">
                 <input name="name" aria-label="Nome do motivo" placeholder="Novo motivo" maxLength={120} required defaultValue={reason?.name} className={inputClass} />
                 <select name="category" aria-label="Categoria" defaultValue={outcomeCategory(reason)}>
-                  {Object.entries(outcomeNames).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                  {Object.entries(outcomeNames).map(([key, label]) => <option key={key} value={key} disabled={!!reason && key !== outcomeCategory(reason)}>{label}</option>)}
                 </select>
                 <button className={btnTonal}>{reason ? 'Salvar' : 'Adicionar motivo'}</button>
               </form>

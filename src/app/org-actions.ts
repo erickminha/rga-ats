@@ -567,8 +567,14 @@ export async function saveArchiveReasonAction(id: string | null, form: FormData)
   const raw = String(form.get('category') ?? '');
   if (!name || name.length > 120 || !isArchiveCategory(raw)) throw new Error('Nome ou categoria inválidos.');
   const data = { name, category: raw, countsAsRejection: raw === 'REJECTION' };
-  if (id) await db.archiveReason.update({ where: { id, orgId: ctx.orgId }, data });
-  else await db.archiveReason.create({ data: { orgId: ctx.orgId, ...data } });
+  if (id) {
+    const current = await db.archiveReason.findFirst({ where: { id, orgId: ctx.orgId } });
+    if (!current) throw new Error('Motivo indisponível.');
+    if (outcomeCategory(current) !== raw) {
+      throw new Error('Crie um novo motivo para usar outra categoria e preservar a classificação do histórico.');
+    }
+    await db.archiveReason.update({ where: { id, orgId: ctx.orgId }, data });
+  } else await db.archiveReason.create({ data: { orgId: ctx.orgId, ...data } });
   invalidateLists(ctx.orgId);
   revalidatePath('/settings');
 }
