@@ -13,12 +13,12 @@ import { FormSelect } from '@/components/form-select';
 import { DitherBar } from '@/components/ui/dither';
 
 const GROUP_DIMENSIONS = [
-  { value: 'stage', label: 'Stage' },
+  { value: 'stage', label: "Etapa" },
   { value: 'origin', label: 'Origin' },
   { value: 'source', label: 'Source' },
-  { value: 'posting', label: 'Posting' },
+  { value: 'posting', label: "Vaga" },
   { value: 'archiveReason', label: 'Archive reason' },
-  { value: 'owner', label: 'Owner' },
+  { value: 'owner', label: "Responsável" },
   { value: 'month', label: 'Month added' },
 ] as const;
 
@@ -36,7 +36,7 @@ type Params = {
  * dimension, filtered by status/origin/posting/date range. Configs are
  * shareable URLs and saveable to Reports.
  */
-export const metadata = { title: 'Report builder' };
+export const metadata = { title: "Criar relatório" };
 
 export default async function ReportBuilderPage({
   searchParams,
@@ -81,33 +81,33 @@ export default async function ReportBuilderPage({
           href="/reports"
           className="inline-flex items-center gap-1.5 text-sm text-ink-2 transition-colors duration-[120ms] hover:text-ink"
         >
-          <ArrowLeft size={14} /> Reports
+          <ArrowLeft size={14} /> Relatórios
         </Link>
       </div>
-      <PageHeader title="Report builder" subtitle="Group and filter your pipeline any way you need" />
+      <PageHeader title="Criar relatório" subtitle="Agrupe e filtre os dados do recrutamento" />
 
       <div className="mx-6 mt-4 flex max-w-3xl flex-col gap-8 pb-8">
         <form method="get" className={`${surface} grid gap-4 p-5 sm:grid-cols-3`}>
-          <Field label="Group by">
+          <Field label="Agrupar por">
             <FormSelect
               name="groupBy"
               defaultValue={groupBy}
               options={GROUP_DIMENSIONS.map((d) => ({ value: d.value, label: d.label }))}
             />
           </Field>
-          <Field label="Status">
+          <Field label="Situação">
             <FormSelect
               name="status"
               defaultValue={params.status ?? ''}
               options={[
                 { value: '', label: 'Any' },
-                { value: 'ACTIVE', label: 'Active' },
-                { value: 'HIRED', label: 'Hired' },
-                { value: 'ARCHIVED', label: 'Archived' },
+                { value: 'ACTIVE', label: "Ativos" },
+                { value: 'HIRED', label: "Contratados" },
+                { value: 'ARCHIVED', label: "Encerrados" },
               ]}
             />
           </Field>
-          <Field label="Posting">
+          <Field label="Vaga">
             <FormSelect
               name="posting"
               defaultValue={params.posting ?? ''}
@@ -117,15 +117,15 @@ export default async function ReportBuilderPage({
               ]}
             />
           </Field>
-          <Field label="Added from">
+          <Field label="Cadastro a partir de">
             <input {...noAutofill} type="date" name="from" defaultValue={params.from ?? ''} className={inputClass} />
           </Field>
-          <Field label="Added to">
+          <Field label="Cadastro até">
             <input {...noAutofill} type="date" name="to" defaultValue={params.to ?? ''} className={inputClass} />
           </Field>
           <div className="flex items-end gap-2">
             <button type="submit" className={btnPrimary}>
-              Run report
+              Gerar relatório
             </button>
           </div>
         </form>
@@ -134,7 +134,7 @@ export default async function ReportBuilderPage({
           <SectionHeader
             title={
               <span className="tabular-nums">
-                {total.toLocaleString()} opportunities by{' '}
+                {total.toLocaleString()} participações por{' '}
                 {GROUP_DIMENSIONS.find((d) => d.value === groupBy)?.label.toLowerCase()}
               </span>
             }
@@ -160,7 +160,7 @@ export default async function ReportBuilderPage({
               </div>
             ))}
             {data.length === 0 ? (
-              <p className="text-sm text-ink-2">No opportunities match these filters.</p>
+              <p className="text-sm text-ink-2">Nenhuma participação corresponde aos filtros.</p>
             ) : null}
           </div>
         </section>

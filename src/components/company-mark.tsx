@@ -98,7 +98,7 @@ export function LogoAttribution({ className }: { className?: string }) {
       rel="noopener"
       className={cn('text-xs text-ink-3 underline-offset-2 hover:text-ink-2 hover:underline', className)}
     >
-      Logos provided by Logo.dev
+      Logotipos fornecidos por Logo.dev
     </a>
   );
 }

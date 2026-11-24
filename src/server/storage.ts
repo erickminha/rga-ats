@@ -142,7 +142,7 @@ export async function storeFile(input: StoreFileInput, { staged = false } = {}) 
 /** Queue only files still unlinked. A commit whose result was lost is preserved. */
 export async function discardUnlinkedFile(orgId: string, id: string) {
   const result = await db.storedFile.updateMany({
-    where: { orgId, id, contactId: null, contacts: { none: {} }, applicationResumes: { none: {} },
+    where: { orgId, id, contactId: null, contacts: { none: {} }, applicationResumes: { none: {} }, discAssessments: { none: {} },
       postingLogoOf: { none: {} }, orgLogoOf: { none: {} } },
     data: { deletePendingAt: new Date() },
   });

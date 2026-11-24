@@ -105,7 +105,7 @@ function Frame({
 }) {
   const ease = { transitionTimingFunction: open ? EASE_IN : EASE_OUT };
   return (
-    <div ref={overlayRef} className="fixed inset-0 z-[300]" role="dialog" aria-modal="true" aria-label="Candidate profile" {...data}>
+    <div ref={overlayRef} className="fixed inset-0 z-[300]" role="dialog" aria-modal="true" aria-label="Perfil do candidato" {...data}>
       <div
         ref={backdropRef}
         data-drawer-backdrop
@@ -139,7 +139,7 @@ function Frame({
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label="Close profile"
+            aria-label="Fechar perfil"
             className={buttonClass({ variant: 'secondary', size: 'sm', icon: true, className: 'pointer-events-auto' })}
           >
             <X />

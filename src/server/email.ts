@@ -256,7 +256,7 @@ export async function buildOpportunityVars(
 
 // ---------- Templates ----------
 
-export const DEFAULT_TEMPLATES = [
+export const LEGACY_EMAIL_TEMPLATES = [
   {
     name: 'Application received',
     subject: 'We received your application — {{job_title}}',
@@ -273,6 +273,30 @@ export const DEFAULT_TEMPLATES = [
     body: 'Hi {{first_name}},\n\nYour {{interview_title}} for {{job_title}} at {{company_name}} is confirmed for {{interview_time}}.\n\nWe look forward to speaking with you!\n\nBest,\n{{company_name}} Recruiting',
   },
 ];
+
+export const DEFAULT_TEMPLATES = [
+  {
+    name: 'Candidatura recebida',
+    subject: 'Recebemos sua candidatura para {{job_title}}',
+    body: 'Olá, {{first_name}}!\n\nRecebemos sua candidatura para {{job_title}}. A equipe de {{company_name}} vai analisar seu perfil e poderá entrar em contato sobre as próximas etapas.\n\nEquipe de recrutamento de {{company_name}}',
+  },
+  {
+    name: 'Devolutiva de seleção',
+    subject: 'Atualização sobre sua candidatura para {{job_title}}',
+    body: 'Olá, {{first_name}}!\n\nAgradecemos seu interesse na vaga de {{job_title}}. Após analisar a candidatura, decidimos seguir com outras pessoas nesta seleção. Você poderá se candidatar a futuras oportunidades.\n\nEquipe de recrutamento de {{company_name}}',
+  },
+  {
+    name: 'Entrevista agendada',
+    subject: 'Entrevista confirmada para {{job_title}}',
+    body: 'Olá, {{first_name}}!\n\nSua entrevista ({{interview_title}}) para {{job_title}} está confirmada para {{interview_time}}.\n\nEquipe de recrutamento de {{company_name}}',
+  },
+];
+
+export function localizedEmailTemplate(template: { name: string; subject: string; body: string }) {
+  const index = LEGACY_EMAIL_TEMPLATES.findIndex((legacy) =>
+    legacy.name === template.name && legacy.subject === template.subject && legacy.body === template.body);
+  return DEFAULT_TEMPLATES[index] ?? template;
+}
 
 export async function createTemplate(
   ctx: SessionContext,

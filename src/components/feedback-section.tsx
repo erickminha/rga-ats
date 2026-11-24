@@ -17,10 +17,10 @@ import { TextSwap } from '@/components/ui/motion';
 import { LocalTime } from '@/components/local-time';
 
 const RATING_LABELS: Record<number, string> = {
-  1: 'Strong no',
-  2: 'No',
-  3: 'Yes',
-  4: 'Strong yes',
+  1: "Não recomendo",
+  2: "Não",
+  3: "Sim",
+  4: "Recomendo fortemente",
 };
 
 const RATING_TONES: Record<number, Tone> = {
@@ -69,10 +69,10 @@ export function FeedbackSection({
   return (
     <section>
       <SectionHeader
-        title="Feedback"
+        title="Avaliações"
         action={
           <button onClick={() => setOpen((v) => !v)} className={btnGhost}>
-            <ClipboardCheck /> {open ? 'Cancel' : 'Add feedback'}
+            <ClipboardCheck /> {open ? "Cancelar" : "Adicionar avaliação"}
           </button>
         }
       />
@@ -81,31 +81,31 @@ export function FeedbackSection({
         <form action={formAction} className={`${surface} mb-3 flex flex-col gap-3 p-5`}>
           <input type="hidden" name="opportunityId" value={opportunityId} />
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Overall">
+            <Field label="Avaliação geral">
               <FormSelect
                 name="overallRating"
-                placeholder="Rating…"
+                placeholder="Nota…"
                 value={rating}
                 onChange={setRating}
                 options={[4, 3, 2, 1].map((r) => ({ value: String(r), label: RATING_LABELS[r] }))}
               />
             </Field>
-            <Field label="Interview (optional)">
+            <Field label="Entrevista (opcional)">
               <FormSelect
                 name="interviewId"
                 options={[
-                  { value: '', label: 'General' },
+                  { value: '', label: "Geral" },
                   ...interviews.map((iv) => ({ value: iv.id, label: iv.title })),
                 ]}
               />
             </Field>
           </div>
-          <Field label="Summary">
+          <Field label="Resumo">
             <textarea {...noAutofill}
               name="summary"
               rows={3}
               required
-              placeholder="Strengths, concerns, recommendation…"
+              placeholder="Pontos fortes, pontos de atenção, recomendação…"
               className={textareaClass}
             />
           </Field>
@@ -114,7 +114,7 @@ export function FeedbackSection({
               <Field key={q.id} label={q.label}>
                 <FormSelect
                   name={`answer_${q.id}`}
-                  placeholder="Rating…"
+                  placeholder="Nota…"
                   options={[4, 3, 2, 1].map((r) => ({
                     value: String(r),
                     label: RATING_LABELS[r],
@@ -130,7 +130,7 @@ export function FeedbackSection({
           {state?.error ? <p className="text-sm text-critical">{state.error}</p> : null}
           <div className="flex justify-end">
             <button type="submit" disabled={pending || !rating} className={btnPrimary}>
-              <TextSwap>{pending ? 'Submitting…' : 'Submit feedback'}</TextSwap>
+              <TextSwap>{pending ? "Enviando…" : "Enviar avaliação"}</TextSwap>
             </button>
           </div>
         </form>
@@ -138,8 +138,7 @@ export function FeedbackSection({
 
       {hiddenCount > 0 ? (
         <p className="mb-3 rounded-card bg-surface px-4 py-3 text-sm text-ink-2">
-          {hiddenCount} scorecard{hiddenCount === 1 ? ' is' : 's are'} hidden until you submit your
-          own — independent scorecards are on for this organization.
+          {hiddenCount} avaliação{hiddenCount === 1 ? ' is' : 's are'} ficam ocultas até você enviar sua avaliação. A organização usa avaliações independentes.
         </p>
       ) : null}
 
@@ -180,7 +179,7 @@ export function FeedbackSection({
           ))}
         </div>
       ) : !open ? (
-        <p className="text-sm text-ink-2">No feedback yet.</p>
+        <p className="text-sm text-ink-2">Nenhuma avaliação registrada.</p>
       ) : null}
     </section>
   );

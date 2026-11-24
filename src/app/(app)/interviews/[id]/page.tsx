@@ -12,9 +12,9 @@ import { Avatar } from '@/components/ui/orb';
 import { Badge, type Tone } from '@/components/ui/primitives';
 
 const STATE_BADGES: Record<string, { label: string; tone: Tone }> = {
-  SCHEDULED: { label: 'Scheduled', tone: 'neutral' },
-  COMPLETED: { label: 'Completed', tone: 'positive' },
-  CANCELED: { label: 'Canceled', tone: 'critical' },
+  SCHEDULED: { label: 'Agendada', tone: 'neutral' },
+  COMPLETED: { label: 'Concluída', tone: 'positive' },
+  CANCELED: { label: 'Cancelada', tone: 'critical' },
 };
 
 /**
@@ -73,7 +73,7 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
         id={opportunity.id}
         className={buttonClass({ variant: 'ghost', size: 'sm', className: '-ml-3 mb-4' })}
       >
-        <ArrowLeft /> Candidate profile
+        <ArrowLeft /> Perfil do candidato
       </CandidateLink> : <a href="/interviews" className="mb-4 inline-block underline">Minhas entrevistas</a>}
 
       <div className={`${surface} p-5`}>
@@ -84,12 +84,12 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
         <p className="mt-1 text-sm text-ink-2">
           <LocalTime
             date={interview.startAt.toISOString()}
-            options={{ weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }}
+            options={{ year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }}
           />{' '}
           · {interview.durationMins} min
           {interview.location ? ` · ${interview.location}` : ''}
           {interview.panelists.length
-            ? ` · with ${interview.panelists.map((p) => p.name).join(', ')}`
+            ? ` · com ${interview.panelists.map((p) => p.name).join(', ')}`
             : ''}
         </p>
 
@@ -98,7 +98,7 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
           <div className="min-w-0">
             <p className="text-md font-medium text-ink">{contact.name}</p>
             <p className="mt-0.5 text-sm text-ink-2">
-              {[contact.headline, opportunity.posting?.title, operator ? `currently in ${opportunity.stage.name}` : null]
+              {[contact.headline, opportunity.posting?.title, operator ? `etapa ${opportunity.stage.name}` : null]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
@@ -108,7 +108,7 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
                 target="_blank"
                 className={buttonClass({ variant: 'tonal', size: 'sm', className: 'mt-3' })}
               >
-                <FileText /> Resume
+                <FileText /> Currículo
               </a>
             ) : null}
           </div>
@@ -116,7 +116,7 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
 
         {interview.focusAreas.length ? (
           <div className="mt-6">
-            <p className={`${sectionLabel} mb-2`}>Your focus areas</p>
+            <p className={`${sectionLabel} mb-2`}>Temas da entrevista</p>
             <div className="flex flex-wrap gap-1.5">
               {interview.focusAreas.map((f) => (
                 <span key={f} className={badge}>
@@ -129,7 +129,7 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
 
         {opportunity.notes?.length ? (
           <div className="mt-6">
-            <p className={`${sectionLabel} mb-2`}>Recent notes</p>
+            <p className={`${sectionLabel} mb-2`}>Anotações recentes</p>
             <div className="flex flex-col gap-2">
               {opportunity.notes.map((n) => (
                 <p key={n.id} className="text-sm">

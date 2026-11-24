@@ -28,16 +28,16 @@ export function ReferralForm({
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Full name">
+        <Field label="Nome completo">
           <input {...noAutofill} name="name" required placeholder="Dana Reyes" className={inputClass} />
         </Field>
-        <Field label="Email">
+        <Field label="E-mail">
           <input {...noAutofill} name="email" type="email" required placeholder="dana@example.com" className={inputClass} />
         </Field>
-        <Field label="Headline (optional)">
-          <input {...noAutofill} name="headline" placeholder="Senior Product Designer" className={inputClass} />
+        <Field label="Título profissional (opcional)">
+          <input {...noAutofill} name="headline" placeholder="Designer de Produto Sênior" className={inputClass} />
         </Field>
-        <Field label="Role">
+        <Field label="Vaga">
           <FormSelect
             name="postingId"
             options={[
@@ -46,15 +46,15 @@ export function ReferralForm({
             ]}
           />
         </Field>
-        <Field label="How do you know them?">
+        <Field label="Como você conhece essa pessoa?">
           <FormSelect name="relationship" options={RELATIONSHIPS} />
         </Field>
       </div>
-      <Field label="Why should we talk to them?">
+      <Field label="Por que você indica essa pessoa?">
         <textarea {...noAutofill}
           name="notes"
           rows={4}
-          placeholder="Worked together at Figment — strong systems thinker, great with recruiting tools."
+          placeholder="Trabalhamos juntos. Tem boa capacidade analítica e conhece ferramentas de recrutamento."
           className={textareaClass}
         />
       </Field>
@@ -63,7 +63,7 @@ export function ReferralForm({
       ) : null}
       <div className="flex justify-end">
         <button type="submit" disabled={pending} className={btnPrimary}>
-          <TextSwap>{pending ? 'Submitting…' : 'Submit referral'}</TextSwap>
+          <TextSwap>{pending ? "Enviando…" : 'Submit referral'}</TextSwap>
         </button>
       </div>
     </form>

@@ -16,10 +16,10 @@ import { LocalTime } from '@/components/local-time';
 import { AttachRecordingButton } from '@/components/attach-recording';
 
 const RATING_LABELS: Record<number, string> = {
-  1: 'Strong no',
-  2: 'No',
-  3: 'Yes',
-  4: 'Strong yes',
+  1: "Não recomendo",
+  2: "Não",
+  3: "Sim",
+  4: "Recomendo fortemente",
 };
 
 export type FeedInterview = {
@@ -68,7 +68,7 @@ export function InterviewFeed({
 
   return (
     <section>
-      <h2 className="mb-3 text-md font-medium text-ink">Activity feed</h2>
+      <h2 className="mb-3 text-md font-medium text-ink">Histórico de atividades</h2>
       <div className="flex flex-col gap-3">
         {interviews.map((iv) => {
           const open = openId === iv.id;
@@ -151,7 +151,7 @@ export function InterviewFeed({
                           </div>
                         ))
                       ) : (
-                        <p className="text-sm text-ink-2">No scorecards for this interview yet.</p>
+                        <p className="text-sm text-ink-2">Nenhuma avaliação registrada para esta entrevista.</p>
                       )
                     ) : iv.transcripts.length ? (
                       iv.transcripts.map((t) => (
@@ -167,7 +167,7 @@ export function InterviewFeed({
                       ))
                     ) : (
                       <p className="text-sm text-ink-2">
-                        No transcript attached to this interview yet.
+                        Nenhuma transcrição anexada a esta entrevista.
                       </p>
                     )}
                     {recordings && (tab === 'transcript' || (tab === 'questions' && !iv.transcripts.length)) ? (
@@ -186,7 +186,7 @@ export function InterviewFeed({
         })}
 
         <div className="flex items-center gap-2 px-1">
-          <Badge onCanvas>Opportunity created</Badge>
+          <Badge onCanvas>Participação criada</Badge>
           <span className="text-xs text-ink-2">
             <LocalTime date={createdAt} options={{ month: 'short', day: 'numeric', year: 'numeric' }} />
           </span>
@@ -210,7 +210,7 @@ function QuestionsPanel({
   aiEnabled: boolean;
 }) {
   if (!transcripts.length) {
-    return <p className="text-sm text-ink-2">No transcript attached to this interview yet.</p>;
+    return <p className="text-sm text-ink-2">Nenhuma transcrição anexada a esta entrevista.</p>;
   }
   return (
     <>
@@ -224,7 +224,7 @@ function QuestionsPanel({
           </div>
         ) : t.insights ? (
           <p key={t.id} className="text-sm text-ink-2">
-            No interview questions found in {t.title}.
+            Nenhuma pergunta de entrevista encontrada em {t.title}.
           </p>
         ) : aiEnabled ? (
           <PullQuestions key={t.id} opportunityId={opportunityId} transcriptId={t.id} title={t.title} />
@@ -273,7 +273,7 @@ export function PullQuestions({ opportunityId, transcriptId, title }: { opportun
         }
         className={buttonClass({ variant: 'tonal', size: 'sm' })}
       >
-        <Bot size={16} /> Pull out the questions
+        <Bot size={16} /> Extrair perguntas
       </button>
       <span className="text-xs text-ink-2">{error ?? `From ${title}`}</span>
     </div>

@@ -26,7 +26,7 @@ export function ApiKeysManager({ keys }: { keys: KeyItem[] }) {
     <div className="flex flex-col gap-3">
       {newKey ? (
         <div className="rounded-field bg-positive/10 p-3">
-          <p className="text-sm font-medium text-positive">Copy your key now — it won't be shown again.</p>
+          <p className="text-sm font-medium text-positive">Copie a chave agora. A interface a exibe somente uma vez.</p>
           <code className="mt-1.5 block select-all break-all rounded-field bg-surface px-2 py-1.5 font-mono text-xs">
             {newKey}
           </code>
@@ -47,7 +47,7 @@ export function ApiKeysManager({ keys }: { keys: KeyItem[] }) {
                     </span>
                   </p>
                   <p className="mt-0.5 text-xs text-ink-2 tabular-nums">
-                    Created {new Date(k.createdAt).toLocaleDateString()}
+                    Criada {new Date(k.createdAt).toLocaleDateString()}
                     {k.lastUsedAt
                       ? ` · last used ${new Date(k.lastUsedAt).toLocaleDateString()}`
                       : ' · never used'}
@@ -55,11 +55,11 @@ export function ApiKeysManager({ keys }: { keys: KeyItem[] }) {
                 </div>
               </div>
               {k.revoked ? (
-                <Badge tone="critical">Revoked</Badge>
+                <Badge tone="critical">Revogada</Badge>
               ) : (
                 <button
-                  title="Revoke key"
-                  aria-label="Revoke key"
+                  title="Revogar chave"
+                  aria-label="Revogar chave"
                   disabled={pending}
                   onClick={() => startTransition(() => revokeApiKeyAction(k.id))}
                   className={buttonClass({ variant: 'ghost', size: 'sm', icon: true, className: 'hover:text-critical' })}
@@ -76,7 +76,7 @@ export function ApiKeysManager({ keys }: { keys: KeyItem[] }) {
         <input {...noAutofill}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Key name (e.g. Zapier)"
+          placeholder="Nome da chave (ex.: Zapier)"
           className={inputClass}
         />
         <button
@@ -88,12 +88,12 @@ export function ApiKeysManager({ keys }: { keys: KeyItem[] }) {
                 setNewKey(result.plaintext);
                 setName('');
                 setError(null);
-              } else setError(result.error ?? 'Failed');
+              } else setError(result.error ?? "Falha no envio");
             })
           }
           className={btnTonal}
         >
-          <Plus /> Create key
+          <Plus /> Criar chave
         </button>
       </div>
       {error ? <p className="text-sm text-critical">{error}</p> : null}

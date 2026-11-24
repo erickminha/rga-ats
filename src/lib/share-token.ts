@@ -6,13 +6,14 @@ import { createHmac, timingSafeEqual } from 'crypto';
  * only verifies the old ones, which keep working until they expire.
  */
 
-export type ShareScope = 'posting' | 'client' | 'candidate';
+export type ShareScope = 'posting' | 'client' | 'candidate' | 'shortlist';
 
 export type SharePayload = {
   orgId: string;
   scope: ShareScope;
   id: string; // postingId, clientCompanyId, or opportunityId
   exp: number;
+  selection?: { clientId: string; candidates: { id: string; opinionHash?: string }[] };
 };
 
 function secret(): string {

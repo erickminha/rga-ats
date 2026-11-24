@@ -245,13 +245,13 @@ export function ContactsTable({
       {ids.length ? (
         <div className={`${surface} flex flex-wrap items-center gap-3 px-4 py-2.5`}>
           <span className="text-xs font-medium tabular-nums text-ink-2">
-            {fmt(ids.length)} selected{shownTotal ? ` of ${fmt(shownTotal.count)}${shownTotal.capped ? '+' : ''}` : ''}
+            {fmt(ids.length)} selecionados{shownTotal ? ` of ${fmt(shownTotal.count)}${shownTotal.capped ? '+' : ''}` : ''}
           </span>
           {staticPools.length ? (
             <span className="flex items-center gap-2">
               <span className="w-44">
                 <FormSelect
-                  placeholder="Add to pool…"
+                  placeholder="Adicionar à lista…"
                   value={targetPool}
                   onChange={setTargetPool}
                   options={staticPools.map((p) => ({ value: p.id, label: p.name }))}
@@ -262,18 +262,18 @@ export function ContactsTable({
                 onClick={() => addToPool(targetPool)}
                 className={buttonClass({ variant: 'tonal', size: 'sm' })}
               >
-                Add
+                Adicionar
               </button>
             </span>
           ) : (
-            <span className="text-xs text-ink-2">Create a pool to add people to it.</span>
+            <span className="text-xs text-ink-2">Crie uma lista para adicionar candidatos.</span>
           )}
           {currentPoolId && currentPoolStatic && !cached ? (
             <button
               onClick={() => removeFromPool(currentPoolId)}
               className={buttonClass({ variant: 'ghost', size: 'sm', className: 'hover:text-critical' })}
             >
-              Remove from this pool
+              Retirar desta lista
             </button>
           ) : null}
         </div>
@@ -290,7 +290,7 @@ export function ContactsTable({
         {stale ? (
           <div
             role="progressbar"
-            aria-label="Loading contacts"
+            aria-label="Carregando contatos"
             className="list-progress sticky top-0 z-20 -mb-0.5 h-0.5 w-full overflow-hidden"
           />
         ) : null}
@@ -370,7 +370,7 @@ export function ContactsTable({
         {after ? (
           <p className="px-4 pb-4">
             <Link href={listHref('/contacts', committedKey)} className="text-xs text-ink-2 underline">
-              Back to start
+              Voltar ao início
             </Link>
           </p>
         ) : null}
@@ -461,7 +461,7 @@ function ContactRowCells({ row: c, index, selected, onToggle, onTag }: RowProps)
           <span className="text-ink-2">—</span>
         )}
       </td>
-      <td className={`${cell} text-ink-2`}>{c.latestPosting ?? (c.latestOppId ? 'General' : '—')}</td>
+      <td className={`${cell} text-ink-2`}>{c.latestPosting ?? (c.latestOppId ? "Geral" : '—')}</td>
       <td className={cell}>
         {c.latestStage ? <Badge tone={c.archived ? 'critical' : undefined}>{c.latestStage}</Badge> : '—'}
       </td>

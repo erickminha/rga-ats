@@ -47,12 +47,12 @@ export function ContactsRail({
           !current ? 'bg-surface text-ink' : 'text-ink-2 hover:bg-ink/[0.04] hover:text-ink',
         )}
       >
-        All contacts
+        Todos os contatos
       </Link>
 
       {pools.length ? (
         <div className="mt-4">
-          <p className="mb-1 px-3 text-xs font-medium text-ink-2">Pools &amp; segments</p>
+          <p className="mb-1 px-3 text-xs font-medium text-ink-2">Listas e segmentos</p>
           {pools.map((p) => {
             const c = landed?.[p.id];
             return (

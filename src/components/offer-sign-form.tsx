@@ -21,10 +21,9 @@ export function OfferSignForm({ token, candidateName }: { token: string; candida
   if (state?.signed) {
     return (
       <div className={`${surface} animate-fade-rise p-8`}>
-        <h2 className="text-md font-medium text-ink">Signed — congratulations! 🎉</h2>
+        <h2 className="text-md font-medium text-ink">Proposta assinada</h2>
         <p className="mt-2 text-sm text-ink-2">
-          Your acceptance is recorded and the team has been notified. A copy of this letter stays
-          available at this link.
+          Seu aceite foi registrado e a equipe foi notificada. A proposta continua disponível neste link.
         </p>
       </div>
     );
@@ -32,10 +31,9 @@ export function OfferSignForm({ token, candidateName }: { token: string; candida
   if (declineState?.declined) {
     return (
       <div className={`${surface} p-8`}>
-        <h2 className="text-md font-medium text-ink">Response recorded</h2>
+        <h2 className="text-md font-medium text-ink">Resposta registrada</h2>
         <p className="mt-2 text-sm text-ink-2">
-          You&rsquo;ve declined this offer. The team has been notified — thank you for letting
-          them know.
+          Você recusou esta proposta. A equipe foi notificada.
         </p>
       </div>
     );
@@ -43,12 +41,12 @@ export function OfferSignForm({ token, candidateName }: { token: string; candida
 
   return (
     <div className={`${surface} p-8`}>
-      <h2 className="text-md font-medium text-ink">Sign electronically</h2>
+      <h2 className="text-md font-medium text-ink">Assinar eletronicamente</h2>
       <form action={formAction} className="mt-4 flex flex-col gap-4">
         <input type="hidden" name="token" value={token} />
         <label className="flex flex-col gap-1.5">
           <span className="text-sm text-ink-2">
-            Type your full legal name to sign as {candidateName}
+            Digite seu nome completo para assinar como {candidateName}
           </span>
           <input
             name="signedName"
@@ -61,8 +59,7 @@ export function OfferSignForm({ token, candidateName }: { token: string; candida
         <label className="flex cursor-pointer items-start gap-2.5 text-sm text-ink-2">
           <Checkbox name="consent" required className="mt-0.5" />
           <span>
-            I agree that typing my name here constitutes my electronic signature on this offer
-            letter, with the same effect as a handwritten signature.
+            Concordo que digitar meu nome neste campo equivale à minha assinatura eletrônica nesta proposta.
           </span>
         </label>
         {state?.error ? <p className="text-sm text-critical">{state.error}</p> : null}

@@ -416,7 +416,7 @@ export function PipelineList({
   useEffect(() => {
     if (announcedKey.current === committedKey) return;
     announcedKey.current = committedKey;
-    const name = stages.find((s) => s.id === committed.stage)?.name ?? 'All stages';
+    const name = stages.find((s) => s.id === committed.stage)?.name ?? "Todas as etapas";
     const n = committed.stage ? counts.counts[committed.stage] : counts.total;
     setAnnouncement(counts.capped ? `${name}: ${fmt(counts.total)}+ candidates.` : `${name}: ${candidates(n ?? 0)}.`);
   }, [committedKey]); // eslint-disable-line react-hooks/exhaustive-deps -- announce once per commit
@@ -433,23 +433,23 @@ export function PipelineList({
 
   // ---- what's filtering the list, each removable ------------------------------
   const postingTitle = (id: string) =>
-    postingGroups.flatMap((g) => g.postings).find((p) => p.id === id)?.title ?? 'Role';
+    postingGroups.flatMap((g) => g.postings).find((p) => p.id === id)?.title ?? "Vaga";
   const filters: { key: string; label: string; value: string; clear: PipelineNavInput }[] = [];
   const inputQ = (nav.input.q ?? '').trim();
-  if (inputQ) filters.push({ key: 'q', label: 'Search', value: `“${inputQ}”`, clear: { q: '' } });
+  if (inputQ) filters.push({ key: 'q', label: "Buscar", value: `“${inputQ}”`, clear: { q: '' } });
   if (nav.input.client) {
     const name = clients.find((c) => c.id === nav.input.client)?.name ?? organization.client.singular;
     filters.push({ key: 'client', label: organization.client.singular, value: name, clear: { client: '', posting: '' } });
   }
   if (nav.input.posting) {
-    filters.push({ key: 'posting', label: 'Role', value: postingTitle(nav.input.posting), clear: { posting: '', stage: '' } });
+    filters.push({ key: 'posting', label: "Vaga", value: postingTitle(nav.input.posting), clear: { posting: '', stage: '' } });
   }
   if (nav.input.stage) {
-    const name = stages.find((st) => st.id === nav.input.stage)?.name ?? 'Stage';
-    filters.push({ key: 'stage', label: 'Stage', value: name, clear: { stage: '' } });
+    const name = stages.find((st) => st.id === nav.input.stage)?.name ?? "Etapa";
+    filters.push({ key: 'stage', label: "Etapa", value: name, clear: { stage: '' } });
   }
   if (nav.input.status === 'archived') {
-    filters.push({ key: 'status', label: 'Showing', value: 'Archived', clear: { status: '', stage: '' } });
+    filters.push({ key: 'status', label: "Exibindo", value: 'Archived', clear: { status: '', stage: '' } });
   }
   function clearSearch() {
     setQDraft({ from: committedQ, value: '' });
@@ -471,18 +471,18 @@ export function PipelineList({
         <Segmented
           className="mb-4 w-full"
           size="sm"
-          value={nav.input.status === 'archived' ? 'archived' : 'active'}
+          value={nav.input.status === 'archived' ? "encerrados" : 'active'}
           items={[
             {
               value: 'active',
-              label: 'Active',
+              label: "Ativos",
               href: nav.hrefFor({ status: '', stage: '' }),
               onClick: (e) => nav.go({ status: '', stage: '' }, e),
               onIntent: () => warm(nav.keyFor({ status: '', stage: '' }), true),
             },
             {
               value: 'archived',
-              label: 'Archived',
+              label: "Encerrados",
               href: nav.hrefFor({ status: 'archived', stage: '' }),
               onClick: (e) => nav.go({ status: 'archived', stage: '' }, e),
               onIntent: () => warm(nav.keyFor({ status: 'archived', stage: '' }), true),
@@ -505,7 +505,7 @@ export function PipelineList({
         {/* Stage tiles — the selected one fills with ink */}
         <div className="mb-4 flex flex-wrap gap-2">
           {[
-            { id: '', name: 'All stages', count: view.total },
+            { id: '', name: "Todas as etapas", count: view.total },
             ...stages.map((s) => ({ ...s, count: countFor(s.id) })),
           ].map((s) => {
             const active = (nav.input.stage ?? '') === s.id;
@@ -583,8 +583,8 @@ export function PipelineList({
                     clearSearch();
                   }
                 }}
-                placeholder="Search name, role, location…"
-                aria-label="Search candidates"
+                placeholder="Buscar nome, vaga ou localidade…"
+                aria-label="Buscar candidatos"
                 aria-describedby={qHint ? 'pipeline-q-hint' : undefined}
                 className={`${inputClass} pl-9 [&::-webkit-search-cancel-button]:appearance-none ${qDraft.value ? 'pr-9' : ''}`}
               />
@@ -592,7 +592,7 @@ export function PipelineList({
                 <button
                   type="button"
                   onClick={clearSearch}
-                  aria-label="Clear search"
+                  aria-label="Limpar busca"
                   className={buttonClass({
                     variant: 'ghost',
                     size: 'xs',
@@ -606,23 +606,23 @@ export function PipelineList({
             </label>
             {qHint ? (
               <p id="pipeline-q-hint" className="px-1 text-xs text-ink-2">
-                Type at least 2 characters.
+                Digite pelo menos 2 caracteres.
               </p>
             ) : null}
           </form>
           <Dropdown
-            label="Sort"
+            label="Ordenar"
             value={nav.input.sort === 'name' ? 'name' : 'time'}
             options={[
-              { value: 'time', label: 'Time in stage' },
-              { value: 'name', label: 'Name' },
+              { value: 'time', label: "Tempo na etapa" },
+              { value: 'name', label: "Nome" },
             ]}
             onSelect={(value) => nav.go({ sort: value === 'name' ? 'name' : '' })}
           />
         </div>
 
         {filters.length ? (
-          <div className="mb-4 flex flex-wrap items-center gap-1.5" aria-label="Active filters">
+          <div className="mb-4 flex flex-wrap items-center gap-1.5" aria-label="Filtros ativos">
             {filters.map((f) => (
               <span
                 key={f.key}
@@ -642,7 +642,7 @@ export function PipelineList({
             ))}
             {filters.length > 1 ? (
               <button type="button" onClick={clearAll} className={buttonClass({ variant: 'ghost', size: 'xs' })}>
-                Clear all
+                Limpar filtros
               </button>
             ) : null}
           </div>
@@ -654,7 +654,7 @@ export function PipelineList({
         {selected.size > 0 ? (
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium tabular-nums text-ink-2">
-              {fmt(selected.size)} selected{matching === null ? '' : ` of ${fmt(matching)}`}
+              {fmt(selected.size)} selecionados{matching === null ? '' : ` of ${fmt(matching)}`}
             </span>
             <span className="flex items-center gap-1.5">
               <ArrowRight size={13} className="text-ink-2" />
@@ -733,8 +733,8 @@ export function PipelineList({
               <input {...noAutofill}
                 value={tagValue}
                 onChange={(e) => setTagDraft({ key: displayKey, value: e.target.value })}
-                placeholder="Add tag…"
-                aria-label="Tag selected candidates"
+                placeholder="Adicionar etiqueta…"
+                aria-label="Etiquetar candidatos selecionados"
                 className={`${inputClass} h-8 w-32`}
               />
             </form>
@@ -746,8 +746,8 @@ export function PipelineList({
                 icon: true,
                 className: 'ml-auto',
               })}
-              title="Clear selection"
-              aria-label="Clear selection"
+              title="Limpar seleção"
+              aria-label="Limpar seleção"
             >
               <X />
             </button>
@@ -765,7 +765,7 @@ export function PipelineList({
           {stale ? (
             <div
               role="progressbar"
-              aria-label="Loading candidates"
+              aria-label="Carregando candidatos"
               className="list-progress sticky top-0 z-20 -mb-0.5 h-0.5 w-full overflow-hidden"
             />
           ) : null}
@@ -800,13 +800,13 @@ export function PipelineList({
                   />
                 </th>
                 {[
-                  'Full name',
+                  "Nome completo",
                   'Profiles',
-                  'Current role',
+                  "Título profissional",
                   'Organization',
                   'Location',
-                  'Stage',
-                  'In stage',
+                  "Etapa",
+                  "Tempo na etapa",
                 ].map((h) => (
                   <th key={h} className={`${headCell} text-left text-xs font-medium text-ink-2`}>
                     {h}
@@ -842,7 +842,7 @@ export function PipelineList({
               {view.rows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-10 text-center text-sm text-ink-2">
-                    No candidates match.
+                    Nenhum candidato corresponde aos filtros.
                   </td>
                 </tr>
               ) : null}
@@ -867,7 +867,7 @@ export function PipelineList({
           {after ? (
             <p className="px-4 pb-4">
               <Link href={listHref('/pipeline', committedKey)} className="text-xs text-ink-2 underline">
-                Back to start
+                Voltar ao início
               </Link>
             </p>
           ) : null}
@@ -913,7 +913,7 @@ const PipelineRail = memo(function PipelineRail({
           !current ? 'bg-surface text-ink' : 'text-ink-2 hover:bg-ink/[0.04] hover:text-ink',
         )}
       >
-        All candidates
+        Todos os candidatos
       </Link>
       {groups.map((g) => (
         <div key={g.label ?? 'general'} className="mt-4">
@@ -1047,7 +1047,7 @@ function PipelineRowView({
       <td className={`${cell} text-ink-2`}>{r.location ?? '—'}</td>
       <td className={cell}>
         {archived ? (
-          <span className="text-xs text-ink-2">Archived</span>
+          <span className="text-xs text-ink-2">Encerrados</span>
         ) : (
           <StageSelect
             onSurface

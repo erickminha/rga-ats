@@ -22,8 +22,8 @@ export function SavedReports({ reports }: { reports: SavedReportItem[] }) {
             {r.name}
           </Link>
           <button
-            title="Delete saved report"
-            aria-label="Delete saved report"
+            title="Excluir relatório salvo"
+            aria-label="Excluir relatório salvo"
             disabled={pending}
             onClick={() => {
               if (!confirm(`Delete saved report "${r.name}"?`)) return;

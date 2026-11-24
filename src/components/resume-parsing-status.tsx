@@ -96,14 +96,12 @@ export async function ResumeParsingStatus({ orgId }: { orgId: string }) {
   if (d.state === 'off') {
     return (
       <div className="flex flex-col items-start gap-3">
-        <Status tone="neutral" label="Off" />
+        <Status tone="neutral" label="Desativado" />
         <p className="max-w-prose text-sm text-ink-2">
-          Fill in candidate profiles from new applicants&apos; resumes. It turns on when this server has a model key:
-          OpenAI&apos;s gpt-oss-20b on Groq by default, or any OpenAI-compatible endpoint, including a model on your own
-          server.
+          A análise preenche campos do perfil a partir do currículo quando um provedor autorizado está habilitado.
         </p>
         <a href={DOCS} target="_blank" rel="noreferrer" className="text-xs text-ink-2 underline underline-offset-2 hover:text-ink">
-          Set up resume parsing
+          Configurar análise de currículos
         </a>
       </div>
     );
@@ -112,10 +110,10 @@ export async function ResumeParsingStatus({ orgId }: { orgId: string }) {
   if (d.state === 'misconfigured') {
     return (
       <div className="flex flex-col items-start gap-3">
-        <Status tone="caution" label="Not running" />
+        <Status tone="caution" label="Inativo" />
         <p className="max-w-prose text-sm text-ink">{d.reason ? MISCONFIGURED[d.reason](d) : null}</p>
         <a href={DOCS} target="_blank" rel="noreferrer" className="text-xs text-ink-2 underline underline-offset-2 hover:text-ink">
-          How to set up resume parsing
+          Como configurar análise de currículos
         </a>
       </div>
     );
@@ -125,9 +123,9 @@ export async function ResumeParsingStatus({ orgId }: { orgId: string }) {
   if (org && orgExcluded(org)) {
     return (
       <div className="flex flex-col items-start gap-3">
-        <Status tone="neutral" label="Off for this workspace" />
+        <Status tone="neutral" label="Desativado neste espaço de trabalho" />
         <p className="max-w-prose text-sm text-ink-2">
-          Resume parsing is turned off for this workspace. New applicants&apos; resumes aren&apos;t sent anywhere.
+          A análise de currículos está desabilitada. Os currículos de novas candidaturas ficam no ATS.
         </p>
       </div>
     );
@@ -143,12 +141,11 @@ export async function ResumeParsingStatus({ orgId }: { orgId: string }) {
   return (
     <div className="flex flex-col items-start gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Status tone={problems.length ? 'caution' : 'positive'} label="On" />
+        <Status tone={problems.length ? 'caution' : 'positive'} label="Ativado" />
         <p className="text-sm font-medium text-ink">{title}</p>
       </div>
       <p className="max-w-prose text-sm text-ink-2">
-        Each new applicant&apos;s resume fills in an empty headline and location, and phone numbers and profile links when
-        the application had none. Nothing anyone typed is changed, and imported resumes aren&apos;t read. {destination}
+        A análise pode preencher título, localidade, telefone e links que estiverem vazios. Preserva os dados digitados e ignora currículos importados. {destination}
       </p>
       <p className="text-xs tabular-nums text-ink-2">{stats(summary)}</p>
       {problems.length ? (
@@ -162,7 +159,7 @@ export async function ResumeParsingStatus({ orgId }: { orgId: string }) {
         </ul>
       ) : null}
       <a href={DOCS} target="_blank" rel="noreferrer" className="text-xs text-ink-2 underline underline-offset-2 hover:text-ink">
-        How resume parsing works
+        Como funciona a análise de currículos
       </a>
     </div>
   );

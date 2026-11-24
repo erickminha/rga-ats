@@ -29,7 +29,7 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
     return (
       <div className="t-reveal">
         <RefreshWhileSending sending={sending} />
-        <PageHeader title={newsletter.subject} subtitle={sending ? 'Going out now' : 'Sent'} />
+        <PageHeader title={newsletter.subject} subtitle={sending ? 'Going out now' : "Enviada"} />
         <div className="mx-6 mt-4 flex max-w-3xl flex-col gap-6 pb-8">
           <div className={`${surface} p-5`}>
             <DitherBar value={done} max={Math.max(1, newsletter.recipientCount)} label={`${done} of ${newsletter.recipientCount} sent`} />
@@ -51,13 +51,13 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
                 'Sending in batches; this page updates as it goes.'
               ) : newsletter.sentAt ? (
                 <>
-                  Finished <LocalTime date={newsletter.sentAt.toISOString()} options={{ month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }} />.
+                  Concluído <LocalTime date={newsletter.sentAt.toISOString()} options={{ month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }} />.
                 </>
               ) : null}
             </p>
           </div>
           <div className="overflow-hidden rounded-card bg-surface shadow-[inset_0_0_0_1px_var(--color-line)]">
-            <iframe title="The email" sandbox="" srcDoc={html} className="block h-[640px] w-full bg-white" />
+            <iframe title="O e-mail" sandbox="" srcDoc={html} className="block h-[640px] w-full bg-white" />
           </div>
         </div>
       </div>
@@ -76,7 +76,7 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="t-reveal">
-      <PageHeader title={newsletter ? 'Edit newsletter' : 'New newsletter'} subtitle="One email about your open roles, to every candidate" />
+      <PageHeader title={newsletter ? 'Edit newsletter' : "Novo comunicado"} subtitle="Comunicados sobre vagas abertas para candidatos" />
       <div className="mx-6 mt-4 pb-8">
         <NewsletterEditor
           initial={{ id: newsletter?.id ?? null, subject: newsletter?.subject ?? '', body: newsletter?.body ?? '', postingIds: newsletter?.postingIds ?? [] }}

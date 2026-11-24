@@ -42,7 +42,7 @@ export function TagEditor({ contactId, tags }: { contactId: string; tags: string
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onBlur={() => setAdding(false)}
-            placeholder="tag"
+            placeholder="etiqueta"
             className={`${inputClass} h-6 w-28 px-2.5 text-xs lowercase`}
           />
         </form>
@@ -50,11 +50,11 @@ export function TagEditor({ contactId, tags }: { contactId: string; tags: string
         <button
           onClick={() => setAdding(true)}
           disabled={pending}
-          title="Add tag"
-          aria-label="Add tag"
+          title="Adicionar etiqueta"
+          aria-label="Adicionar etiqueta"
           className={`${badge} cursor-pointer transition-colors hover:bg-recessed hover:text-ink`}
         >
-          <Plus size={12} /> tag
+          <Plus size={12} /> etiqueta
         </button>
       )}
     </div>

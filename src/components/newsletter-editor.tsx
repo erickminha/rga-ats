@@ -88,11 +88,11 @@ export function NewsletterEditor({
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <div className="flex min-w-0 flex-col gap-6">
         <label className="flex flex-col gap-2">
-          <span className={sectionLabel}>Subject</span>
-          <input {...noAutofill} value={subject} onChange={(e) => edit(setSubject)(e.target.value)} placeholder="New roles at Northwind this month" className={inputClass} />
+          <span className={sectionLabel}>Assunto</span>
+          <input {...noAutofill} value={subject} onChange={(e) => edit(setSubject)(e.target.value)} placeholder="Novas vagas deste mês" className={inputClass} />
         </label>
         <label className="flex flex-col gap-2">
-          <span className={sectionLabel}>Message</span>
+          <span className={sectionLabel}>Mensagem</span>
           <textarea
             value={body}
             onChange={(e) => edit(setBody)(e.target.value)}
@@ -101,11 +101,11 @@ export function NewsletterEditor({
             className={textareaClass}
           />
           <span className="text-xs text-ink-3">
-            A blank line starts a new paragraph, and links work as they are. <code className="font-mono">{'{{first_name}}'}</code> becomes each reader’s first name.
+            Use uma linha em branco para iniciar outro parágrafo. <code className="font-mono">{'{{first_name}}'}</code> é substituído pelo primeiro nome de cada destinatário.
           </span>
         </label>
         <div className="flex flex-col gap-2">
-          <span className={sectionLabel}>Roles to feature</span>
+          <span className={sectionLabel}>Vagas em destaque</span>
           {postings.length ? (
             <div className="flex flex-wrap gap-2">
               {postings.map((p) => (
@@ -117,19 +117,19 @@ export function NewsletterEditor({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-ink-2">No roles are published right now. The email still links to your job board.</p>
+            <p className="text-sm text-ink-2">Nenhuma vaga publicada. O e-mail ainda pode incluir o link para o portal.</p>
           )}
         </div>
 
         <div className="flex flex-col gap-3 border-t border-line pt-6">
           {!canSend ? (
-            <p className="text-sm text-caution">Email delivery isn’t set up on this server yet, so newsletters can be written but not sent.</p>
+            <p className="text-sm text-caution">O envio de e-mails está indisponível. Você pode salvar o comunicado como rascunho.</p>
           ) : !isAdmin ? (
-            <p className="text-sm text-ink-2">Only admins can send to every candidate. Save it, and an admin can send it.</p>
+            <p className="text-sm text-ink-2">Apenas administradores podem disparar o comunicado. Salve para que um administrador faça o envio.</p>
           ) : null}
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" disabled={pending || (!dirty && !!id)} onClick={() => run(async () => void (await save()))} className={buttonClass({ variant: 'secondary' })}>
-              {id && !dirty ? 'Saved' : 'Save draft'}
+              {id && !dirty ? "Salvo" : 'Save draft'}
             </button>
             <button
               type="button"
@@ -144,7 +144,7 @@ export function NewsletterEditor({
               }
               className={buttonClass({ variant: 'tonal' })}
             >
-              Send me a test
+              Enviar teste para mim
             </button>
             {confirming ? (
               <>
@@ -163,10 +163,10 @@ export function NewsletterEditor({
                   }
                   className={buttonClass({ variant: 'primary' })}
                 >
-                  {pending ? 'Sending…' : `Yes, send to ${audience.toLocaleString()}`}
+                  {pending ? "Enviando…" : `Yes, send to ${audience.toLocaleString()}`}
                 </button>
                 <button type="button" disabled={pending} onClick={() => setConfirming(false)} className={buttonClass({ variant: 'ghost' })}>
-                  Cancel
+                  Cancelar
                 </button>
               </>
             ) : (
@@ -176,16 +176,16 @@ export function NewsletterEditor({
                 onClick={() => setConfirming(true)}
                 className={buttonClass({ variant: 'primary' })}
               >
-                Send to {audience.toLocaleString()} {audience === 1 ? 'candidate' : 'candidates'}
+                Enviar para {audience.toLocaleString()} {audience === 1 ? 'candidate' : "candidatos"}
               </button>
             )}
           </div>
-          {confirming ? <p className="text-sm text-ink-2">It goes out at once and can’t be unsent.</p> : null}
+          {confirming ? <p className="text-sm text-ink-2">O envio começa imediatamente e não pode ser desfeito.</p> : null}
           {note ? <p className={note.tone === 'error' ? 'text-sm text-critical' : 'text-sm text-ink-2'}>{note.text}</p> : null}
           {id ? (
             <form action={deleteNewsletterAction.bind(null, id)}>
               <button type="submit" className="text-xs text-ink-3 underline underline-offset-2 hover:text-ink-2">
-                Delete draft
+                Excluir rascunho
               </button>
             </form>
           ) : null}
@@ -193,13 +193,13 @@ export function NewsletterEditor({
       </div>
 
       <div className="min-w-0">
-        <p className={`${sectionLabel} mb-2`}>Preview</p>
+        <p className={`${sectionLabel} mb-2`}>Prévia</p>
         <div className="overflow-hidden rounded-card bg-surface shadow-[inset_0_0_0_1px_var(--color-line)] lg:sticky lg:top-6">
           <div className="border-b border-line px-4 py-3 text-sm">
-            <span className="text-ink-3">Subject</span> <span className="text-ink">{subject.replace(/\{\{\s*first_name\s*\}\}/g, 'Alex') || '—'}</span>
+            <span className="text-ink-3">Assunto</span> <span className="text-ink">{subject.replace(/\{\{\s*first_name\s*\}\}/g, 'Alex') || '—'}</span>
           </div>
           {/* the email's own HTML, sandboxed: no scripts, no navigation */}
-          <iframe title="Email preview" sandbox="" srcDoc={html} className="block h-[640px] w-full bg-white" />
+          <iframe title="Prévia do e-mail" sandbox="" srcDoc={html} className="block h-[640px] w-full bg-white" />
         </div>
       </div>
     </div>

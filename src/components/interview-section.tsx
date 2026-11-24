@@ -70,9 +70,9 @@ const STATE_TONES: Record<InterviewItem['state'], Tone | undefined> = {
 };
 
 const STATE_LABELS: Record<InterviewItem['state'], string> = {
-  SCHEDULED: 'Scheduled',
-  COMPLETED: 'Completed',
-  CANCELED: 'Canceled',
+  SCHEDULED: "Agendada",
+  COMPLETED: "Concluída",
+  CANCELED: "Cancelada",
 };
 
 const TIMEZONES = [
@@ -127,7 +127,7 @@ export function InterviewSection({
   return (
     <section>
       <SectionHeader
-        title="Interviews"
+        title="Entrevistas"
         action={
           !archived && (
             <div className="flex gap-2">
@@ -138,7 +138,7 @@ export function InterviewSection({
                 }}
                 className={btnGhost}
               >
-                <Link2 /> {linkOpen ? 'Cancel' : 'Self-schedule link'}
+                <Link2 /> {linkOpen ? "Cancelar" : 'Self-schedule link'}
               </button>
               <button
                 onClick={() => {
@@ -147,7 +147,7 @@ export function InterviewSection({
                 }}
                 className={btnGhost}
               >
-                <CalendarDays /> {open ? 'Cancel' : 'Schedule'}
+                <CalendarDays /> {open ? "Cancelar" : "Agendar"}
               </button>
             </div>
           )
@@ -161,8 +161,8 @@ export function InterviewSection({
             value={linkKind}
             onChange={setLinkKind}
             items={[
-              { value: 'builtin', label: 'Built-in link' },
-              { value: 'own', label: 'Your booking page' },
+              { value: 'builtin', label: "Link de agendamento do ATS" },
+              { value: 'own', label: "Sua página de agendamento" },
             ]}
           />
           {linkKind === 'own' ? (
@@ -171,19 +171,18 @@ export function InterviewSection({
         <form action={linkFormAction} className="flex flex-col gap-3">
           <input type="hidden" name="opportunityId" value={opportunityId} />
           <p className="text-xs text-ink-2">
-            The candidate picks their own time from your open slots — booking creates the
-            interview and sends the confirmation automatically.
+            O candidato escolhe um horário disponível. O agendamento registra a entrevista e envia a confirmação automaticamente.
           </p>
-          <Field label="Title">
+          <Field label="Título">
             <input {...noAutofill}
               name="title"
               required
-              placeholder="Phone screen, Portfolio review…"
+              placeholder="Triagem inicial, análise de portfólio…"
               className={inputClass}
             />
           </Field>
           <div className="grid grid-cols-3 gap-3">
-            <Field label="Duration (min)">
+            <Field label="Duração (min)">
               <input {...noAutofill}
                 name="durationMins"
                 type="number"
@@ -193,7 +192,7 @@ export function InterviewSection({
                 className={inputClass}
               />
             </Field>
-            <Field label="Open for (days)">
+            <Field label="Disponível por (dias)">
               <input {...noAutofill}
                 name="windowDays"
                 type="number"
@@ -203,7 +202,7 @@ export function InterviewSection({
                 className={inputClass}
               />
             </Field>
-            <Field label="Hours">
+            <Field label="Horário">
               <div className="flex items-center gap-1.5">
                 <input {...noAutofill}
                   name="dayStartHour"
@@ -212,9 +211,9 @@ export function InterviewSection({
                   min={0}
                   max={23}
                   className={inputClass}
-                  aria-label="Day start hour"
+                  aria-label="Início do período"
                 />
-                <span className="text-xs text-ink-2">to</span>
+                <span className="text-xs text-ink-2">até</span>
                 <input {...noAutofill}
                   name="dayEndHour"
                   type="number"
@@ -222,13 +221,13 @@ export function InterviewSection({
                   min={1}
                   max={24}
                   className={inputClass}
-                  aria-label="Day end hour"
+                  aria-label="Fim do período"
                 />
               </div>
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Timezone">
+            <Field label="Fuso horário">
               <select name="timezone" defaultValue="America/New_York" className={selectClass}>
                 {TIMEZONES.map((tz) => (
                   <option key={tz} value={tz}>
@@ -237,11 +236,11 @@ export function InterviewSection({
                 ))}
               </select>
             </Field>
-            <Field label="Location / video link">
-              <input {...noAutofill} name="location" placeholder="Zoom link, office…" className={inputClass} />
+            <Field label="Local ou link da entrevista">
+              <input {...noAutofill} name="location" placeholder="Link de videoconferência, escritório…" className={inputClass} />
             </Field>
           </div>
-          <Field label="Panel">
+          <Field label="Entrevistadores">
             <div className="flex flex-wrap gap-2">
               {teammates.map((t) => (
                 <label key={t.id} className={panelChip}>
@@ -254,7 +253,7 @@ export function InterviewSection({
           {linkState?.error ? <p className="text-sm text-critical">{linkState.error}</p> : null}
           {linkState?.url ? (
             <p className="text-sm">
-              <span className="text-ink-2">Send this link to the candidate: </span>
+              <span className="text-ink-2">Envie este link ao candidato: </span>
               <code className="break-all rounded-field bg-recessed px-1.5 py-0.5 font-mono text-xs">
                 {typeof window !== 'undefined' ? window.location.origin : ''}
                 {linkState.url}
@@ -263,7 +262,7 @@ export function InterviewSection({
           ) : null}
           <div className="flex justify-end">
             <button type="submit" disabled={linkPending} className={btnPrimary}>
-              {linkPending ? 'Creating…' : 'Create link'}
+              {linkPending ? "Criando…" : "Criar link"}
             </button>
           </div>
         </form>
@@ -273,25 +272,25 @@ export function InterviewSection({
 
       {schedulingLinks.length ? (
         <div className={`${surface} mb-3 p-5`}>
-          <p className="mb-3 text-xs font-medium text-ink-2">Open scheduling links</p>
+          <p className="mb-3 text-xs font-medium text-ink-2">Links de agendamento ativos</p>
           <div className="flex flex-col gap-3">
             {schedulingLinks.map((l) => (
               <div key={l.id} className="flex items-center justify-between gap-3 text-sm">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{l.title}</p>
                   <p className="truncate text-xs text-ink-2">
-                    {l.panel.join(', ')} · open {l.windowDays} days
+                    {l.panel.join(', ')} · ativo {l.windowDays} dias
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-1">
-                  <CopyButton text={() => `${window.location.origin}${l.url}`} label="Copy link" />
+                  <CopyButton text={() => `${window.location.origin}${l.url}`} label="Copiar link" />
                   <button
                     onClick={() =>
                       startTransition(() => revokeSchedulingLinkAction(l.id, opportunityId))
                     }
                     className={buttonClass({ variant: 'ghost', size: 'xs' })}
                   >
-                    Revoke
+                    Revogar
                   </button>
                 </div>
               </div>
@@ -310,7 +309,7 @@ export function InterviewSection({
           <input type="hidden" name="focusAreas" value={prefill?.focusAreas.join('|') ?? ''} />
           {planSteps.length ? (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs font-medium text-ink-2">From plan:</span>
+              <span className="text-xs font-medium text-ink-2">Etapa do roteiro:</span>
               {planSteps.map((step) => (
                 <button
                   key={step.id}
@@ -328,12 +327,12 @@ export function InterviewSection({
               ))}
             </div>
           ) : null}
-          <Field label="Title">
+          <Field label="Título">
             <input {...noAutofill}
               name="title"
               required
               defaultValue={prefill?.title ?? ''}
-              placeholder="Phone screen, Portfolio review…"
+              placeholder="Triagem inicial, análise de portfólio…"
               className={inputClass}
             />
           </Field>
@@ -347,10 +346,10 @@ export function InterviewSection({
             </p>
           ) : null}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Date & time">
+            <Field label="Data e hora">
               <input {...noAutofill} name="startAt" type="datetime-local" required className={inputClass} />
             </Field>
-            <Field label="Duration (min)">
+            <Field label="Duração (min)">
               <input {...noAutofill}
                 name="durationMins"
                 type="number"
@@ -361,10 +360,10 @@ export function InterviewSection({
               />
             </Field>
           </div>
-          <Field label="Location / video link">
-            <input {...noAutofill} name="location" placeholder="Zoom link, office…" className={inputClass} />
+          <Field label="Local ou link da entrevista">
+            <input {...noAutofill} name="location" placeholder="Link de videoconferência, escritório…" className={inputClass} />
           </Field>
-          <Field label="Panel">
+          <Field label="Entrevistadores">
             <div className="flex flex-wrap gap-2">
               {teammates.map((t) => (
                 <label key={t.id} className={panelChip}>
@@ -377,7 +376,7 @@ export function InterviewSection({
           {state?.error ? <p className="text-sm text-critical">{state.error}</p> : null}
           <div className="flex justify-end">
             <button type="submit" disabled={pending} className={btnPrimary}>
-              <TextSwap>{pending ? 'Scheduling…' : 'Schedule interview'}</TextSwap>
+              <TextSwap>{pending ? "Agendando…" : "Agendar entrevista"}</TextSwap>
             </button>
           </div>
         </form>
@@ -390,7 +389,7 @@ export function InterviewSection({
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-sm font-medium">
-                    <Link href={`/interviews/${iv.id}`} className="hover:underline" title="Open interview kit">
+                    <Link href={`/interviews/${iv.id}`} className="hover:underline" title="Abrir ficha da entrevista">
                       {iv.title}
                     </Link>
                   </p>
@@ -400,7 +399,7 @@ export function InterviewSection({
                     {iv.location ? ` · ${iv.location}` : ''}
                   </p>
                   {iv.panelists.length > 0 ? (
-                    <p className="mt-1 text-xs text-ink-2">with {iv.panelists.join(', ')}</p>
+                    <p className="mt-1 text-xs text-ink-2">com {iv.panelists.join(', ')}</p>
                   ) : null}
                 </div>
                 <Badge tone={STATE_TONES[iv.state]}>{STATE_LABELS[iv.state]}</Badge>
@@ -416,7 +415,7 @@ export function InterviewSection({
                     }
                     className={buttonClass({ variant: 'tonal', size: 'sm' })}
                   >
-                    <Check /> Mark completed
+                    <Check /> Marcar como concluída
                   </button>
                   <button
                     type="button"
@@ -425,7 +424,7 @@ export function InterviewSection({
                     }
                     className={buttonClass({ variant: 'tonal', size: 'sm' })}
                   >
-                    <CalendarX /> Cancel interview
+                    <CalendarX /> Cancelar entrevista
                   </button>
                   {recordings ? (
                     <AttachRecordingButton
@@ -446,7 +445,7 @@ export function InterviewSection({
           ))}
         </div>
       ) : !open ? (
-        <p className="text-sm text-ink-2">No interviews scheduled.</p>
+        <p className="text-sm text-ink-2">Nenhuma entrevista agendada.</p>
       ) : null}
     </section>
   );
@@ -487,21 +486,20 @@ function BookingPagePanel({
             <p className="truncate text-xs text-ink-2">{bookingUrl.replace(/^https?:\/\//, '')}</p>
           </div>
           <button type="button" onClick={() => setEditing(true)} className={buttonClass({ variant: 'ghost', size: 'xs' })}>
-            Change
+            Alterar
           </button>
         </div>
         <p className="text-xs text-ink-2">
           {prefilled
             ? `The link fills in ${candidate.name.split(' ')[0]}’s name and email, so they only pick a time. `
             : ''}
-          Bookings made there don’t come back into Source on their own: once they book, add the interview
-          with Schedule.
+          Depois que a pessoa escolher um horário na sua agenda externa, registre a entrevista no RGA ATS.
         </p>
         <div className="flex justify-end gap-2">
           <a href={link} target="_blank" rel="noopener noreferrer" className={buttonClass({ variant: 'tonal' })}>
-            Open <ArrowUpRight />
+            Abrir <ArrowUpRight />
           </a>
-          <CopyButton text={link} label="Copy link" variant="primary" size="md" />
+          <CopyButton text={link} label="Copiar link" variant="primary" size="md" />
         </div>
       </div>
     );
@@ -510,7 +508,7 @@ function BookingPagePanel({
   return (
     <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="opportunityId" value={opportunityId} />
-      <Field label="Your booking page">
+      <Field label="Sua página de agendamento">
         <input {...noAutofill}
           name="bookingUrl"
           defaultValue={bookingUrl ?? ''}
@@ -520,18 +518,17 @@ function BookingPagePanel({
         />
       </Field>
       <p className="-mt-1 text-xs text-ink-2">
-        Calendly, Cal.com, or a Google Calendar booking page. It’s saved to your account, so it’s here for every
-        candidate. Clear it and save to remove it.
+        Use uma página do Calendly, Cal.com ou Google Agenda. O endereço fica salvo na sua conta. Para remover, limpe o campo e salve.
       </p>
       {state?.error ? <p className="text-sm text-critical">{state.error}</p> : null}
       <div className="flex justify-end gap-2">
         {bookingUrl ? (
           <button type="button" onClick={() => setEditing(false)} className={btnGhost}>
-            Cancel
+            Cancelar
           </button>
         ) : null}
         <button type="submit" disabled={pending} className={btnPrimary}>
-          <TextSwap>{pending ? 'Saving…' : 'Save'}</TextSwap>
+          <TextSwap>{pending ? "Salvando…" : "Salvar"}</TextSwap>
         </button>
       </div>
     </form>

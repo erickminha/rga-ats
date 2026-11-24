@@ -52,7 +52,7 @@ export default async function OnboardingPage() {
         </div>
       </div>
 
-      <h1 className="text-xl font-medium">Configure {org.name}</h1>
+      <h1 className="text-xl font-medium">Configurar {org.name}</h1>
       <p className="mt-1 text-sm text-ink-2">
         Personalize seu espaço de trabalho. Você pode alterar essas opções nas configurações.
       </p>

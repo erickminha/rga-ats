@@ -35,14 +35,14 @@ export function TasksScreen({ data }: { data: Awaited<ReturnType<typeof loadTask
 
   return (
     <div className="t-reveal">
-      <PageHeader title="Tasks" subtitle="To-dos and snoozed candidates across the team" />
+      <PageHeader title="Tarefas" subtitle="Tarefas e participações pausadas da equipe" />
 
       <div className="mx-6 mt-4 flex max-w-3xl flex-col gap-8 pb-8">
         {data.tasks.length === 0 && data.snoozed.length === 0 ? (
           <EmptyState
             icon={ListTodo}
-            title="Nothing to do"
-            description="Tasks you add on candidate profiles — and snoozed candidates — show up here."
+            title="Nenhuma tarefa pendente"
+            description="Tarefas cadastradas nos perfis e participações pausadas aparecem aqui."
           />
         ) : null}
 
@@ -52,7 +52,7 @@ export function TasksScreen({ data }: { data: Awaited<ReturnType<typeof loadTask
               title={
                 <span className="flex items-center gap-2">
                   <StatusDot tone="critical" />
-                  Overdue
+                  Em atraso
                 </span>
               }
             />
@@ -62,14 +62,14 @@ export function TasksScreen({ data }: { data: Awaited<ReturnType<typeof loadTask
 
         {upcoming.length ? (
           <section>
-            <SectionHeader title="Open tasks" />
+            <SectionHeader title="Tarefas pendentes" />
             {renderList(upcoming)}
           </section>
         ) : null}
 
         {data.snoozed.length ? (
           <section>
-            <SectionHeader title="Snoozed candidates" />
+            <SectionHeader title="Participações pausadas" />
             <div className={`${surface} divide-y divide-line overflow-hidden`}>
               {data.snoozed.map((o) => (
                 <CandidateLink
@@ -82,7 +82,7 @@ export function TasksScreen({ data }: { data: Awaited<ReturnType<typeof loadTask
                     <span className="truncate text-sm font-medium">{o.name}</span>
                   </span>
                   <p className="shrink-0 text-xs text-ink-2">
-                    until{' '}
+                    até{' '}
                     {o.snoozedUntil ? (
                       <LocalTime date={o.snoozedUntil} options={{ month: 'short', day: 'numeric' }} />
                     ) : (

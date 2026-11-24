@@ -10,7 +10,7 @@ export function BusyLabel({ busy, children }: { busy: boolean; children: React.R
     <span className="grid">
       <span className={cn('col-start-1 row-start-1', busy && 'invisible')}>{children}</span>
       <span aria-hidden={!busy} className={cn('col-start-1 row-start-1', !busy && 'invisible')}>
-        Working…
+        Processando…
       </span>
     </span>
   );

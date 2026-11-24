@@ -17,9 +17,9 @@ export function ContactsScreen({ data }: { data: Awaited<ReturnType<typeof loadC
     <ContactsNavProvider listInput={{ pool: data.poolId, tag: data.tag, q: data.q }}>
       <div className="t-reveal flex h-screen flex-col">
         <div className="flex items-start justify-between pr-6">
-          <PageHeader title="Contacts" subtitle="Every person in your talent network" />
+          <PageHeader title="Banco de talentos" subtitle="Contatos cadastrados no banco de talentos" />
           <Link href="/contacts/new" className={`${btnPrimary} mt-6`}>
-            <Plus /> Add candidate
+            <Plus /> Adicionar candidato
           </Link>
         </div>
 

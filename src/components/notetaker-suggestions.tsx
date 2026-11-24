@@ -55,7 +55,7 @@ export function NotetakerSuggestions({ meetings }: { meetings: ReviewMeeting[] }
   const waiting = meetings.some((m) => !done[m.id]);
   return (
     <section>
-      <SectionHeader title="Transcripts to review" />
+      <SectionHeader title="Transcrições para revisar" />
       <div className={`${surface} divide-y divide-line`}>
         {rows.map((m) =>
           done[m.id] ? (
@@ -67,7 +67,7 @@ export function NotetakerSuggestions({ meetings }: { meetings: ReviewMeeting[] }
       </div>
       {waiting ? (
         <p className="mt-2 text-xs text-ink-2">
-          Your notetaker recorded these near your interviews but couldn&apos;t confirm who they were with. Only you see these.
+          O serviço registrou estas reuniões próximas de suas entrevistas, mas ainda não identificou os participantes. Só você vê esta lista.
         </p>
       ) : null}
     </section>
@@ -86,7 +86,7 @@ function Confirmation({ done }: { done: Done }) {
             <Link href={`/candidates/${to.opportunityId}`} className="font-medium underline-offset-2 hover:underline">
               {to.contactName}
             </Link>
-            {to.interviewTitle ? <span className="text-ink-2"> · {to.interviewTitle}</span> : <span className="text-ink-2"> · profile</span>}
+            {to.interviewTitle ? <span className="text-ink-2"> · {to.interviewTitle}</span> : <span className="text-ink-2"> · perfil</span>}
           </>
         ) : (
           'Attached.'
@@ -95,7 +95,7 @@ function Confirmation({ done }: { done: Done }) {
       </p>
       {to ? (
         <Link href={`/candidates/${to.opportunityId}`} className={buttonClass({ variant: 'ghost', size: 'sm' })}>
-          Open candidate
+          Abrir candidato
         </Link>
       ) : null}
     </div>
@@ -111,7 +111,7 @@ export function SameNameNotes({ warnings }: { warnings: SameNameWarning[] }) {
       {warnings.map((w) => (
         <p key={w.name.toLowerCase()} className="flex items-start gap-2 text-xs text-ink-2">
           <StatusDot tone="caution" className="mt-[5px]" />
-          {COUNT_WORDS[w.count] ?? w.count} candidates named {w.name} — check the email and role.
+          {COUNT_WORDS[w.count] ?? w.count} candidatos com o nome {w.name} . Confira o e-mail e a vaga.
         </p>
       ))}
     </div>
@@ -127,12 +127,12 @@ function PersonLines({ person }: { person: PersonTarget }) {
         <span className="truncate text-xs text-ink-2">{person.email ?? 'No email on file'}</span>
       </p>
       <p className="mt-0.5 truncate text-xs text-ink-2">
-        {person.role ?? 'No role'}
+        {person.role ?? "Sem vaga vinculada"}
         {person.moreRoles ? ` +${person.moreRoles}` : ''}
         {' · '}
         {person.interview ? (
           <>
-            {person.interview.when === 'next' ? 'Next' : 'Last'}: {person.interview.title},{' '}
+            {person.interview.when === 'next' ? "Próxima" : 'Last'}: {person.interview.title},{' '}
             <LocalTime date={person.interview.startAt} options={{ month: 'short', day: 'numeric' }} />
           </>
         ) : (
@@ -168,18 +168,18 @@ function TargetPicker({ person, value, onChange }: { person: PersonTarget; value
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {person.applications.length > 1 ? (
-        <Field label="Application">
+        <Field label="Candidatura">
           <FormSelect
             value={app.opportunityId}
             onChange={(opportunityId) => onChange({ opportunityId, interviewId: '' })}
             options={person.applications.map((a) => ({
               value: a.opportunityId,
-              label: `${a.postingTitle ?? 'No role'}${a.archived ? ' (archived)' : ''}`,
+              label: `${a.postingTitle ?? "Sem vaga vinculada"}${a.archived ? ' (archived)' : ''}`,
             }))}
           />
         </Field>
       ) : null}
-      <Field label="Interview">
+      <Field label="Entrevista">
         <FormSelect
           value={value.interviewId || PROFILE}
           onChange={(v) => onChange({ opportunityId: app.opportunityId, interviewId: v === PROFILE ? '' : v })}
@@ -252,11 +252,11 @@ function ReviewCard({ meeting, onAttached }: { meeting: ReviewMeeting; onAttache
       />
 
       <div className="mt-4 flex flex-col gap-2 sm:pl-8">
-        <p className="text-xs font-medium text-ink-2">Attach to</p>
+        <p className="text-xs font-medium text-ink-2">Anexar a</p>
         <SameNameNotes warnings={meeting.sameName} />
 
         {meeting.options.length ? (
-          <div role="radiogroup" aria-label="Interviews around that time" className="flex flex-col gap-1">
+          <div role="radiogroup" aria-label="Entrevistas próximas desse horário" className="flex flex-col gap-1">
             {meeting.options.map((o) => (
               <ChoiceRow key={o.interviewId} name={radio} value={o.interviewId} checked={choice === `iv:${o.interviewId}`} onSelect={() => setChoice(`iv:${o.interviewId}`)}>
                 <div className="flex items-start gap-3">
@@ -267,7 +267,7 @@ function ReviewCard({ meeting, onAttached }: { meeting: ReviewMeeting; onAttache
                       <span className="truncate text-xs text-ink-2">{o.candidate.email ?? 'No email on file'}</span>
                     </p>
                     <p className="mt-0.5 truncate text-xs text-ink-2">
-                      {o.candidate.postingTitle ?? 'No role'} · {o.interviewTitle} ·{' '}
+                      {o.candidate.postingTitle ?? "Sem vaga vinculada"} · {o.interviewTitle} ·{' '}
                       <span className="tabular-nums">
                         <LocalTime date={o.startAt} options={{ hour: 'numeric', minute: '2-digit' }} />
                       </span>
@@ -285,13 +285,13 @@ function ReviewCard({ meeting, onAttached }: { meeting: ReviewMeeting; onAttache
             ))}
           </div>
         ) : (
-          <p className="text-sm text-ink-2">None of your interviews are within two hours of this meeting.</p>
+          <p className="text-sm text-ink-2">Nenhuma entrevista sua ocorreu até duas horas antes ou depois desta reunião.</p>
         )}
 
         {meeting.peopleNamed.map((group) => (
           <div key={group.name.toLowerCase()} className="mt-2 flex flex-col gap-2">
             <p className="text-xs font-medium text-ink-2">
-              {group.alsoAbove ? 'Other people' : 'People'} named {group.name}
+              {group.alsoAbove ? 'Other people' : 'People'} com o nome {group.name}
             </p>
             <div role="radiogroup" aria-label={`People named ${group.name}`} className="flex flex-col gap-1">
               {group.people.map((p) => (
@@ -315,7 +315,7 @@ function ReviewCard({ meeting, onAttached }: { meeting: ReviewMeeting; onAttache
 
         <div className="mt-2 flex flex-col gap-2">
           <ChoiceRow name={radio} value="other" checked={choice === 'other'} onSelect={() => setChoice('other')}>
-            <p className="text-sm text-ink">Someone else…</p>
+            <p className="text-sm text-ink">Outra pessoa…</p>
           </ChoiceRow>
           {choice === 'other' ? (
             <div className="pb-1 pl-7">
@@ -335,10 +335,10 @@ function ReviewCard({ meeting, onAttached }: { meeting: ReviewMeeting; onAttache
         {error ? <p className="text-xs text-critical sm:mr-auto">{error}</p> : null}
         <div className="flex items-center justify-end gap-2">
           <button type="button" disabled={pending} onClick={dismiss} className={buttonClass({ variant: 'ghost', size: 'sm' })}>
-            <BusyLabel busy={busy === 'dismiss'}>Not an interview</BusyLabel>
+            <BusyLabel busy={busy === 'dismiss'}>Descartar reunião</BusyLabel>
           </button>
           <button type="button" disabled={pending || !target} onClick={attach} className={buttonClass({ variant: 'primary', size: 'sm' })}>
-            <BusyLabel busy={busy === 'attach'}>Attach</BusyLabel>
+            <BusyLabel busy={busy === 'attach'}>Anexar</BusyLabel>
           </button>
         </div>
       </div>
@@ -392,7 +392,7 @@ function SomeoneElse({
             <PersonLines person={picked} />
           </div>
           <button type="button" onClick={() => onPick(null)} className={buttonClass({ variant: 'ghost', size: 'xs' })}>
-            Change
+            Alterar
           </button>
         </div>
         <TargetPicker person={picked} value={target} onChange={onTarget} />
@@ -409,8 +409,8 @@ function SomeoneElse({
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search candidates by name or email"
-          aria-label="Search candidates by name or email"
+          placeholder="Buscar candidatos por nome ou e-mail"
+          aria-label="Buscar candidatos por nome ou e-mail"
           className={`${fieldBareInput} [&::-webkit-search-cancel-button]:appearance-none`}
           autoFocus
         />
@@ -424,7 +424,7 @@ function SomeoneElse({
           ))}
         </div>
       ) : null}
-      {searching && !results ? <p className="text-xs text-ink-2">Searching…</p> : null}
+      {searching && !results ? <p className="text-xs text-ink-2">Buscando…</p> : null}
       {results ? (
         results.length ? (
           <div className="flex flex-col gap-1">
@@ -441,7 +441,7 @@ function SomeoneElse({
             ))}
           </div>
         ) : (
-          <p className="text-xs text-ink-2">No candidates match “{query.trim()}”.</p>
+          <p className="text-xs text-ink-2">Nenhum candidato corresponde a “{query.trim()}”.</p>
         )
       ) : null}
     </div>

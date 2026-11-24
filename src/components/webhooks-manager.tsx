@@ -32,7 +32,7 @@ export function WebhooksManager({ endpoints }: { endpoints: EndpointItem[] }) {
       {newSecret ? (
         <div className="rounded-field bg-positive/10 p-3">
           <p className="text-sm font-medium text-positive">
-            Signing secret — copy now, shown once. Verify X-Source-Signature with it.
+            Copie a chave de assinatura exibida uma vez. Use-a para verificar X-Source-Signature.
           </p>
           <code className="mt-1.5 block select-all break-all rounded-field bg-surface px-2 py-1.5 font-mono text-xs">
             {newSecret}
@@ -54,8 +54,8 @@ export function WebhooksManager({ endpoints }: { endpoints: EndpointItem[] }) {
                     ) : (
                       'all events'
                     )}{' '}
-                    · {e.delivered} delivered
-                    {e.failed ? <span className="text-critical"> · {e.failed} failing</span> : ''}
+                    · {e.delivered} entregues
+                    {e.failed ? <span className="text-critical"> · {e.failed} com falha</span> : ''}
                   </p>
                 </div>
               </div>
@@ -66,11 +66,11 @@ export function WebhooksManager({ endpoints }: { endpoints: EndpointItem[] }) {
                   className={buttonClass({ variant: 'tonal', size: 'xs' })}
                 >
                   <StatusDot tone={e.active ? 'positive' : 'neutral'} />
-                  {e.active ? 'Active' : 'Paused'}
+                  {e.active ? "Ativos" : 'Paused'}
                 </button>
                 <button
-                  title="Delete endpoint"
-                  aria-label="Delete endpoint"
+                  title="Excluir endpoint"
+                  aria-label="Excluir endpoint"
                   disabled={pending}
                   onClick={() => {
                     if (!confirm('Delete this webhook endpoint? Deliveries stop immediately.')) return;
@@ -96,7 +96,7 @@ export function WebhooksManager({ endpoints }: { endpoints: EndpointItem[] }) {
         <input {...noAutofill}
           value={types}
           onChange={(e) => setTypes(e.target.value)}
-          placeholder="Event filter (optional): application.received, opportunity.hired"
+          placeholder="Filtro de eventos (opcional): application.received, opportunity.hired"
           className={inputClass}
         />
         <button
@@ -109,12 +109,12 @@ export function WebhooksManager({ endpoints }: { endpoints: EndpointItem[] }) {
                 setUrl('');
                 setTypes('');
                 setError(null);
-              } else setError(result.error ?? 'Failed');
+              } else setError(result.error ?? "Falha no envio");
             })
           }
           className={btnTonal}
         >
-          <Plus /> Add
+          <Plus /> Adicionar
         </button>
       </div>
       {error ? <p className="text-sm text-critical">{error}</p> : null}

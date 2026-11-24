@@ -222,10 +222,10 @@ export async function scheduleInterviewAction(
   const durationMins = Number.parseInt(String(formData.get('durationMins') ?? '60'), 10);
   const panelistIds = formData.getAll('panelistIds').map(String);
 
-  if (!title) return { error: 'Interview title is required.' };
+  if (!title) return { error: 'Informe o título da entrevista.' };
   const startAt = new Date(startAtRaw);
-  if (Number.isNaN(startAt.getTime())) return { error: 'Pick a valid date and time.' };
-  if (panelistIds.length === 0) return { error: 'Pick at least one interviewer.' };
+  if (Number.isNaN(startAt.getTime())) return { error: 'Informe uma data e um horário válidos.' };
+  if (panelistIds.length === 0) return { error: 'Selecione pelo menos um entrevistador.' };
 
   await scheduleInterview(ctx, {
     opportunityId,
@@ -256,8 +256,8 @@ export async function createSchedulingLinkAction(
   const durationMins = Number.parseInt(String(formData.get('durationMins') ?? '30'), 10);
   const panelistIds = formData.getAll('panelistIds').map(String);
 
-  if (!title) return { error: 'Interview title is required.' };
-  if (panelistIds.length === 0) return { error: 'Pick at least one interviewer.' };
+  if (!title) return { error: 'Informe o título da entrevista.' };
+  if (panelistIds.length === 0) return { error: 'Selecione pelo menos um entrevistador.' };
 
   try {
     const link = await createSchedulingLink(ctx, {
@@ -278,7 +278,7 @@ export async function createSchedulingLinkAction(
     revalidatePath(`/candidates/${opportunityId}`);
     return { url: capabilityPath('schedule', link.token) };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Could not create link.' };
+    return { error: err instanceof Error ? err.message : 'Não foi possível criar o link.' };
   }
 }
 
@@ -331,8 +331,8 @@ export async function submitFeedbackAction(
   const summary = String(formData.get('summary') ?? '').trim();
 
   if (!Number.isFinite(overallRating) || overallRating < 1 || overallRating > 4)
-    return { error: 'Pick an overall rating.' };
-  if (!summary) return { error: 'Write a short summary.' };
+    return { error: 'Selecione a avaliação geral.' };
+  if (!summary) return { error: 'Escreva um resumo da avaliação.' };
 
   const answers: Record<string, string> = {};
   for (const [key, value] of formData.entries()) {
@@ -349,7 +349,7 @@ export async function submitFeedbackAction(
       answers,
     });
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Could not submit feedback.' };
+    return { error: err instanceof Error ? err.message : 'Não foi possível enviar a avaliação.' };
   }
 
   revalidatePath(`/candidates/${opportunityId}`);
@@ -363,12 +363,12 @@ export async function sendEmailAction(_prev: FormState, formData: FormData): Pro
   const scheduledAtRaw = String(formData.get('scheduledAt') ?? '');
   const templateId = String(formData.get('templateId') ?? '') || undefined;
 
-  if (!subject || !body) return { error: 'Subject and body are required.' };
+  if (!subject || !body) return { error: 'Preencha o assunto e a mensagem.' };
 
   let scheduledAt: Date | undefined;
   if (scheduledAtRaw) {
     scheduledAt = new Date(scheduledAtRaw);
-    if (Number.isNaN(scheduledAt.getTime())) return { error: 'Pick a valid schedule time.' };
+    if (Number.isNaN(scheduledAt.getTime())) return { error: 'Informe um horário válido para o envio.' };
   }
 
   // buildOpportunityVars doesn't scope by org — verify ownership first
@@ -378,7 +378,7 @@ export async function sendEmailAction(_prev: FormState, formData: FormData): Pro
   });
   if (!owned) return { error: 'Not found.' };
   const { vars, toEmail, contactId } = await buildOpportunityVars(opportunityId);
-  if (!toEmail) return { error: 'This contact has no email address.' };
+  if (!toEmail) return { error: 'O contato não tem e-mail cadastrado.' };
 
   await sendEmail({
     orgId: ctx.orgId,
@@ -405,10 +405,10 @@ export async function cancelEmailAction(messageId: string, opportunityId: string
 export async function createTaskAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireSession();
   const title = String(formData.get('title') ?? '').trim();
-  if (!title) return { error: 'Task title is required.' };
+  if (!title) return { error: 'Informe o título da tarefa.' };
   const dueAtRaw = String(formData.get('dueAt') ?? '');
   const dueAt = dueAtRaw ? new Date(dueAtRaw) : undefined;
-  if (dueAt && Number.isNaN(dueAt.getTime())) return { error: 'Pick a valid due date.' };
+  if (dueAt && Number.isNaN(dueAt.getTime())) return { error: 'Informe um prazo válido.' };
   await createTask(ctx, {
     title,
     opportunityId: String(formData.get('opportunityId') ?? '') || undefined,
@@ -434,7 +434,7 @@ export async function snoozeOpportunityAction(
   let until: Date | null = null;
   if (untilRaw) {
     until = new Date(untilRaw);
-    if (Number.isNaN(until.getTime())) return { error: 'Pick a valid date.' };
+    if (Number.isNaN(until.getTime())) return { error: 'Informe uma data válida.' };
   }
   await snoozeOpportunity(ctx, opportunityId, until);
   revalidatePath('/pipeline');
@@ -446,7 +446,7 @@ export async function createOfferAction(_prev: FormState, formData: FormData): P
   const ctx = await requireSession();
   const opportunityId = String(formData.get('opportunityId') ?? '');
   const jobTitle = String(formData.get('jobTitle') ?? '').trim();
-  if (!jobTitle) return { error: 'Job title is required.' };
+  if (!jobTitle) return { error: 'Informe o cargo.' };
   const startDateRaw = String(formData.get('startDate') ?? '');
   await createOffer(ctx, {
     opportunityId,
@@ -472,7 +472,7 @@ export async function sendOfferAction(
     revalidatePath('/dashboard');
     return result;
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Could not send the offer.' };
+    return { error: err instanceof Error ? err.message : 'Não foi possível enviar a proposta.' };
   }
 }
 
@@ -481,7 +481,7 @@ export async function resolveApprovalAction(
   decision: 'APPROVED' | 'REJECTED',
 ): Promise<{ error?: string }> {
   const ctx = await requireSession();
-  if (!isAdmin(ctx)) return { error: 'Admins only.' };
+  if (!isAdmin(ctx)) return { error: 'Esta ação exige um perfil administrativo.' };
   try {
     const req = await getPendingApproval(ctx, requestId);
     if (decision === 'APPROVED') {
@@ -498,7 +498,7 @@ export async function resolveApprovalAction(
     revalidatePath(req.href);
     return {};
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Could not resolve approval.' };
+    return { error: err instanceof Error ? err.message : 'Não foi possível registrar a decisão.' };
   }
 }
 
@@ -509,8 +509,8 @@ export async function submitReferralAction(
   const ctx = await requireSession();
   const name = String(formData.get('name') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim();
-  if (!name) return { error: 'Name is required.' };
-  if (!email) return { error: 'Email is required.' };
+  if (!name) return { error: 'Informe o nome.' };
+  if (!email) return { error: 'Informe o e-mail.' };
   let opportunityId: string;
   try {
     const result = await submitReferral(ctx, {
@@ -523,7 +523,7 @@ export async function submitReferralAction(
     });
     opportunityId = result.opportunityId;
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Could not submit the referral.' };
+    return { error: err instanceof Error ? err.message : 'Não foi possível enviar a indicação.' };
   }
   revalidatePath('/referrals');
   revalidatePath('/pipeline');
@@ -589,7 +589,7 @@ export async function createPlanStepAction(
 ): Promise<FormState> {
   const ctx = await requireSession();
   const title = String(formData.get('title') ?? '').trim();
-  if (!title) return { error: 'Step title is required.' };
+  if (!title) return { error: 'Informe o título da etapa.' };
   const durationMins = Number.parseInt(String(formData.get('durationMins') ?? '60'), 10);
   await createPlanStep(ctx, {
     postingId,
@@ -615,7 +615,7 @@ export async function saveReportAction(
 ): Promise<{ error?: string }> {
   const ctx = await requireSession();
   const clean = name.trim();
-  if (!clean) return { error: 'Name is required.' };
+  if (!clean) return { error: 'Informe o nome.' };
   await db.savedReport.create({ data: { orgId: ctx.orgId, name: clean, config } });
   revalidatePath('/reports');
   revalidatePath('/reports/builder');
@@ -850,7 +850,7 @@ export async function addTranscriptAction(
   const ctx = await requireSession();
   const opportunityId = String(formData.get('opportunityId') ?? '');
   const content = String(formData.get('content') ?? '').trim();
-  if (!content) return { error: 'Paste the transcript text.' };
+  if (!content) return { error: 'Cole a transcrição.' };
   const transcript = await addTranscript(ctx, {
     opportunityId,
     interviewId: String(formData.get('interviewId') ?? '') || undefined,
@@ -977,7 +977,7 @@ export async function suggestMatchCriteriaAction(postingId: string): Promise<{ c
     where: { id: postingId, orgId: ctx.orgId },
     select: { title: true, location: true, content: true },
   });
-  if (!posting) return { error: 'Posting not found.' };
+  if (!posting) return { error: 'Vaga indisponível.' };
   try {
     return { criteria: await draftMatchCriteria(posting) };
   } catch (error) {
@@ -1006,7 +1006,7 @@ export async function sendTestSequenceEmailAction(
   toEmail: string,
 ): Promise<{ error?: string; sent?: boolean }> {
   const ctx = await requireSession();
-  if (!subject.trim() || !body.trim()) return { error: 'Subject and body are required.' };
+  if (!subject.trim() || !body.trim()) return { error: 'Preencha o assunto e a mensagem.' };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(toEmail)) return { error: 'Enter a valid email address.' };
 
   const startOfDay = new Date();
@@ -1085,7 +1085,7 @@ export async function addContactsToPoolAction(
   const pool = await db.talentPool.findFirst({
     where: { id: poolId, orgId: ctx.orgId, kind: 'STATIC' },
   });
-  if (!pool) throw new Error('Talent pool not found');
+  if (!pool) throw new Error('Lista de talentos indisponível');
   const ids = [...new Set(contactIds)];
   const contacts = await db.contact.findMany({
     where: { id: { in: ids.slice(0, POOL_BULK_LIMIT) }, orgId: ctx.orgId },
@@ -1111,7 +1111,7 @@ export async function removeContactsFromPoolAction(
   const pool = await db.talentPool.findFirst({
     where: { id: poolId, orgId: ctx.orgId, kind: 'STATIC' },
   });
-  if (!pool) throw new Error('Talent pool not found');
+  if (!pool) throw new Error('Lista de talentos indisponível');
   const ids = [...new Set(contactIds)];
   await db.talentPool.update({
     where: { id: pool.id },

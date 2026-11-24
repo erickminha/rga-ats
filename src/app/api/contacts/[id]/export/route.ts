@@ -33,6 +33,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           feedback: { select: { overallRating: true, summary: true, createdAt: true } },
           interviews: { select: { title: true, startAt: true, state: true } },
           applicationResume: { select: fileFields },
+          recruitingAssessment: { include: { discFile: { select: fileFields } } },
           offers: { omit: { token: true } },
           transcripts: { select: { title: true, content: true, source: true, createdAt: true } },
         },

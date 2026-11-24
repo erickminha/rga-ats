@@ -63,7 +63,7 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
                   <StatusDot tone={IMPORT_STATUS[open.status].tone} />
                   {IMPORT_STATUS[open.status].label}
                   {open.accountName ? <span>· {open.accountName}</span> : null}
-                  <span>· Started {timeAgo(open.startedAt)}</span>
+                  <span>· Iniciada {timeAgo(open.startedAt)}</span>
                 </p>
               </div>
             </div>
@@ -107,7 +107,7 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
                         <p className="mt-0.5 text-xs text-ink-2">{new Date(j.finishedAt ?? j.startedAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
                       ) : (
                         <p className="mt-0.5 truncate text-xs text-ink-2 tabular-nums">
-                          {formatCount(j.created)} {j.created === 1 ? 'candidate' : 'candidates'} ·{' '}
+                          {formatCount(j.created)} {j.created === 1 ? 'candidate' : "candidatos"} ·{' '}
                           {j.finishedAt ? `Finished ${timeAgo(j.finishedAt)}` : `Started ${timeAgo(j.startedAt)}`}
                         </p>
                       )}
@@ -123,7 +123,7 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
             ) : (
               <Card className="px-4 py-4">
                 <p className="text-sm text-ink-2">
-                  No imports yet. Each one you run shows up here with what it brought over.
+                  Nenhuma importação realizada. O histórico mostrará os registros de cada operação.
                 </p>
               </Card>
             )}

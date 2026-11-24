@@ -261,6 +261,18 @@ async function main() {
           createdAt: new Date(o.createdAt),
         })));
 
+    await insertAll(tx, 'recruitingAssessment', dump.opportunities.filter((row) => row.recruitingAssessment).map((row) => {
+      const assessment = row.recruitingAssessment;
+      return {
+        opportunityId: mapped(row.id),
+        screening: assessment.screening ?? undefined,
+        disc: assessment.disc ?? undefined,
+        opinion: assessment.opinion ?? undefined,
+        opinionAuthorId: mapped(assessment.opinionAuthorId),
+        opinionFinalizedAt: assessment.opinionFinalizedAt ? new Date(assessment.opinionFinalizedAt) : null,
+      };
+    }));
+
     await insertAll(tx, 'stageTransition', dump.stageTransitions.map((t) => ({
           id: remap(t.id),
           opportunityId: mapped(t.opportunityId),

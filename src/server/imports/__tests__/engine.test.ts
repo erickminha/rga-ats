@@ -458,7 +458,7 @@ describe.skipIf(!hasDb)('import engine', () => {
 
   it('never sends feedback reminders for interviews that came from an import', async () => {
     const { processFeedbackReminders } = await import('@/server/feedback');
-    const opp = await db.opportunity.findFirstOrThrow({ where: { orgId, feedback: { none: {} } } });
+    const opp = await db.opportunity.findFirstOrThrow({ where: { orgId, contact: { isAnonymized: false }, feedback: { none: {} } } });
     const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000);
     const imported = await db.interview.create({
       data: { orgId, opportunityId: opp.id, title: 'From the old ATS', startAt: threeDaysAgo, state: 'COMPLETED', panelists: { connect: [{ id: ctx.userId }] } },

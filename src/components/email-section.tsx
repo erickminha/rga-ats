@@ -38,10 +38,10 @@ const STATUS_TONES: Record<EmailItem['status'], Tone> = {
 };
 
 const STATUS_LABELS: Record<EmailItem['status'], string> = {
-  SENT: 'Sent',
-  SCHEDULED: 'Scheduled',
-  FAILED: 'Failed',
-  CANCELED: 'Canceled',
+  SENT: "Enviada",
+  SCHEDULED: "Agendada",
+  FAILED: "Falha no envio",
+  CANCELED: "Cancelada",
 };
 
 export function EmailSection({
@@ -74,11 +74,11 @@ export function EmailSection({
   return (
     <section>
       <SectionHeader
-        title="Email"
+        title="E-mail"
         action={
           toEmail ? (
             <button onClick={() => setOpen((v) => !v)} className={btnGhost}>
-              <Mail /> {open ? 'Cancel' : 'Compose'}
+              <Mail /> {open ? "Cancelar" : 'Compose'}
             </button>
           ) : null
         }
@@ -88,37 +88,36 @@ export function EmailSection({
         <form action={formAction} className={`${surface} mb-3 flex flex-col gap-3 p-5`}>
           <input type="hidden" name="opportunityId" value={opportunityId} />
           <div className="grid grid-cols-2 gap-3">
-            <Field label="To">
+            <Field label="Para">
               <input {...noAutofill} value={toEmail ?? ''} disabled className={inputClass} />
             </Field>
-            <Field label="Template">
+            <Field label="Modelo">
               <FormSelect
                 name="templateId"
                 onChange={applyTemplate}
                 options={[
-                  { value: '', label: 'Blank' },
+                  { value: '', label: "Em branco" },
                   ...templates.map((t) => ({ value: t.id, label: t.name })),
                 ]}
               />
             </Field>
           </div>
-          <Field label="Subject">
+          <Field label="Assunto">
             <input {...noAutofill} ref={subjectRef} name="subject" required className={inputClass} />
           </Field>
-          <Field label="Body">
+          <Field label="Mensagem">
             <textarea {...noAutofill} ref={bodyRef} name="body" rows={6} required className={textareaClass} />
           </Field>
-          <Field label="Schedule (optional — sends immediately if empty)">
+          <Field label="Agendar envio (opcional)">
             <input {...noAutofill} name="scheduledAt" type="datetime-local" className={inputClass} />
           </Field>
           <p className="text-xs text-ink-2">
-            Tokens like {'{{first_name}}'}, {'{{job_title}}'}, {'{{company_name}}'} are filled in
-            automatically.
+            Campos como {'{{first_name}}'}, {'{{job_title}}'}, {'{{company_name}}'} são preenchidos automaticamente.
           </p>
           {state?.error ? <p className="text-sm text-critical">{state.error}</p> : null}
           <div className="flex justify-end">
             <button type="submit" disabled={pending} className={btnPrimary}>
-              <TextSwap>{pending ? 'Sending…' : 'Send'}</TextSwap>
+              <TextSwap>{pending ? "Enviando…" : 'Send'}</TextSwap>
             </button>
           </div>
         </form>
@@ -132,10 +131,10 @@ export function EmailSection({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{m.subject}</p>
                   <p className="mt-0.5 text-xs text-ink-2">
-                    {m.automated ? 'Automation' : 'Manual'} · to {m.toEmail} ·{' '}
+                    {m.automated ? 'Automation' : 'Manual'} · para {m.toEmail} ·{' '}
                     {m.status === 'SCHEDULED' && m.scheduledAt ? (
                       <>
-                        sends <LocalTime date={m.scheduledAt} options={EMAIL_TIME} />
+                        envio <LocalTime date={m.scheduledAt} options={EMAIL_TIME} />
                       </>
                     ) : m.sentAt ? (
                       <LocalTime date={m.sentAt} options={EMAIL_TIME} />
@@ -149,7 +148,7 @@ export function EmailSection({
                   onClick={() => startTransition(() => cancelEmailAction(m.id, opportunityId))}
                   className={buttonClass({ variant: 'ghost', size: 'xs', className: '-ml-2.5 mt-2' })}
                 >
-                  Cancel send
+                  Cancelar envio
                 </button>
               ) : null}
             </div>
@@ -157,7 +156,7 @@ export function EmailSection({
         </div>
       ) : !open ? (
         <p className="text-sm text-ink-2">
-          {toEmail ? 'No emails yet.' : 'Add an email address to this contact to send email.'}
+          {toEmail ? 'Nenhum e-mail registrado.' : 'Cadastre um endereço de e-mail para enviar mensagens.'}
         </p>
       ) : null}
     </section>

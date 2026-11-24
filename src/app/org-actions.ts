@@ -1,5 +1,7 @@
 'use server';
 
+import { DEFAULT_TEMPLATES, LEGACY_EMAIL_TEMPLATES } from '@/server/email';
+
 import { invalidateLists } from '@/server/lists/cache';
 import { inheritedReasons, isArchiveCategory, outcomeCategory, outcomeDefaults } from '@/lib/i18n/pt-BR/recruiting';
 
@@ -598,5 +600,14 @@ export async function seedRgaArchiveReasonsAction() {
     }
   });
   invalidateLists(ctx.orgId);
+  revalidatePath('/settings');
+}
+
+
+export async function translateRgaEmailDefaultsAction() {
+  const ctx = await requireAdmin();
+  await db.$transaction(LEGACY_EMAIL_TEMPLATES.map((template, index) => db.emailTemplate.updateMany({
+    where: { orgId: ctx.orgId, ...template }, data: DEFAULT_TEMPLATES[index],
+  })));
   revalidatePath('/settings');
 }

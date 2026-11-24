@@ -54,10 +54,10 @@ export function TaskSection({
   return (
     <section>
       <SectionHeader
-        title="Tasks"
+        title="Tarefas"
         action={
           <button onClick={() => setOpen((v) => !v)} className={btnGhost}>
-            <ListTodo /> {open ? 'Cancel' : 'Add task'}
+            <ListTodo /> {open ? "Cancelar" : 'Add task'}
           </button>
         }
       />
@@ -65,19 +65,19 @@ export function TaskSection({
       {open ? (
         <form action={formAction} className={`${surface} mb-3 flex flex-col gap-3 p-5`}>
           <input type="hidden" name="opportunityId" value={opportunityId} />
-          <Field label="Task">
+          <Field label="Tarefa">
             <input {...noAutofill}
               name="title"
               required
-              placeholder="Follow up on references…"
+              placeholder="Consultar referências…"
               className={inputClass}
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Due">
+            <Field label="Prazo">
               <input {...noAutofill} type="date" name="dueAt" className={inputClass} />
             </Field>
-            <Field label="Assignee">
+            <Field label="Responsável">
               <FormSelect
                 name="assigneeId"
                 options={[
@@ -127,7 +127,7 @@ export function TaskSection({
           ))}
         </div>
       ) : !open ? (
-        <p className="text-sm text-ink-2">No tasks yet.</p>
+        <p className="text-sm text-ink-2">Nenhuma tarefa cadastrada.</p>
       ) : null}
     </section>
   );

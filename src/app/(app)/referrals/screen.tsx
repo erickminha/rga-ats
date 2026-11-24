@@ -9,25 +9,24 @@ import { Badge, SectionHeader } from '@/components/ui/primitives';
 import { LocalTime } from '@/components/local-time';
 
 const STATUS_LABEL: Record<string, string> = {
-  ACTIVE: 'In process',
-  ARCHIVED: 'Archived',
-  HIRED: 'Hired',
+  ACTIVE: "Em andamento",
+  ARCHIVED: "Encerrados",
+  HIRED: "Contratados",
 };
 
 export function ReferralsScreen({ data }: { data: Awaited<ReturnType<typeof loadReferralsPage>> }) {
   return (
     <div className="t-reveal">
       <PageHeader
-        title="Referrals"
-        subtitle="Submit people you know and track them through the pipeline"
+        title="Indicações"
+        subtitle="Indique candidatos e acompanhe as participações no funil"
       />
 
       <div className="mx-6 mt-2 flex flex-col gap-8 pb-10">
         <section className={`${surface} p-5`}>
-          <h2 className="text-md font-medium">Refer someone</h2>
+          <h2 className="text-md font-medium">Indicar candidato</h2>
           <p className="mb-5 mt-1 text-sm text-ink-2">
-            We&apos;ll open them in the pipeline as a referred candidate and keep you on the record
-            as the source.
+            A pessoa será cadastrada por indicação, com seu nome registrado como origem.
           </p>
           <ReferralForm postings={data.postings} />
         </section>
@@ -35,12 +34,12 @@ export function ReferralsScreen({ data }: { data: Awaited<ReturnType<typeof load
         {data.referrals.length === 0 ? (
           <EmptyState
             icon={UserPlus}
-            title="No referrals yet"
-            description="When you or a teammate refers someone, they show up here with live pipeline status."
+            title="Nenhuma indicação registrada"
+            description="As indicações da equipe aparecem aqui com a situação da participação."
           />
         ) : (
           <section>
-            <SectionHeader title="Submitted" />
+            <SectionHeader title="Enviada" />
             <div className={`${surface} divide-y divide-line overflow-hidden`}>
               {data.referrals.map((r) => (
                 <a
@@ -65,7 +64,7 @@ export function ReferralsScreen({ data }: { data: Awaited<ReturnType<typeof load
                       </Badge>
                     </div>
                     <p className="mt-2 text-xs text-ink-2">
-                      Referred by {r.referrerName}
+                      Indicada por {r.referrerName}
                       {r.relationship ? ` · ${r.relationship.replace(/-/g, ' ')}` : ''}
                       {' · '}
                       <LocalTime date={r.createdAt} options={{ month: 'short', day: 'numeric' }} />
