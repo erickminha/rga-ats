@@ -347,7 +347,7 @@ export function PipelineList({
     [commitOp],
   );
 
-  const candidates = (n: number) => `${fmt(n)} candidate${n === 1 ? '' : 's'}`;
+  const candidates = (n: number) => `${fmt(n)} candidato${n === 1 ? '' : 's'}`;
   const ids = [...selected];
   const allVisibleSelected = useMemo(
     () => view.rows.length > 0 && view.rows.every((r) => selected.has(r.id)),

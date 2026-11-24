@@ -302,8 +302,8 @@ export async function saveBookingUrlAction(
   const ctx = await requireSession();
   const raw = String(formData.get('bookingUrl') ?? '');
   const bookingUrl = raw.trim() ? normalizeBookingUrl(raw) : null;
-  if (raw.trim() && !bookingUrl) return { error: 'That doesn’t look like a link. Paste the full URL of your booking page.' };
-  if (!ctx.userId) return { error: 'Sign in as a person to save a booking page.' };
+  if (raw.trim() && !bookingUrl) return { error: 'Informe o endereço completo e válido da sua página de agendamento.' };
+  if (!ctx.userId) return { error: 'Entre com uma conta de usuário para salvar a página de agendamento.' };
   await db.user.update({ where: { id: ctx.userId, orgId: ctx.orgId }, data: { bookingUrl } });
   const opportunityId = String(formData.get('opportunityId') ?? '');
   if (opportunityId) revalidatePath(`/candidates/${opportunityId}`);
@@ -376,7 +376,7 @@ export async function sendEmailAction(_prev: FormState, formData: FormData): Pro
     where: { id: opportunityId, orgId: ctx.orgId },
     select: { id: true },
   });
-  if (!owned) return { error: 'Not found.' };
+  if (!owned) return { error: 'Registro não encontrado.' };
   const { vars, toEmail, contactId } = await buildOpportunityVars(opportunityId);
   if (!toEmail) return { error: 'O contato não tem e-mail cadastrado.' };
 
@@ -540,7 +540,7 @@ export async function setOfferStatusAction(
   try {
     await setOfferStatus(ctx, offerId, status);
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Failed' };
+    return { error: error instanceof Error ? error.message : 'Falha na operação' };
   }
   revalidatePath(`/candidates/${opportunityId}`);
   return {};
@@ -553,7 +553,7 @@ export async function createRequisitionAction(
   const ctx = await requireSession();
   const code = String(formData.get('code') ?? '').trim();
   const title = String(formData.get('title') ?? '').trim();
-  if (!code || !title) return { error: 'Code and title are required.' };
+  if (!code || !title) return { error: 'Informe o código e o título.' };
   const openings = Number.parseInt(String(formData.get('openings') ?? '1'), 10);
   try {
     await createRequisition(ctx, {
@@ -565,7 +565,7 @@ export async function createRequisitionAction(
       salaryMax: parseIntOrUndefined(formData.get('salaryMax')),
     });
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Failed' };
+    return { error: error instanceof Error ? error.message : 'Falha na operação' };
   }
   revalidatePath('/postings');
 }
@@ -721,7 +721,7 @@ export async function mergeContactsAction(
   try {
     await mergeContacts(ctx, primaryId, duplicateId);
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Merge failed.' };
+    return { error: error instanceof Error ? error.message : 'Não foi possível unificar os registros.' };
   }
   revalidatePath('/contacts');
   revalidatePath('/pipeline');
@@ -854,7 +854,7 @@ export async function addTranscriptAction(
   const transcript = await addTranscript(ctx, {
     opportunityId,
     interviewId: String(formData.get('interviewId') ?? '') || undefined,
-    title: String(formData.get('title') ?? '').trim() || 'Interview transcript',
+    title: String(formData.get('title') ?? '').trim() || 'Transcrição da entrevista',
     content,
   });
   // The questions and facts come with the save; a model failure never loses
@@ -871,7 +871,7 @@ export async function summarizeTranscriptAction(transcriptId: string, opportunit
     await summarizeTranscript(ctx, transcriptId);
   } catch (error) {
     logAiFailure('transcript insights', error);
-    return { error: error instanceof Error ? error.message : 'Couldn’t read the transcript.' };
+    return { error: error instanceof Error ? error.message : 'Não foi possível ler a transcrição.' };
   }
   revalidatePath(`/candidates/${opportunityId}`);
   return {};
@@ -886,12 +886,12 @@ export async function deleteTranscriptAction(transcriptId: string, opportunityId
 export async function askCorpusAction(question: string): Promise<CorpusAnswer | { error: string }> {
   const ctx = await requireSession();
   const clean = question.trim();
-  if (clean.length < 5) return { error: 'Ask a fuller question.' };
+  if (clean.length < 5) return { error: 'Escreva uma pergunta mais completa.' };
   try {
     return await askCorpus(ctx, clean);
   } catch (error) {
     logAiFailure('ask', error);
-    return { error: error instanceof Error ? error.message : 'Ask failed.' };
+    return { error: error instanceof Error ? error.message : 'Não foi possível responder à pergunta.' };
   }
 }
 
@@ -903,7 +903,7 @@ export async function runAiEvaluationAction(
     await evaluateOpportunity(ctx, opportunityId);
   } catch (error) {
     logAiFailure('evaluation', error);
-    return { error: error instanceof Error ? error.message : 'Evaluation failed.' };
+    return { error: error instanceof Error ? error.message : 'Não foi possível realizar a avaliação.' };
   }
   revalidatePath(`/candidates/${opportunityId}`);
   return {};
@@ -950,7 +950,7 @@ export async function batchEvaluateAction(
     return {
       evaluated: 0,
       remaining: 0,
-      error: error instanceof Error ? error.message : 'Batch evaluation failed.',
+      error: error instanceof Error ? error.message : 'Não foi possível concluir a avaliação em lote.',
     };
   }
 }
@@ -966,7 +966,7 @@ export async function saveMatchCriteriaAction(
     revalidatePath('/candidates/[id]', 'page');
     return { criteria: saved };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Couldn’t save the criteria.' };
+    return { error: error instanceof Error ? error.message : 'Não foi possível salvar os critérios.' };
   }
 }
 
@@ -982,7 +982,7 @@ export async function suggestMatchCriteriaAction(postingId: string): Promise<{ c
     return { criteria: await draftMatchCriteria(posting) };
   } catch (error) {
     logAiFailure('criteria draft', error);
-    return { error: error instanceof Error ? error.message : 'Couldn’t suggest criteria.' };
+    return { error: error instanceof Error ? error.message : 'Não foi possível sugerir critérios.' };
   }
 }
 
@@ -1007,7 +1007,7 @@ export async function sendTestSequenceEmailAction(
 ): Promise<{ error?: string; sent?: boolean }> {
   const ctx = await requireSession();
   if (!subject.trim() || !body.trim()) return { error: 'Preencha o assunto e a mensagem.' };
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(toEmail)) return { error: 'Enter a valid email address.' };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(toEmail)) return { error: 'Informe um e-mail válido.' };
 
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
@@ -1019,13 +1019,13 @@ export async function sendTestSequenceEmailAction(
       createdAt: { gte: startOfDay },
     },
   });
-  if (sentToday >= 10) return { error: 'Test-send limit reached (10 per day).' };
+  if (sentToday >= 10) return { error: 'Limite de envios de teste atingido (10 por dia).' };
 
   const [contact, org] = await Promise.all([
     db.contact.findFirst({ where: { id: contactId, orgId: ctx.orgId } }),
     db.organization.findUnique({ where: { id: ctx.orgId }, select: { name: true } }),
   ]);
-  if (!contact) return { error: 'Pick a candidate to preview against.' };
+  if (!contact) return { error: 'Selecione um candidato para visualizar o modelo.' };
 
   await sendEmail({
     orgId: ctx.orgId,

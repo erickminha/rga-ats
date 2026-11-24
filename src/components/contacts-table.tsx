@@ -123,7 +123,7 @@ export function ContactsTable({
     scrolled.current = false;
   }, [displayKey]);
 
-  const people = (n: number) => `${fmt(n)} ${n === 1 ? 'person' : 'people'}`;
+  const people = (n: number) => `${fmt(n)} ${n === 1 ? 'pessoa' : 'pessoas'}`;
   // On failure the unsaved people are selected again, ready to retry.
   const reselect = (unsaved: string[]) => setSelected(new Set(unsaved));
   const { applyCommitted } = store;

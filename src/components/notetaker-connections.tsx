@@ -45,27 +45,27 @@ function relative(iso: string, now: number): string {
 }
 
 function noticeText(notice: NonNullable<NotetakerNotice>): { text: string; tone: Tone } | null {
-  const name = notice.provider ? (notetakerProvider(notice.provider)?.name ?? 'The notetaker') : 'The notetaker';
+  const name = notice.provider ? (notetakerProvider(notice.provider)?.name ?? 'O serviço de transcrição') : 'O serviço de transcrição';
   switch (notice.result) {
     case 'connected':
-      return { text: `${name} is connected. Transcripts from your interviews will start to appear within 10 minutes.`, tone: 'positive' };
+      return { text: `${name} está conectado. As transcrições das entrevistas começarão a aparecer em até 10 minutos.`, tone: 'positive' };
     case 'cancelled':
       return { text: `Signing in to ${name} was cancelled.`, tone: 'neutral' };
     case 'failed':
-      return { text: `${name} didn't finish connecting. Try again.`, tone: 'critical' };
+      return { text: `${name} não concluiu a conexão. Tente novamente.`, tone: 'critical' };
     case 'invalid':
-      return { text: 'That sign-in had expired or was already used. Start again from here.', tone: 'caution' };
+      return { text: 'A autenticação expirou ou já foi utilizada. Inicie novamente.', tone: 'caution' };
     default:
       return null;
   }
 }
 
 function statusLine(c: NotetakerConnection | undefined, now: number | null): { text: string; tone: Tone | null } {
-  if (!c || c.status === 'DISCONNECTED') return { text: 'Not connected', tone: null };
-  if (c.status === 'PENDING') return { text: c.lastError ?? 'Sign-in not finished', tone: null };
-  if (c.status === 'NEEDS_RECONNECT') return { text: c.lastError ?? 'Needs reconnecting', tone: 'critical' };
-  if (c.status === 'ERROR') return { text: c.lastError ?? 'The last sync failed', tone: 'caution' };
-  const how = c.authType === 'API_KEY' ? 'Connected with an API key' : 'Connected';
+  if (!c || c.status === 'DISCONNECTED') return { text: 'Não conectado', tone: null };
+  if (c.status === 'PENDING') return { text: c.lastError ?? 'Autenticação não concluída', tone: null };
+  if (c.status === 'NEEDS_RECONNECT') return { text: c.lastError ?? 'Reconexão necessária', tone: 'critical' };
+  if (c.status === 'ERROR') return { text: c.lastError ?? 'A última sincronização falhou', tone: 'caution' };
+  const how = c.authType === 'API_KEY' ? 'Conectado com chave de API' : 'Conectado';
   if (!c.lastSyncedAt) return { text: `${how} · first sync within 10 minutes`, tone: 'positive' };
   return { text: `${how} · checked ${now === null ? 'recently' : relative(c.lastSyncedAt, now)}`, tone: 'positive' };
 }
@@ -102,7 +102,7 @@ export function NotetakerConnections({
           </p>
         ) : null}
         {demo ? (
-          <p className="mt-3 text-sm text-ink-2">Notetakers can&apos;t be connected in the demo workspace.</p>
+          <p className="mt-3 text-sm text-ink-2">Não é possível conectar serviços de transcrição no ambiente de demonstração.</p>
         ) : null}
       </div>
 
@@ -136,10 +136,10 @@ export function NotetakerConnections({
                         className="inline-flex items-center gap-1.5"
                         title={
                           person.status === 'NEEDS_RECONNECT'
-                            ? 'Needs to connect again'
+                            ? 'Reconexão necessária'
                             : person.status === 'ERROR'
-                              ? 'The last sync failed'
-                              : 'Connected'
+                              ? 'A última sincronização falhou'
+                              : 'Conectado'
                         }
                       >
                         {person.status === 'ACTIVE' ? null : (
@@ -256,7 +256,7 @@ function ProviderRow({
                   </button>
                 ) : null}
                 <button type="button" disabled={pending} onClick={signIn} className={buttonClass({ variant: 'tonal', size: 'sm' })}>
-                  <BusyLabel busy={busy === 'connect'}>{status === 'NEEDS_RECONNECT' ? "Reconectar" : 'Connect'}</BusyLabel>
+                  <BusyLabel busy={busy === 'connect'}>{status === 'NEEDS_RECONNECT' ? "Reconectar" : 'Conectar'}</BusyLabel>
                 </button>
               </>
             )}
@@ -267,7 +267,7 @@ function ProviderRow({
                 onClick={disconnect}
                 className={buttonClass({ variant: 'ghost', size: 'sm', className: 'hover:text-critical' })}
               >
-                <BusyLabel busy={busy === 'disconnect'}>Disconnect</BusyLabel>
+                <BusyLabel busy={busy === 'disconnect'}>Desconectar</BusyLabel>
               </button>
             )}
           </div>
@@ -295,7 +295,7 @@ function ProviderRow({
             />
             <div className="flex items-center gap-2">
               <button type="submit" disabled={pending || !key.trim()} className={buttonClass({ variant: 'tonal' })}>
-                <BusyLabel busy={busy === 'key'}>Save key</BusyLabel>
+                <BusyLabel busy={busy === 'key'}>Salvar chave</BusyLabel>
               </button>
               <button
                 type="button"

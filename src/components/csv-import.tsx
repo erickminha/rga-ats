@@ -43,7 +43,7 @@ export function CsvImport() {
           created += r.created;
           skipped += r.skipped;
           errs.push(...r.errors);
-          if (r.errors[0]?.startsWith('Campo obrigatório ausente')) break;
+          if (r.errors[0]?.startsWith('Missing required')) break;
         }
       } catch {
         errs.unshift('A importação foi interrompida. As linhas anteriores foram salvas. Tente novamente para continuar. Os e-mails já cadastrados serão ignorados.');
@@ -82,7 +82,7 @@ export function CsvImport() {
       {summary ? <p className="text-sm text-positive">{summary}</p> : null}
       {errors.map((e, i) => (
         <p key={i} className="text-sm text-critical">
-          {e}
+          {e.replace(/^Missing required/, 'Campo obrigatório ausente')}
         </p>
       ))}
     </div>
