@@ -24,3 +24,13 @@ Use **Banco de talentos → Adicionar candidato** para guardar o cadastro sem in
 Confirme a intenção com a pessoa antes de registrar sua preferência em **Preferências de armazenamento e contato**. Para avaliar duplicatas, abra os dois cadastros e confira os dados de contato e as participações antes de unificar. Uma semelhança de nome é apenas uma sugestão. Continue usando **Configurações → Importações → Planilhas da RGA** para importações com prévia e relatório.
 
 O OCR aceita o modelo português local. Em uma implantação autorizada, use `OCR_LANGS=por+eng` no build e no processo do ATS para currículos mistos. Os dois modelos são distribuídos com o aplicativo. O OCR precisa da rotina de processamento e de acesso ao armazenamento privado. Revise o documento e corrija o perfil manualmente quando o resultado estiver incompleto.
+
+## Busca, grupos e reaproveitamento
+
+No **Banco de talentos**, abra **Busca avançada, grupos e indicadores** para localizar perfis e texto dos currículos. Combine filtros profissionais e escolha **Não informado** quando quiser separar campos vazios de uma resposta negativa. Os indicadores contam pessoas. As distribuições destacam as áreas e localidades mais frequentes.
+
+Crie um grupo manual e insira pessoas pela ficha ou pela seleção em lote no banco. Para um segmento dinâmico, informe os filtros, busque e selecione **Novo grupo ou segmento** para gravar a busca. O segmento acompanha os dados cadastrados. Use etiquetas relacionadas ao trabalho e confirme as informações antes de aplicá-las.
+
+Na vaga, use **Buscar candidatos no banco de talentos**. Edite a sugestão do cargo e, quando houver requisitos registrados, use-os como palavras-chave. Abra a ficha para conferir o profissional, selecione a versão de currículo e marque as pessoas que deseja incluir. Escolha a etapa inicial e confirme. O sistema cria novas participações, preserva as anteriores e avisa sobre vínculos já existentes. A inclusão não envia e-mails.
+
+O reaproveitamento exige autorização vigente para armazenamento para futuras oportunidades. Registre essa preferência somente depois de confirmá-la com o titular. O descadastro de comunicados continua valendo e não é alterado pelo registro da preferência de armazenamento.

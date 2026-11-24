@@ -33,16 +33,17 @@ export function ContactsScreen({ data }: { data: Awaited<ReturnType<typeof loadC
               <input {...noAutofill}
                 name="name"
                 required
-                placeholder={data.q || data.tag ? 'Save search as segment…' : 'New pool name…'}
+                placeholder={data.q || data.tag ? 'Salvar busca como segmento…' : 'Nome do novo grupo…'}
                 className={`${inputClass} h-8`}
               />
               <button type="submit" className={buttonClass({ variant: 'ghost', size: 'xs', className: 'self-start' })}>
-                {data.q || data.tag ? '+ Save segment' : '+ Create pool'}
+                {data.q || data.tag ? '+ Salvar segmento' : '+ Criar grupo'}
               </button>
             </form>
           </aside>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col pt-2">
+            <Link href="/contacts/busca" className="mb-2 self-start text-sm underline">Busca avançada, grupos e indicadores</Link>
             <ContactsSearch />
             <ContactsTable
               page={data.page}

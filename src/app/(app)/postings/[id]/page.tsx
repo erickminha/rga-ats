@@ -121,6 +121,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
           {canRecruit ? <RoleOwner inline postingId={posting.id} owner={posting.owner} teammates={teammates} /> : posting.owner?.name ?? 'Sem responsável'}
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
+          {posting.state !== 'CLOSED' && <Link className={buttonClass({ variant: 'primary', size: 'sm' })} href={`/contacts/busca?posting=${posting.id}`}>Buscar candidatos no banco de talentos</Link>}
           <Link className={buttonClass({ variant: 'tonal', size: 'sm' })} href={`/pipeline?posting=${posting.id}&view=kanban`}>Abrir funil desta vaga</Link>
           <Link className={buttonClass({ variant: 'ghost', size: 'sm' })} href={`/pipeline?posting=${posting.id}&status=archived`}>Ver participações encerradas</Link>
         </div>

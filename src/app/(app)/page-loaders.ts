@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { interviewAccess } from '@/server/interview-access';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 /**
@@ -205,10 +206,12 @@ export async function loadContactsPage(input: ContactsInput) {
     }),
     resolvePool(ctx.orgId, filter.pool),
   ]);
+  const advanced = (rules: unknown) => !!rules && typeof rules === 'object' && 'advanced' in rules && rules.advanced === true;
+  if (activePool && advanced(activePool.rules)) redirect(`/contacts/busca?pool=${encodeURIComponent(activePool.id)}`);
   // The rows are the page; the rail's pool counts and the total under the
   // list stream in after them (a segment's count is a text search over every
   // contact, 0.7-4 s cold at 300k), so they are handed over as promises.
-  const poolCounts = cachedPoolCounts(ctx.orgId, pools).catch(() => null);
+  const poolCounts = cachedPoolCounts(ctx.orgId, pools.filter((pool) => !advanced(pool.rules))).catch(() => null);
   const total = cachedContactsTotal(ctx.orgId, filter, activePool).catch(() => null);
   const page = await contactsPage(ctx.orgId, filter, { after, pool: activePool });
 
@@ -217,7 +220,7 @@ export async function loadContactsPage(input: ContactsInput) {
     tag,
     poolId,
     after: after ? (input.after ?? '') : '',
-    pools: pools.map((p) => ({ id: p.id, name: p.name, kind: p.kind })),
+    pools: pools.map((p) => ({ id: p.id, name: p.name, kind: p.kind, advanced: advanced(p.rules) })),
     poolCounts,
     page,
     total,

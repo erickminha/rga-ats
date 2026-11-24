@@ -1088,7 +1088,7 @@ export async function addContactsToPoolAction(
   if (!pool) throw new Error('Lista de talentos indisponível');
   const ids = [...new Set(contactIds)];
   const contacts = await db.contact.findMany({
-    where: { id: { in: ids.slice(0, POOL_BULK_LIMIT) }, orgId: ctx.orgId },
+    where: { id: { in: ids.slice(0, POOL_BULK_LIMIT) }, orgId: ctx.orgId, isAnonymized: false },
     select: { id: true },
   });
   await db.talentPool.update({
