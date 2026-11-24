@@ -37,7 +37,11 @@ export function RecruitingBoard({ stages, query }: { stages: BoardStage[]; query
           {stage.rows.map((row) => <div key={row.id} className="rounded-field bg-surface p-3"
             draggable={stage.type !== 'HIRED'} onDragStart={(event) => event.dataTransfer.setData('text/plain', row.id)}>
             <Link className="font-medium underline" href={`/candidates/${row.id}`}>{row.name}</Link>
-            {row.headline && <p className="mb-2 text-xs text-ink-2">{row.headline}</p>}
+            <p className="mt-1 break-words text-sm text-ink-2">{row.headline ?? 'Cargo pretendido não informado'}</p>
+            {row.postingTitle && <p className="mt-1 text-xs">Vaga: {row.postingTitle}{row.clientName ? ` · ${row.clientName}` : ''}</p>}
+            {row.location && <p className="mt-1 text-xs text-ink-2">{row.location}</p>}
+            {row.phone && <p className="mt-1 text-xs text-ink-2">Tel.: {row.phone}</p>}
+            <p className="mb-2 mt-1 text-xs text-ink-2">{row.days === 0 ? 'Hoje nesta etapa' : `${row.days} dia(s) nesta etapa`}</p>
             {stage.type !== 'HIRED' && <StageSelect opportunityId={row.id} currentStageId={stage.id} stages={stages} onSurface />}
           </div>)}
         </div>
