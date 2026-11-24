@@ -45,13 +45,15 @@ export async function requestPortalLink(orgSlug: string, email: string, baseUrl:
   if (!contact) return;
 
   const token = createPortalToken(contact.id, org.id);
-  const link = `${baseUrl}/portal/${token}`;
+  const link = new URL(`/portal/${token}`, baseUrl).href;
+  const mail = candidate.linkEmail(org.name, contact.name.split(' ')[0], link);
   await sendEmail({
     orgId: org.id,
     contactId: contact.id,
     toEmail: normalized,
-    ...candidate.linkEmail(org.name, contact.name.split(' ')[0], link),
-  });
+    subject: mail.subject,
+    body: 'Mensagem de acompanhamento com link individual omitido do histórico.',
+  }, mail.body);
 }
 
 export async function getPortalData(token: string) {

@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string | string[]; error?: string | string[] }>;
+  searchParams: Promise<{ callbackUrl?: string | string[]; error?: string | string[]; senha?: string | string[] }>;
 }) {
   const params = await searchParams;
   const google = googleAuthEnabled();
@@ -37,6 +37,11 @@ export default async function LoginPage({
           {error}
         </p>
       ) : null}
+      {first(params.senha) === 'atualizada' ? (
+        <p role="status" className="mb-4 rounded-field bg-positive/10 px-3 py-2 text-sm text-ink">
+          Senha atualizada. Entre com sua nova senha.
+        </p>
+      ) : null}
       {google ? <GoogleSignIn callbackUrl={callbackUrl} /> : null}
       <AuthForm
         action={login}
@@ -47,6 +52,7 @@ export default async function LoginPage({
           { name: 'password', label: 'Senha', type: 'password', autoComplete: 'current-password' },
         ]}
       />
+      <Link href="/login/recuperar-senha" className="mt-3 inline-block text-sm font-medium underline">Esqueci minha senha</Link>
       {demoEnabled() ? (
         <div className="mt-6">
           <form action={demoLogin}>

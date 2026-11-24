@@ -1,8 +1,8 @@
 import type { NextAuthConfig } from 'next-auth';
 
 /**
- * Edge-safe NextAuth config — no Prisma imports here, so the middleware
- * can run on the edge runtime. Providers are added in lib/auth.ts.
+ * Shared NextAuth settings and claims, without database dependencies.
+ * Providers and session revocation checks are added in lib/auth.ts.
  */
 export const authConfig = {
   // Errors (a cancelled or failed Google sign-in) land back on the sign-in
@@ -44,6 +44,7 @@ export const authConfig = {
       if (user) {
         token.userId = user.id;
         token.orgId = user.orgId;
+        token.sessionVersion = user.sessionVersion;
         token.accessRole = user.accessRole;
         token.orgName = user.orgName;
         token.orgLogoFileId = user.orgLogoFileId;

@@ -24,3 +24,21 @@ export async function requestBaseUrl(): Promise<string> {
   }
   return appBaseUrl();
 }
+
+/** Origins for links carrying a bearer token must come from deployment configuration. */
+export function emailPublicOrigin(): string | null {
+  const configured = process.env.AUTH_URL
+    || (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null);
+  if (!configured && process.env.NODE_ENV === 'production') return null;
+  try {
+    const url = new URL(configured ?? 'http://localhost:3000');
+    if (url.username || url.password) return null;
+    if (url.protocol === 'https:') return url.origin;
+    if (process.env.NODE_ENV !== 'production' && url.protocol === 'http:'
+      && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return url.origin;
+  } catch {
+    // Configuration may be absent on an instance that does not deliver email.
+  }
+  return null;
+}

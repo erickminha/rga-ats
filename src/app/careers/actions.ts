@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { isSampleSlug } from '@/server/sample-boards';
-import { careersOrigin } from '@/server/public-careers';
+import { emailPublicOrigin } from '@/lib/base-url';
 import { candidate } from '@/lib/i18n/pt-BR/candidate';
 import { after } from 'next/server';
 import { submitApplication } from '@/server/applications';
@@ -93,7 +93,17 @@ export async function requestPortalLinkAction(
   const email = String(formData.get('email') ?? '').trim();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: candidate.invalidEmail };
 
-  if (!isSampleSlug(orgSlug)) await requestPortalLink(orgSlug, email, await careersOrigin());
+  const origin = emailPublicOrigin();
+  if (!origin) return { error: 'O acompanhamento por e-mail está indisponível no momento. Tente mais tarde.' };
+  if (!isSampleSlug(orgSlug)) {
+    after(async () => {
+      try {
+        await requestPortalLink(orgSlug, email, origin);
+      } catch {
+        console.warn('[candidate-status] Falha ao processar o pedido de acompanhamento.');
+      }
+    });
+  }
 
   redirect(`/careers/${orgSlug}/status?sent=1`);
 }

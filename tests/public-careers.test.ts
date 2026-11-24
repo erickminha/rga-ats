@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@/lib/db';
 import { hasDb } from './setup';
 import { createOrg } from './fixtures';
+import { fakeSmtp } from './fake-smtp';
 import { generateMetadata as boardMetadata } from '@/app/careers/[org]/page';
 import { generateMetadata as postingMetadata } from '@/app/careers/[org]/[posting]/page';
 import { GET as list } from '@/app/api/careers/[org]/postings/route';
@@ -105,11 +106,20 @@ describe.skipIf(!hasDb)('public careers portal', () => {
     await requestPortalLink(org.slug, 'ausente@example.invalid', request.url.slice(0, -1));
     expect(await db.emailMessage.count({ where: { orgId: { in: [org.id, other.id] } } })).toBe(0);
 
-    await requestPortalLink(org.slug, email, 'https://careers.example.test');
-    const message = await db.emailMessage.findFirstOrThrow({ where: { orgId: org.id, toEmail: email } });
-    expect(message.subject).toContain('Acompanhe sua candidatura');
-    const token = message.body.match(/\/portal\/([\w.-]+)/)?.[1];
-    expect(token).toBeTruthy();
+    const smtp = await fakeSmtp();
+    let token: string | undefined;
+    try {
+      vi.stubEnv('SMTP_URL', smtp.url);
+      await requestPortalLink(org.slug, email, 'https://careers.example.test');
+      const message = await db.emailMessage.findFirstOrThrow({ where: { orgId: org.id, toEmail: email } });
+      expect(message.subject).toContain('Acompanhe sua candidatura');
+      expect(message.body).not.toContain('/portal/');
+      expect(smtp.messages).toHaveLength(1);
+      token = smtp.messages[0].match(/https:\/\/careers\.example\.test\/portal\/([\w.-]+)/)?.[1];
+      expect(token).toBeTruthy();
+    } finally {
+      await smtp.close();
+    }
     const portal = await getPortalData(token!);
     expect(portal?.applications.map((app) => app.postingTitle)).toEqual([title]);
     expect(await getPortalData(createPortalToken(contactId, other.id))).toBeNull();

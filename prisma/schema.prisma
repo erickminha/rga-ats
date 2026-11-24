@@ -177,6 +177,7 @@ model User {
   email         String
   name          String
   passwordHash  String? // null for users who only sign in with Google
+  sessionVersion Int       @default(0)
   googleSub     String? // the Google account ("sub") bound on their first Google sign-in
   bookingUrl    String? // their own booking page (Calendly, Cal.com, Google) for candidates
   accessRole    AccessRole @default(TEAM_MEMBER)
@@ -184,6 +185,7 @@ model User {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
+  passwordReset      PasswordResetToken?
   ownedOpportunities Opportunity[] @relation("OpportunityOwner")
   ownedPostings      Posting[]      @relation("PostingOwner")
   notes              Note[]
@@ -203,6 +205,23 @@ model User {
   @@unique([orgId, googleSub])
   @@index([orgId])
   @@index([googleSub])
+}
+
+model PasswordResetToken {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model PasswordResetLimit {
+  key       String   @id
+  count     Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }
 
 // ---------- Contacts & opportunities (the Lever model) ----------

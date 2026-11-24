@@ -1,8 +1,8 @@
-import NextAuth from 'next-auth';
-import { authConfig } from '@/lib/auth.config';
+import { auth } from '@/lib/auth';
 
-// Edge middleware — uses the Prisma-free config (JWT check only).
-export default NextAuth(authConfig).auth;
+// Next.js Proxy runs in Node, so it can enforce the same persisted
+// session version as the auth endpoint and the application pages.
+export default auth;
 
 export const config = {
   // Everything requires auth except NextAuth routes, static assets,
