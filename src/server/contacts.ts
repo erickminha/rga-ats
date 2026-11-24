@@ -1,3 +1,4 @@
+import { phoneDigits, readCareerProfile } from '@/lib/talent-profile';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
@@ -107,20 +108,24 @@ export async function updateContactDetails(ctx: SessionContext, contactId: strin
   invalidateContactCounts(ctx.orgId);
 }
 
-/** Other contacts sharing an email, phone, or link with `contact` (already loaded and org-checked). */
+/** Suggestions only. A name match alone always requires a human decision. */
 export async function findDuplicates(
   orgId: string,
-  contact: { id: string; emails: string[]; phones: string[]; links: string[] },
+  contact: { id: string; name?: string; emails: string[]; phones: string[]; links: string[] },
 ) {
-  const or = [];
-  if (contact.emails.length) or.push({ emails: { hasSome: contact.emails } });
-  if (contact.phones.length) or.push({ phones: { hasSome: contact.phones } });
-  if (contact.links.length) or.push({ links: { hasSome: contact.links } });
-  if (!or.length) return [];
-  return db.contact.findMany({
-    where: { orgId, id: { not: contact.id }, OR: or },
-    take: 5,
-  });
+  const emails = contact.emails.map((email) => email.trim().toLowerCase()).filter(Boolean);
+  const phones = contact.phones.map(phoneDigits).filter(Boolean);
+  const name = contact.name?.trim() ?? '';
+  const ids = await db.$queryRaw<{ id: string }[]>`
+    SELECT c.id FROM "Contact" c WHERE c."orgId" = ${orgId} AND c.id <> ${contact.id} AND NOT c."isAnonymized"
+      AND ((${name} <> '' AND lower(trim(c.name)) = lower(${name}))
+        OR EXISTS (SELECT 1 FROM unnest(c.emails) e WHERE lower(trim(e)) = ANY(${emails}::text[]))
+        OR EXISTS (SELECT 1 FROM unnest(c.phones) p
+          WHERE regexp_replace(regexp_replace(p, '[^0-9]', '', 'g'), '^55(?=[0-9]{10,11}$)', '') = ANY(${phones}::text[]))
+        OR c.links && ${contact.links}::text[])
+    ORDER BY c."updatedAt" DESC, c.id LIMIT 5
+  `;
+  return db.contact.findMany({ where: { orgId, isAnonymized: false, id: { in: ids.map(({ id }) => id) } } });
 }
 
 /**
@@ -143,6 +148,12 @@ export async function mergeContacts(ctx: SessionContext, primaryId: string, dupl
     ]);
     if (!primary || !duplicate || primary.isAnonymized || duplicate.isAnonymized) throw new Error('Contact not found');
 
+    for (const person of [primary, duplicate]) {
+      if (person.resumeFileId) await tx.opportunity.updateMany({
+        where: { orgId: ctx.orgId, contactId: person.id, applicationResumeId: null },
+        data: { applicationResumeId: person.resumeFileId },
+      });
+    }
     await tx.opportunity.updateMany({
       where: { contactId: duplicate.id },
       data: { contactId: primary.id },
@@ -188,6 +199,14 @@ export async function mergeContacts(ctx: SessionContext, primaryId: string, dupl
         phones: union(primary.phones, duplicate.phones),
         links: union(primary.links, duplicate.links),
         tags: union(primary.tags, duplicate.tags),
+        careerProfile: {
+          ...readCareerProfile(duplicate.careerProfile),
+          ...Object.fromEntries(Object.entries(readCareerProfile(primary.careerProfile)).filter(([, value]) => value)),
+        },
+        salaryExpectation: primary.salaryExpectation ?? duplicate.salaryExpectation,
+        pools: { connect: await tx.talentPool.findMany({
+          where: { orgId: ctx.orgId, members: { some: { id: duplicate.id } } }, select: { id: true },
+        }) },
         headline: primary.headline ?? duplicate.headline,
         location: primary.location ?? duplicate.location,
         resumeFileId: resume.resumeFileId,

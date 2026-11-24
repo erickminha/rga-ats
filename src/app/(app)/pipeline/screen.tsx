@@ -34,7 +34,7 @@ export function PipelineScreen({ data }: { data: Awaited<ReturnType<typeof loadP
             <Link href={`/pipeline?${query}${data.board ? '' : '&view=kanban'}`} className="text-sm underline">
               {data.board ? 'Lista' : 'Kanban'}
             </Link>
-            <Link href="/contacts/new" className={btnPrimary}>
+            <Link href="/contacts/new?mode=application" className={btnPrimary}>
               <Plus /> Adicionar candidato
             </Link>
           </div>

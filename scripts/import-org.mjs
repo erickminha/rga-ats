@@ -185,6 +185,8 @@ async function main() {
           resumeFileId: null, // binaries not in the JSON export
           resumeText: c.resumeText ?? null,
           isAnonymized: c.isAnonymized ?? false,
+          careerProfile: c.careerProfile ?? undefined,
+          salaryExpectation: c.salaryExpectation ?? null,
           retentionHold: c.retentionHold ?? false,
           createdAt: new Date(c.createdAt),
         })));

@@ -73,7 +73,10 @@ function describeError(err: unknown): string {
 }
 
 /** Some live contact's resume, and that contact has no text yet. */
-const pendingResume: Prisma.StoredFileWhereInput = { deletePendingAt: null, contacts: { some: { resumeText: null, isAnonymized: false } } };
+const pendingResume: Prisma.StoredFileWhereInput = { deletePendingAt: null, AND: [{ OR: [
+  { contacts: { some: { resumeText: null, isAnonymized: false } } },
+  { resumeVersion: true, resumeContent: null, contact: { isAnonymized: false } },
+] }] };
 
 /** Text extraction is done with this file and found nothing OCR can't try. */
 const scannedLooking = (textVersion: number): Prisma.StoredFileWhereInput => ({
@@ -164,8 +167,8 @@ export async function processResumeOcr(
     const status = await db.$transaction(async (tx): Promise<OcrStatus | 'LOST'> => {
       // Fenced on our stamp: a run that re-claimed the file after a timeout owns it now.
       const done = await tx.storedFile.updateMany({
-        where: { id, ocrCheckedAt: claimedAt },
-        data: { ocrStatus: outcome.status, ocrError: outcome.error ?? null, ocrConfidence: outcome.confidence },
+        where: { id, ocrCheckedAt: claimedAt, deletePendingAt: null },
+        data: { ocrStatus: outcome.status, ocrError: outcome.error ?? null, ocrConfidence: outcome.confidence, ...(outcome.text ? { resumeContent: outcome.text } : {}) },
       });
       if (!done.count) return 'LOST';
       if (!outcome.text) return outcome.status;
@@ -173,8 +176,10 @@ export async function processResumeOcr(
         where: { orgId: file.orgId, resumeFileId: id, resumeText: null, isAnonymized: false },
         data: { resumeText: outcome.text },
       });
-      if (!wrote.count) {
-        // Someone else's text got there first, or the file stopped being a resume: OK would claim that text as ours.
+      if (!wrote.count && !await tx.storedFile.findFirst({
+        where: { id, resumeVersion: true, contact: { isAnonymized: false } }, select: { id: true },
+      })) {
+        // Legacy text was replaced elsewhere and this file has no independent version.
         await tx.storedFile.update({ where: { id }, data: { ocrStatus: 'SKIPPED', ocrError: 'has_text' } });
         return 'SKIPPED';
       }

@@ -99,6 +99,20 @@ async function anonymizeContact(orgId: string, id: string, rule: Prisma.ContactW
     await tx.shareLink.updateMany({
       where: { orgId, scope: 'candidate', targetId: { in: ids }, revokedAt: null }, data: { revokedAt: new Date() },
     });
+    if (ids.length) {
+      await tx.$executeRaw`
+        UPDATE "ShareLink" AS link
+        SET selection = jsonb_set(link.selection, '{candidates}', (
+          SELECT coalesce(jsonb_agg(person), '[]'::jsonb)
+          FROM jsonb_array_elements(link.selection->'candidates') AS person
+          WHERE person->>'id' NOT IN (${Prisma.join(ids)})
+        ))
+        WHERE link."orgId" = ${orgId} AND link.scope = 'shortlist'
+          AND jsonb_typeof(link.selection->'candidates') = 'array'
+          AND EXISTS (SELECT 1 FROM jsonb_array_elements(link.selection->'candidates') AS person
+            WHERE person->>'id' IN (${Prisma.join(ids)}))
+      `;
+    }
     await tx.opportunity.updateMany({
       where: { orgId, id: { in: ids } }, data: { source: null, customFields: Prisma.DbNull, applicationResumeId: null },
     });
@@ -106,13 +120,13 @@ async function anonymizeContact(orgId: string, id: string, rule: Prisma.ContactW
       where: { id },
       data: {
         name: 'Candidato anonimizado', headline: null, location: null, emails: [], phones: [], links: [], tags: [],
-        resumeFileId: null, resumeText: null, isAnonymized: true, emailOptOutAt: null, emailBouncedAt: null,
+        resumeFileId: null, resumeText: null, careerProfile: Prisma.DbNull, salaryExpectation: null, isAnonymized: true, emailOptOutAt: null, emailBouncedAt: null,
         pools: { set: [] },
       },
     });
     await tx.storedFile.updateMany({
       where: { orgId, id: { in: fileIds } },
-      data: { filename: 'arquivo-em-exclusao', parsed: Prisma.DbNull, textError: null, parseError: null, ocrError: null, deletePendingAt: new Date() },
+      data: { filename: 'arquivo-em-exclusao', resumeContent: null, uploadedById: null, parsed: Prisma.DbNull, textError: null, parseError: null, ocrError: null, deletePendingAt: new Date() },
     });
     await emitEvent(tx, {
       orgId, ...(ctx ? actorOf(ctx) : { actorType: 'system' as const }),

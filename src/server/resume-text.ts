@@ -85,7 +85,10 @@ function retryable(version: number, at: Date) {
 /** Some live contact's resume, and that contact has no text yet. Never a logo or an attachment. */
 const pendingResume: Prisma.StoredFileWhereInput = {
   deletePendingAt: null,
-  contacts: { some: { resumeText: null, isAnonymized: false } },
+  AND: [{ OR: [
+    { contacts: { some: { resumeText: null, isAnonymized: false } } },
+    { resumeVersion: true, resumeContent: null, contact: { isAnonymized: false } },
+  ] }],
 };
 
 export async function processResumeText(
@@ -154,8 +157,8 @@ export async function processResumeText(
     await db.$transaction(async (tx) => {
       // Fenced on our stamp: a run that re-claimed the file after a timeout owns it now.
       const done = await tx.storedFile.updateMany({
-        where: { id, textCheckedAt: claimedAt },
-        data: { textStatus: outcome.status, textError: outcome.error ?? null },
+        where: { id, textCheckedAt: claimedAt, deletePendingAt: null },
+        data: { textStatus: outcome.status, textError: outcome.error ?? null, ...(outcome.text ? { resumeContent: outcome.text } : {}) },
       });
       if (!done.count) {
         run.lost++;

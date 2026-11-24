@@ -19,6 +19,7 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
   return (
     <div className="t-reveal">
       <PageHeader title="Buscar" subtitle="Contatos, currículos, anotações, transcrições e vagas" />
+      <div className="mx-6 mb-3"><Link className="text-sm underline" href="/contacts/busca">Busca avançada de profissionais e currículos</Link></div>
 
       <div className="mx-6 mt-2 max-w-3xl">
         {data.aiEnabled ? (

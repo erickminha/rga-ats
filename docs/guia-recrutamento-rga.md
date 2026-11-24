@@ -16,3 +16,39 @@ Use o endereço de homologação informado pela administração. Entre com a con
 Em **Configurações → Dados**, use **Aplicar motivos iniciais da RGA**. O comando adapta motivos herdados com nome exato e sem categoria, preserva os IDs e adiciona sugestões ausentes. Revise a categoria dos motivos antigos, pois os registros sem categoria explícita continuam seguindo o indicador anterior de reprovação. Em **Configurações → E-mail**, **Traduzir modelos padrão de e-mail** altera somente modelos que ainda correspondem exatamente ao original.
 
 As migrações `20261124160000_recruiting_outcomes` e `20261124170000_recruiting_assessments` são aditivas. O scanner e o armazenamento privado precisam estar operacionais antes de anexar currículos ou relatórios no ambiente hospedado. O guia anterior lista as dependências de privacidade e infraestrutura. [Consolidação de segurança](rga-consolidacao-seguranca.md)
+
+## Cadastro no banco de talentos e currículos
+
+Use **Banco de talentos → Adicionar candidato** para guardar o cadastro sem iniciar uma seleção. Você pode voltar à ficha, corrigir os dados e anexar currículos. Em **Currículos e documentos**, abra os arquivos da pessoa e indique o principal ou vincule uma versão a uma participação ativa. Trocar o principal preserva a versão usada nos processos anteriores. O histórico da ficha abre a participação específica para consultar entrevistas, DISC e parecer.
+
+Confirme a intenção com a pessoa antes de registrar sua preferência em **Preferências de armazenamento e contato**. Para avaliar duplicatas, abra os dois cadastros e confira os dados de contato e as participações antes de unificar. Uma semelhança de nome é apenas uma sugestão. Continue usando **Configurações → Importações → Planilhas da RGA** para importações com prévia e relatório.
+
+O OCR aceita o modelo português local. Em uma implantação autorizada, use `OCR_LANGS=por+eng` no build e no processo do ATS para currículos mistos. Os dois modelos são distribuídos com o aplicativo. O OCR precisa da rotina de processamento e de acesso ao armazenamento privado. Revise o documento e corrija o perfil manualmente quando o resultado estiver incompleto.
+
+## Busca, grupos e reaproveitamento
+
+No **Banco de talentos**, abra **Busca avançada, grupos e indicadores** para localizar perfis e texto dos currículos. Combine filtros profissionais e escolha **Não informado** quando quiser separar campos vazios de uma resposta negativa. Os indicadores contam pessoas. As distribuições destacam as áreas e localidades mais frequentes.
+
+Crie um grupo manual e insira pessoas pela ficha ou pela seleção em lote no banco. Para um segmento dinâmico, informe os filtros, busque e selecione **Novo grupo ou segmento** para gravar a busca. O segmento acompanha os dados cadastrados. Use etiquetas relacionadas ao trabalho e confirme as informações antes de aplicá-las.
+
+Na vaga, use **Buscar candidatos no banco de talentos**. Edite a sugestão do cargo e, quando houver requisitos registrados, use-os como palavras-chave. Abra a ficha para conferir o profissional, selecione a versão de currículo e marque as pessoas que deseja incluir. Escolha a etapa inicial e confirme. O sistema cria novas participações, preserva as anteriores e avisa sobre vínculos já existentes. A inclusão não envia e-mails.
+
+O reaproveitamento exige autorização vigente para armazenamento para futuras oportunidades. Registre essa preferência somente depois de confirmá-la com o titular. O descadastro de comunicados continua valendo e não é alterado pelo registro da preferência de armazenamento.
+
+## Avaliação por competências e DISC
+
+Em **Configurações → Contratação → Modelos de avaliação**, a administração pode ajustar, duplicar ou desativar os seis modelos iniciais. Na vaga, abra **Roteiro de avaliação da vaga** e copie um modelo ou as perguntas do scorecard da organização. Adapte o roteiro e a escala da vaga antes das entrevistas.
+
+Na participação, use **Entrevista por competências** para salvar respostas, evidências, notas e aderência aos requisitos da vaga. Use **Não avaliado** quando faltar evidência. A recomendação exige justificativa e pode ser salva em rascunho. Edite as etapas separadamente conforme a decisão da equipe. Use **Comparar finalistas**, na vaga, para comparar somente as pessoas selecionadas.
+
+Ao registrar DISC, informe a escala indicada no relatório e anexe o PDF original. Para usar uma avaliação anterior da mesma pessoa, confira validade, autorização e finalidade. Registre essa confirmação na participação atual. O sistema identifica a origem e mantém o documento na participação original.
+
+## Pareceres, apresentações e retorno do cliente
+
+A administração pode escolher as seções do parecer em **Configurações → Contratação → Modelos de avaliação**. Na participação, abra **Parecer** e use **Preencher campos vazios com dados da participação**. Confira o conteúdo e faça os ajustes no próprio documento. Salve como rascunho ou use **Finalizar e emitir versão**. Abra **Versões emitidas** para visualizar ou baixar o PDF. Cada nova emissão conserva as versões anteriores.
+
+Na vaga, marque os finalistas que serão apresentados. O resumo e o PDF específico para o cliente usam somente os campos profissionais da versão finalizada. Se o cliente puder receber um currículo ou relatório DISC, abra o arquivo para conferência e marque-o individualmente. Use **Revisar apresentação** e confirme a autorização depois de conferir as pessoas, o conteúdo e os documentos. A apresentação pode ser revogada pela equipe e expira conforme a configuração.
+
+Use **Retorno da empresa cliente** para anotar o retorno por finalista. A aprovação registrada pelo cliente permanece no histórico da vaga. Registre Contratação separadamente quando a contratação for efetivada. Os contadores da vaga mostram pendências e apresentações com links vigentes.
+
+A assistência opcional de redação usa a configuração de IA existente e requer seleção e autorização de um trecho sem dados pessoais. Revise a sugestão antes de copiá-la ao parecer. A integração opcional requer suporte à tarefa `opinion-draft` no fornecedor configurado.

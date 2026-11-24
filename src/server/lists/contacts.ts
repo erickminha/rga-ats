@@ -12,13 +12,14 @@ import { COUNT_CAP, PAGE_SIZE } from '@/server/lists/pipeline';
 
 export type ContactsInput = { q?: string; tag?: string; pool?: string };
 
-export type PoolRules = { q?: string; tag?: string };
+export type PoolRules = { q?: string; tag?: string; advanced?: boolean };
 export type PoolRef = { id: string; kind: 'STATIC' | 'DYNAMIC'; rules: Prisma.JsonValue } | null;
 
 const contains = (q: string) => ({ contains: q, mode: 'insensitive' as const });
 
 /** A saved segment's live filter. */
 export function rulesWhere(orgId: string, rules: PoolRules): Prisma.ContactWhereInput {
+  if (rules.advanced) return { orgId, id: { in: [] } };
   const where: Prisma.ContactWhereInput = { orgId };
   const and: Prisma.ContactWhereInput[] = [];
   if (rules.q) and.push({ OR: [{ name: contains(rules.q) }, { headline: contains(rules.q) }] });
@@ -37,7 +38,7 @@ export function normalizeContactsInput(input: ContactsInput): ContactsInput {
 }
 
 export function contactsWhere(orgId: string, input: ContactsInput, pool: PoolRef): Prisma.ContactWhereInput {
-  let where: Prisma.ContactWhereInput = { orgId };
+  let where: Prisma.ContactWhereInput = { orgId, isAnonymized: false };
   if (pool) {
     where =
       pool.kind === 'DYNAMIC'
@@ -47,7 +48,7 @@ export function contactsWhere(orgId: string, input: ContactsInput, pool: PoolRef
   const refine: Prisma.ContactWhereInput[] = [];
   if (input.q) refine.push({ OR: [{ name: contains(input.q) }, { headline: contains(input.q) }] });
   if (input.tag) refine.push({ tags: { has: input.tag } });
-  return refine.length ? { AND: [where, ...refine] } : where;
+  return { isAnonymized: false, AND: [where, ...refine] };
 }
 
 export async function resolvePool(orgId: string, poolId: string | undefined): Promise<PoolRef> {
