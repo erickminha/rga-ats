@@ -13,6 +13,8 @@ export type PipelineRow = {
   contactId: string;
   name: string;
   headline: string | null;
+  postingTitle?: string | null;
+  clientName?: string | null;
   location: string | null;
   email: string | null;
   phone: string | null;

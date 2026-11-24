@@ -23,20 +23,20 @@ export function TalentGroupEditor({ id, name, dynamic, filters }: { id?: string;
   </details>;
 }
 
-export function TalentReuseForm({ postingId, stages, children }: {
-  postingId: string; stages: { id: string; name: string }[]; children: React.ReactNode;
+export function TalentReuseForm({ postingId, stages, initialStage, children }: {
+  postingId: string; stages: { id: string; name: string }[]; initialStage?: string; children: React.ReactNode;
 }) {
   const [state, action, pending] = useActionState(reuseTalentsAction.bind(null, postingId), {});
   return <form action={action} className="grid gap-4">
-    {children}
-    <div className="grid gap-2 rounded-card border border-line bg-surface p-4">
-      <label className="grid max-w-sm gap-1">Etapa inicial <select className={inputClass} name="stage" required defaultValue="">
+    <div className="sticky top-0 z-20 grid gap-2 rounded-card border border-line bg-surface p-3 shadow-lift sm:p-4">
+      <label className="grid max-w-sm gap-1">Etapa inicial <select className={inputClass} name="stage" required defaultValue={initialStage ?? stages[0]?.id ?? ""}>
         <option value="">Selecione a etapa</option>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.name}</option>)}
       </select></label>
       <label><input type="checkbox" name="confirm" required /> Confirmo a inclusão na vaga. Esta ação não envia mensagens.</label>
-      <button className={btnPrimary} disabled={pending}>{pending ? 'Incluindo…' : 'Adicionar selecionados à vaga'}</button>
+      <button className={btnPrimary} disabled={pending || !stages.length}>{pending ? 'Incluindo…' : 'Adicionar selecionados à vaga'}</button>
       {state.error && <p role="alert">{state.error}</p>}
       {state.message && <p role="status">{state.message}</p>}
     </div>
+    {children}
   </form>;
 }

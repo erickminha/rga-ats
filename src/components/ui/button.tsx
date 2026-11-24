@@ -16,7 +16,7 @@ const base =
 
 const variants: Record<ButtonVariant, string> = {
   primary: 'bg-brand text-on-brand hover:bg-brand/85',
-  secondary: 'bg-surface text-ink hover:bg-muted',
+  secondary: 'rga-secondary bg-surface text-ink hover:bg-muted',
   tonal: 'bg-muted text-ink hover:bg-recessed',
   ghost: 'text-ink-2 hover:bg-ink/[0.05] hover:text-ink',
   critical: 'bg-critical text-white hover:bg-critical/90',
@@ -49,7 +49,7 @@ export function buttonClass({
   icon?: boolean;
   className?: string;
 } = {}) {
-  return cn(base, variants[variant], icon ? iconSizes[size] : sizes[size], className);
+  return cn(base, 'rga-action', icon && 'rga-icon-action', variants[variant], icon ? iconSizes[size] : sizes[size], className);
 }
 
 export const Button = forwardRef<

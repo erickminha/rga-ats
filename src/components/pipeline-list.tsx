@@ -471,7 +471,7 @@ export function PipelineList({
         <Segmented
           className="mb-4 w-full"
           size="sm"
-          value={nav.input.status === 'archived' ? "encerrados" : 'active'}
+          value={nav.input.status === 'archived' ? 'archived' : 'active'}
           items={[
             {
               value: 'active',
@@ -780,9 +780,8 @@ export function PipelineList({
           >
             <colgroup>
               <col className="w-12" />
-              <col className="w-[22%]" />
+              <col className="w-[42%]" />
               <col className="w-24" />
-              <col className="w-[20%]" />
               <col className="w-[16%]" />
               <col className="w-[14%]" />
               <col className="w-36" />
@@ -800,10 +799,9 @@ export function PipelineList({
                   />
                 </th>
                 {[
-                  "Nome completo",
-                  'Perfis',
-                  "Título profissional",
-                  'Empresa',
+                  "Candidato / cargo de interesse",
+                  'Contatos',
+                  'Vaga / Empresa',
                   'Localidade',
                   "Etapa",
                   "Tempo na etapa",
@@ -823,7 +821,7 @@ export function PipelineList({
               {slots.map((slot) =>
                 slot.kind === 'gap' ? (
                   <tr key={slot.key} aria-hidden="true" style={{ height: slot.height }}>
-                    <td colSpan={8} className="p-0" />
+                    <td colSpan={7} className="p-0" />
                   </tr>
                 ) : (
                   <PipelineRow
@@ -841,7 +839,7 @@ export function PipelineList({
               )}
               {view.rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-ink-2">
+                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-ink-2">
                     Nenhum candidato corresponde aos filtros.
                   </td>
                 </tr>
@@ -1001,7 +999,7 @@ function PipelineRowView({
   onMove,
   onSaved,
 }: RowProps) {
-  const { role, org } = splitHeadline(r.headline);
+  const { role } = splitHeadline(r.headline);
   return (
     <tr
       data-row-id={r.id}
@@ -1014,7 +1012,10 @@ function PipelineRowView({
       <td className={cell}>
         <CandidateLink id={r.id} lazy className="flex min-w-0 items-center gap-2.5">
           <Avatar name={r.name} seed={r.contactId} size={28} />
-          <span className="truncate font-medium hover:underline">{r.name}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium hover:underline" title={r.name}>{r.name}</span>
+            <span className="block truncate text-xs text-ink-2" title={role ?? undefined}>{role || "Cargo de interesse não informado"}</span>
+          </span>
         </CandidateLink>
       </td>
       <td className={cell}>
@@ -1025,14 +1026,13 @@ function PipelineRowView({
             </a>
           ) : null}
           {r.phone ? (
-            <span title={r.phone}>
-              <Phone size={14} />
-            </span>
+            <a href={`tel:${r.phone.replace(/[^+\d]/g, '')}`} aria-label={`Ligar para ${r.name}`} title={r.phone} className="hover:text-brand"><Phone size={14} /></a>
           ) : null}
           {r.link ? (
             <a
               href={r.link.startsWith('http') ? r.link : `https://${r.link}`}
               target="_blank"
+              rel="noopener noreferrer"
               title={r.link}
               className="hover:text-ink"
             >
@@ -1042,8 +1042,7 @@ function PipelineRowView({
           {!r.email && !r.phone && !r.link ? '—' : null}
         </span>
       </td>
-      <td className={`${cell} text-ink-2`}>{role ?? '—'}</td>
-      <td className={`${cell} text-ink-2`}>{org ?? '—'}</td>
+      <td className={`${cell} text-ink-2`}><span className="block truncate text-sm font-medium" title={r.postingTitle ?? undefined}>{r.postingTitle || 'Sem vaga vinculada'}</span><span className="block truncate text-xs" title={r.clientName ?? undefined}>{r.clientName || '—'}</span></td>
       <td className={`${cell} text-ink-2`}>{r.location ?? '—'}</td>
       <td className={cell}>
         {archived ? (

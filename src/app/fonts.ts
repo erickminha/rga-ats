@@ -20,3 +20,6 @@ export const fragmentMono = localFont({
   variable: '--font-fragment-mono',
   display: 'swap',
 });
+
+export const lato = localFont({ src: [{ path: '../../public/fonts/rga/lato/Lato-Regular.ttf', weight: '400', style: 'normal' }, { path: '../../public/fonts/rga/lato/Lato-Bold.ttf', weight: '700', style: 'normal' }], variable: '--font-rga-lato', display: 'swap', preload: false });
+export const poppins = localFont({ src: [{ path: '../../public/fonts/rga/poppins/Poppins-Medium.ttf', weight: '500', style: 'normal' }, { path: '../../public/fonts/rga/poppins/Poppins-SemiBold.ttf', weight: '600', style: 'normal' }], variable: '--font-rga-poppins', display: 'swap', preload: false });

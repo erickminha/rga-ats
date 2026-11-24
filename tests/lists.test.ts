@@ -191,6 +191,15 @@ describe.skipIf(!hasDb)('pipeline keyset pages', () => {
     );
   });
 
+  it('returns the actual vacancy and client separately from the professional headline', async () => {
+    const f = await filterFor(orgId, { posting: postingA });
+    for (const [sort, nameSmall] of [['time', undefined], ['name', 0], ['name', 10000]] as const) {
+      const result = await pipelinePage(f, sort, { limit: 7, nameSmall });
+      expect(result.rows.length).toBeGreaterThan(0);
+      expect(result.rows.every((row) => row.postingTitle === 'Staff Designer' && row.clientName === 'Northbeam')).toBe(true);
+    }
+  });
+
   it('walks every filter, both sorts, to exactly the unpaged ids', async () => {
     for (const input of inputs) {
       const f = await filterFor(orgId, input);

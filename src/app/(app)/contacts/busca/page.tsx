@@ -46,6 +46,9 @@ export default async function TalentSearchPage({ searchParams }: { searchParams:
     }),
   ]);
   const postingId = posting?.id;
+  const fromPipeline = raw.from === 'pipeline';
+  const initialStage = stages.some((stage) => stage.id === raw.stage) ? raw.stage : undefined;
+  const pipelineHref = `/pipeline?${new URLSearchParams({ ...(postingId ? { posting: postingId } : {}), ...(initialStage ? { stage: initialStage } : {}) }).toString()}`;
   const ids = result.rows.map((row) => row.id);
   const legacy = result.rows.flatMap((row) => row.resumeFileId ? [row.resumeFileId] : []);
   const [files, prior] = postingId ? await Promise.all([
@@ -60,14 +63,15 @@ export default async function TalentSearchPage({ searchParams }: { searchParams:
   const linked = new Set(prior.map((row) => row.contactId));
   const suggestions = posting ? publicPostingText(posting.content).requirements.slice(0, 6).map((term) => term.slice(0, 130)) : [];
   const next = new URLSearchParams({ ...filters, q: filters.q ?? '', ...(raw.pool ? { pool: raw.pool } : {}),
-    ...(postingId ? { posting: postingId } : {}), ...(result.next ? { after: result.next } : {}) });
+    ...(postingId ? { posting: postingId } : {}), ...(result.next ? { after: result.next } : {}),
+    ...(fromPipeline ? { from: 'pipeline' } : {}), ...(initialStage ? { stage: initialStage } : {}) });
 
   const results = <div className="grid gap-3">
     {result.rows.length === 0 && !('error' in result) && <p>Nenhum profissional corresponde aos filtros.</p>}
     {result.rows.map((row) => {
       const selected = postingId && row.eligible && !linked.has(row.id);
       const profile = readCareerProfile(row.careerProfile);
-      return <article className="grid gap-2 rounded-card bg-surface p-4" key={row.id}>
+      return <article className="rga-card grid gap-2 p-4" key={row.id}>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h2 className="font-semibold"><Link className="underline" href={`/contacts/${row.id}`}>{row.name}</Link></h2>
           {selected && <label className="text-sm"><input type="checkbox" name="person" value={row.id} /> Selecionar para a vaga</label>}
@@ -95,6 +99,8 @@ export default async function TalentSearchPage({ searchParams }: { searchParams:
     <nav className="flex flex-wrap gap-3 text-sm">
       <Link className="underline" href="/contacts">Banco de talentos</Link>
       {posting && <Link className="underline" href={`/postings/${posting.id}`}>Voltar para a vaga</Link>}
+      {fromPipeline && <Link className="underline" href={pipelineHref}>Voltar ao funil</Link>}
+      {posting && <Link className="underline" href={`/contacts/new?${new URLSearchParams({ mode: 'application', posting: posting.id, ...(initialStage ? { stage: initialStage } : {}) })}`}>Cadastrar novo candidato</Link>}
     </nav>
     {indicators && <section className="grid gap-4 rounded-card bg-surface p-4">
       <h2 className="font-semibold">Indicadores do banco de talentos</h2>
@@ -111,6 +117,8 @@ export default async function TalentSearchPage({ searchParams }: { searchParams:
     </section>}
     <form action="/contacts/busca" className="grid gap-3 rounded-card bg-surface p-4">
       {posting && <input type="hidden" name="posting" value={posting.id} />}
+      {fromPipeline && <input type="hidden" name="from" value="pipeline" />}
+      {initialStage && <input type="hidden" name="stage" value={initialStage} />}
       <label className="grid gap-1">Buscar por nome, telefone, cargo ou currículo
         <input className={inputClass} placeholder="Ex.: técnico em eletrônica, Excel ou CNH B" maxLength={200} defaultValue={filters.q} name="q" list="talent-suggestions" />
       </label>
@@ -139,9 +147,9 @@ export default async function TalentSearchPage({ searchParams }: { searchParams:
       <button className={btnTonal}>Buscar profissionais</button>
     </form>
     {'error' in result && <p role="alert">{result.error}</p>}
-    {postingId ? <TalentReuseForm postingId={postingId} stages={stages}>{results}</TalentReuseForm> : results}
+    {postingId ? <TalentReuseForm key={`${postingId}:${initialStage ?? ''}:${JSON.stringify(filters)}:${raw.pool ?? ''}:${raw.after ?? ''}`} postingId={postingId} stages={stages} initialStage={initialStage}>{results}</TalentReuseForm> : results}
     {result.next && <Link className="justify-self-start underline" href={`/contacts/busca?${next.toString()}`}>Próxima página</Link>}
-    <TalentGroupEditor filters={filters} />
-    {result.pool && <TalentGroupEditor id={result.pool.id} name={result.pool.name} dynamic={result.pool.kind === 'DYNAMIC'} filters={filters} />}
+    {!postingId && <TalentGroupEditor filters={filters} />}
+    {!postingId && result.pool && <TalentGroupEditor id={result.pool.id} name={result.pool.name} dynamic={result.pool.kind === 'DYNAMIC'} filters={filters} />}
   </div>;
 }

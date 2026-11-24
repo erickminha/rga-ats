@@ -500,7 +500,7 @@ describe.skipIf(!hasDb)('Continue with Google', () => {
     expect(await readPendingGoogle()).toMatchObject({ sub, email, name: 'Grace Hopper', returnTo: '/dashboard' });
 
     expect(await finishGoogleSignup(undefined, form({ orgName: '  ', name: 'Grace' }))).toEqual({
-      error: 'All fields are required.',
+      error: 'Preencha todos os campos.',
     });
     const landed = await redirectOf(finishGoogleSignup(undefined, form({ orgName: 'Hopper & Co', name: 'Grace Hopper' })));
     expect(landed).toBe(`${ORIGIN}/onboarding`);
@@ -568,7 +568,7 @@ describe.skipIf(!hasDb)('Continue with Google', () => {
 
     // And the password sign-up still refuses the address.
     expect(await signup(undefined, form({ orgName: 'Third', name: 'Ada', email, password: 'long-enough' }))).toEqual({
-      error: 'An account with this email already exists.',
+      error: 'Já existe uma conta com este e-mail.',
     });
   });
 

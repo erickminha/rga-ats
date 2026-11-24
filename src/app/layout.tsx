@@ -1,6 +1,6 @@
 import { appLocale, appName } from '@/lib/i18n';
 import type { Metadata, Viewport } from 'next';
-import { fragmentMono, geist } from './fonts';
+import { fragmentMono, geist, lato, poppins } from './fonts';
 import { FieldValidation } from '@/components/field-validation';
 import './globals.css';
 
@@ -11,13 +11,13 @@ export const metadata: Metadata = {
 };
 
 // Mobile browser chrome matches the canvas token (docs/09 §2).
-export const viewport: Viewport = { themeColor: '#f5f4f2' };
+export const viewport: Viewport = { themeColor: '#f5f5f5' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang={appLocale}
-      className={`${geist.variable} ${fragmentMono.variable}`}
+      className={`${geist.variable} ${fragmentMono.variable} ${lato.variable} ${poppins.variable}`}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >

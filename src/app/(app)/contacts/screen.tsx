@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, SlidersHorizontal } from 'lucide-react';
 import type { loadContactsPage } from '@/app/(app)/page-loaders';
 import { createTalentPoolAction } from '@/app/(app)/actions';
 import { PageHeader } from '@/components/page-header';
@@ -16,10 +16,10 @@ export function ContactsScreen({ data }: { data: Awaited<ReturnType<typeof loadC
   return (
     <ContactsNavProvider listInput={{ pool: data.poolId, tag: data.tag, q: data.q }}>
       <div className="t-reveal flex h-screen flex-col">
-        <div className="flex items-start justify-between pr-6">
+        <div className="flex flex-wrap items-start justify-between gap-2 pr-6">
           <PageHeader title="Banco de talentos" subtitle="Contatos cadastrados no banco de talentos" />
           <Link href="/contacts/new" className={`${btnPrimary} mt-6`}>
-            <Plus /> Adicionar candidato
+            <Plus /> Novo profissional
           </Link>
         </div>
 
@@ -43,7 +43,7 @@ export function ContactsScreen({ data }: { data: Awaited<ReturnType<typeof loadC
           </aside>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col pt-2">
-            <Link href="/contacts/busca" className="mb-2 self-start text-sm underline">Busca avançada, grupos e indicadores</Link>
+            <Link href="/contacts/busca" className={buttonClass({ variant: 'secondary', size: 'sm', className: 'mb-3 self-start' })}><SlidersHorizontal /> Filtros avançados e busca por perfil</Link>
             <ContactsSearch />
             <ContactsTable
               page={data.page}
