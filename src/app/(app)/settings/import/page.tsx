@@ -1,3 +1,4 @@
+import { RgaSync } from '@/components/imports/rga-sync';
 import { RGA_IMPORT_PROVIDER } from '@/lib/rga-import';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -49,6 +50,7 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
       />
 
       <div className="mx-6 mt-4 flex max-w-3xl flex-col gap-8 pb-8">
+        {ctx.orgId === process.env.RGA_TALENT_SYNC_ORG_ID && <RgaSync />}
         {open && open.status in OPEN_COPY ? (
           <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-start gap-3">

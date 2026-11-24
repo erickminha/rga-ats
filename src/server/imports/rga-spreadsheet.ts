@@ -595,7 +595,8 @@ export async function previewRgaImport(ctx: SessionContext, file: RgaSpreadsheet
   return { report: plan.report, ticket: `${expiresAt}.${seal(ctx, file, parsed, plan, expiresAt)}` };
 }
 
-export async function confirmRgaImport(ctx: SessionContext, file: RgaSpreadsheet, ticket: string) {
+export async function confirmRgaImport(ctx: SessionContext, file: RgaSpreadsheet, ticket: string,
+  checkpoint?: (tx: Prisma.TransactionClient, jobId: string, errors: Set<number>) => Promise<void>) {
   requireAdmin(ctx);
   const match = /^(\d{13})\.([a-f0-9]{64})$/.exec(ticket);
   if (!match || Number(match[1]) <= Date.now()) throw new RgaImportError('A prévia expirou. Gere uma nova prévia antes de confirmar.');
@@ -607,7 +608,9 @@ export async function confirmRgaImport(ctx: SessionContext, file: RgaSpreadsheet
     if (!timingSafeEqual(Buffer.from(expected), Buffer.from(match[2]))) {
       throw new RgaImportError('O arquivo, o mapeamento ou os registros mudaram. Gere uma nova prévia.');
     }
-    return { id: await writeImport(tx, ctx, file, plan), report: plan.report };
+    const id = await writeImport(tx, ctx, file, plan);
+    await checkpoint?.(tx, id, new Set(plan.report.issues.map(issue => issue.row)));
+    return { id, report: plan.report };
   }, { isolationLevel: 'Serializable', timeout: 120_000 });
   invalidateLists(ctx.orgId);
   return result;
