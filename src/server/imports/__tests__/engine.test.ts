@@ -520,11 +520,13 @@ describe.skipIf(!hasDb)('import into a brand-new workspace', () => {
     expect(view.review!.canReplaceStarters).toBe(true);
 
     await jobs.confirmImportMapping(fresh, jobId, { ...mapping, replaceStarters: true });
-    // New applicant, Phone screen and Offer are vendor targets; Tech Interview is new;
-    // the leads and On-site go; Hired stays, since a move into it records a hire.
-    expect(await stageNames()).toEqual(['New applicant', 'Phone screen', 'Tech Interview', 'Offer', 'Hired']);
+    // The English source stages are new in a pt-BR workspace. Phone screen's
+    // mean source position is 2.5 across both jobs, after Tech Interview (2).
+    expect(await stageNames()).toEqual(['New Applicant', 'Tech Interview', 'Phone screen', 'Offer', 'Contratado']);
     const deleted = await db.event.findMany({ where: { orgId: fresh.orgId, verb: 'stage.deleted' } });
-    expect(deleted.map((e) => (e.payload as { name: string }).name).sort()).toEqual(['New lead', 'On-site', 'Reached out', 'Responded']);
+    expect(deleted.map((e) => (e.payload as { name: string }).name).sort()).toEqual([
+      'Contato realizado', 'Entrevista presencial', 'Nova candidatura', 'Novo talento', 'Proposta', 'Respondeu', 'Triagem por telefone',
+    ]);
 
     expect((await drive(jobId)).status).toBe('SUCCEEDED');
     // (earlier tests grew the fake vendor, so no exact count)
