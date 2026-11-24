@@ -40,6 +40,7 @@ export function RecruitingBoard({ stages, query }: { stages: BoardStage[]; query
             draggable={stage.type !== 'HIRED'} onDragStart={(event) => event.dataTransfer.setData('text/plain', row.id)}>
             <CandidateLink id={row.id} lazy className="block break-words text-sm font-bold hover:text-brand hover:underline">{row.name}</CandidateLink>
             <p className="mb-2 break-words text-xs text-ink-2">{row.headline || "Cargo de interesse não informado"}</p>
+            {(row.postingTitle || row.clientName) && <p className="mb-2 break-words text-xs font-medium text-ink">{[row.postingTitle, row.clientName].filter(Boolean).join(' · ')}</p>}
             {row.location && <p className="mb-2 flex items-start gap-1 text-xs text-ink-2"><MapPin size={13} className="shrink-0" />{row.location}</p>}
             {(row.phone || row.email) && <div className="mb-3 flex flex-wrap gap-2 text-xs text-ink-2">
               {row.phone && <a className="inline-flex items-center gap-1 rounded-field border border-line px-2 py-1 hover:text-brand" href={`tel:${row.phone.replace(/[^+\\d]/g, '')}`}><Phone size={13} />{row.phone}</a>}

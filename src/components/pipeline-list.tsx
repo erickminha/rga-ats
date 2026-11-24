@@ -801,7 +801,7 @@ export function PipelineList({
                 {[
                   "Candidato / cargo de interesse",
                   'Contatos',
-                  'Empresa',
+                  'Vaga / Empresa',
                   'Localidade',
                   "Etapa",
                   "Tempo na etapa",
@@ -999,7 +999,7 @@ function PipelineRowView({
   onMove,
   onSaved,
 }: RowProps) {
-  const { role, org } = splitHeadline(r.headline);
+  const { role } = splitHeadline(r.headline);
   return (
     <tr
       data-row-id={r.id}
@@ -1042,7 +1042,7 @@ function PipelineRowView({
           {!r.email && !r.phone && !r.link ? '—' : null}
         </span>
       </td>
-      <td className={`${cell} text-ink-2`}>{org ?? '—'}</td>
+      <td className={`${cell} text-ink-2`}><span className="block truncate text-sm font-medium" title={r.postingTitle ?? undefined}>{r.postingTitle || 'Sem vaga vinculada'}</span><span className="block truncate text-xs" title={r.clientName ?? undefined}>{r.clientName || '—'}</span></td>
       <td className={`${cell} text-ink-2`}>{r.location ?? '—'}</td>
       <td className={cell}>
         {archived ? (

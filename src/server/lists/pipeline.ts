@@ -137,6 +137,8 @@ type RawRow = {
   stageChangedAt: Date;
   name: string;
   headline: string | null;
+  postingTitle: string | null;
+  clientName: string | null;
   location: string | null;
   email: string | null;
   phone: string | null;
@@ -152,6 +154,8 @@ type RawRow = {
 const ROW_COLUMNS = Prisma.sql`
   o.id, o."contactId", o."stageId", o."stageChangedAt",
   c.name, c.headline, c.location,
+  COALESCE((SELECT p.title FROM "Posting" p WHERE p.id = o."postingId" AND p."orgId" = o."orgId"), o."customFields"->'origemPlanilha'->>'cargo') AS "postingTitle",
+  COALESCE((SELECT co.name FROM "Posting" p JOIN "ClientCompany" co ON co.id = p."clientCompanyId" AND co."orgId" = p."orgId" WHERE p.id = o."postingId" AND p."orgId" = o."orgId"), o."customFields"->'origemPlanilha'->>'empresaInformada') AS "clientName",
   c.emails[1] AS email, c.phones[1] AS phone, c.links[1] AS link`;
 
 function daysSince(ms: number): string {
@@ -166,6 +170,8 @@ function toRow(r: RawRow, now: number): PipelineRow {
     contactId: r.contactId,
     name: r.name,
     headline: r.headline,
+    postingTitle: r.postingTitle,
+    clientName: r.clientName,
     location: r.location,
     email: r.email,
     phone: r.phone,

@@ -29,6 +29,7 @@ export function PipelineToolbar({ board, archived, clients, postingGroups, board
   const newCandidateHref = '/contacts/new?' + new URLSearchParams({ mode: 'application', ...(selected ? { posting: selected.id } : {}), ...(input.stage ? { stage: input.stage } : {}) }).toString();
   return <div className="mt-3 flex flex-wrap items-end gap-2 sm:mt-6">
     {board ? <BoardFilters key={nav.committedKey} clients={clients} postings={boardPostings} client={input.client ?? ''} posting={input.posting ?? ''} q={input.q ?? ''} sort={input.sort ?? ''} /> : <PipelineFilters postingGroups={postingGroups} clients={clients} />}
+    <Link href={nav.hrefFor({ status: archived ? '' : 'archived', stage: '', reason: '' })} onClick={(e) => nav.go({ status: archived ? '' : 'archived', stage: '', reason: '' }, e)} className={buttonClass({ variant: 'secondary', className: 'md:hidden' })}>{archived ? 'Ativos' : 'Encerrados'}</Link>
     {!archived && (pending ? <button disabled className={buttonClass({ variant: 'secondary' })}>{board ? 'Lista' : 'Kanban'}</button> : <Link href={pipelineViewHref(input, !board)} className={buttonClass({ variant: 'secondary' })}>{board ? <><List /> Lista</> : <><Kanban /> Kanban</>}</Link>)}
     {canAdd && !archived && (pending ? <button disabled className={btnPrimary}><Plus /> Incluir candidato</button> :
       selected ? <Link href={pipelineTalentHref(selected.id, input.stage)} className={btnPrimary}><Plus /> Incluir candidato na vaga</Link> :

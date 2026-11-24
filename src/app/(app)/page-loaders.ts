@@ -181,7 +181,7 @@ export async function loadPipelinePage(input: PipelineInput) {
     archived,
     q,
     sort: input.sort === 'name' ? 'name' : '',
-    stageFilter: input.stage ?? '',
+    stageFilter: board ? '' : input.stage ?? '',
     postingFilter: input.posting ?? '',
     clientFilter: input.client ?? '',
     /** The cursor this page was rendered after ('' for the first page). */
