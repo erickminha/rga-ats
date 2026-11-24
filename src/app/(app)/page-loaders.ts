@@ -181,6 +181,7 @@ export async function loadPipelinePage(input: PipelineInput) {
     page,
     postingGroups: postingGroupsFor(meta, input.client),
     board,
+    selectablePostings: await db.posting.findMany({ where: { orgId: ctx.orgId, state: { not: 'CLOSED' }, ...(input.client ? { clientCompanyId: input.client } : {}) }, orderBy: { title: 'asc' }, select: { id: true, title: true, clientCompany: { select: { name: true } } } }),
     reason: f.reasonId ?? '',
     archiveReasons: meta.archiveReasons,
     clients: meta.clients,
