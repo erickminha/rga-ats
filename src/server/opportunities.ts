@@ -44,7 +44,7 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
 
   const created = await db.$transaction(async (tx) => {
     const stage = await tx.stage.findFirst({ where: { id: input.stageId, orgId: ctx.orgId } });
-    if (!stage) throw new Error('Stage not found');
+    if (!stage || stage.type === 'HIRED') throw new CandidateResumeError('Escolha uma etapa inicial anterior à contratação.');
     if (input.postingId) {
       const posting = await tx.posting.findFirst({
         where: { id: input.postingId, orgId: ctx.orgId },
