@@ -43,6 +43,7 @@ export function ContactsScreen({ data }: { data: Awaited<ReturnType<typeof loadC
           </aside>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col pt-2">
+            <Link href="/contacts/busca" className="mb-2 self-start text-sm underline">Busca avançada, grupos e indicadores</Link>
             <ContactsSearch />
             <ContactsTable
               page={data.page}

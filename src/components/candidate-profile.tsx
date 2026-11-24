@@ -1,3 +1,10 @@
+import { OpinionEditor } from '@/components/opinion-editor';
+import { opinionTemplates } from '@/lib/professional-opinion';
+import { recommendationLabels, requirementLabels } from '@/lib/competency-assessment';
+import { readCareerProfile } from '@/lib/talent-profile';
+import { aiConfigured as opinionAiConfigured } from '@/server/ai-client';
+import { CompetencyInterviewForm } from '@/components/competency-assessment';
+import { postingRequirements, readInterview, readPlan } from '@/lib/competency-assessment';
 import { RecruitingAssessmentForm } from '@/components/recruiting-assessment-form';
 import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { outcomeCategory, outcomeNames, dateBR } from '@/lib/i18n/pt-BR/recruiting';
@@ -97,7 +104,7 @@ export async function CandidateProfile({ id }: { id: string }) {
       include: {
         contact: { include: { resumeFile: true, caseStudies: { orderBy: { position: 'asc' } } } },
         applicationResume: true,
-        recruitingAssessment: true,
+        recruitingAssessment: { include: { opinionVersions: { orderBy: { version: 'desc' }, select: { version: true, issuedAt: true } } } },
         posting: {
           include: {
             planSteps: { orderBy: { order: 'asc' } },
@@ -121,7 +128,7 @@ export async function CandidateProfile({ id }: { id: string }) {
     }),
     db.organization.findUnique({
       where: { id: ctx.orgId },
-      select: { hideFeedbackUntilSubmitted: true, requireOfferApproval: true },
+      select: { hideFeedbackUntilSubmitted: true, requireOfferApproval: true, opinionTemplate: true },
     }),
     db.stage.findMany({ where: { orgId: ctx.orgId }, orderBy: { order: 'asc' } }),
     db.archiveReason.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: 'asc' } }),
@@ -211,8 +218,31 @@ export async function CandidateProfile({ id }: { id: string }) {
   const resume = readResumeView(resumeFile?.parsed);
   const assessment = opportunity.recruitingAssessment;
   const disc = textRecord(assessment?.disc);
+  const previousDiscs = !contact.isAnonymized && !contact.retentionHold && opportunity.postingId
+    ? await db.recruitingAssessment.findMany({
+      where: { disc: { path: ['complete'], equals: true }, opportunity: { id: { not: id }, orgId: ctx.orgId,
+        contactId: contact.id, confidential: false, posting: { orgId: ctx.orgId } } },
+      orderBy: { updatedAt: 'desc' }, take: 12,
+      select: { opportunityId: true, opportunity: { select: { posting: { select: { title: true } } } } },
+    }) : [];
+
   const discComplete = !!assessment?.disc && typeof assessment.disc === 'object'
     && !Array.isArray(assessment.disc) && assessment.disc.complete === true;
+  const recordedOpinion = textRecord(assessment?.opinion);
+  const preferences = readCareerProfile(contact.careerProfile);
+  const review = readInterview(assessment?.competencyInterview);
+  const opinionPrefill = {
+    education: preferences.education || resume?.education.map(({ degree, field, school }) => [degree, field, school].filter(Boolean).join(' · ')).join('\n') || '',
+    history: preferences.experience || resume?.experience.map(({ title, company }) => [title, company].filter(Boolean).join(' · ')).join('\n') || '',
+    experience: contact.headline ?? '',
+    interview: (review?.completed ? review.answers.map((answer, i) => answer.evidence ? review.questions[i] + '\n' + answer.evidence : '').filter(Boolean).join('\n\n') : '') || visibleFeedback[0]?.summary || '',
+    competencies: (review?.answers.flatMap((answer, i) => answer.score === null ? [] : [review.questions[i] + ' — ' + review.scale[answer.score - 1]]).join('\n') || preferences.skills || ''),
+    requirements: review?.requirements.filter(({ result }) => result !== 'UNVERIFIED').map(({ label, result }) => label + ' — ' + requirementLabels[result as keyof typeof requirementLabels]).join('\n') || '',
+    behavior: discComplete ? [disc.profile, disc.traits].filter(Boolean).join('\n') : '',
+    strengths: discComplete ? disc.strengths ?? '' : '',
+    recommendation: review?.recommendation ? [recommendationLabels[review.recommendation as keyof typeof recommendationLabels], review.justification].filter(Boolean).join('\n') : '',
+  };
+  for (const key of Object.keys(opinionPrefill) as (keyof typeof opinionPrefill)[]) opinionPrefill[key] = opinionPrefill[key].slice(0, 4000);
   const author = assessment?.opinionAuthorId ? await db.user.findFirst({
     where: { orgId: ctx.orgId, id: assessment.opinionAuthorId }, select: { name: true },
   }) : null;
@@ -562,10 +592,20 @@ export async function CandidateProfile({ id }: { id: string }) {
             }
           />
 
+          {!contact.isAnonymized && <Link className="text-sm underline" href={`/contacts/${contact.id}#curriculos`}>Gerenciar cadastro e versões de currículo</Link>}
+          {!contact.isAnonymized && <CompetencyInterviewForm key={`competency-${opportunity.id}`} id={opportunity.id}
+            plan={readPlan(opportunity.posting?.competencyPlan)} review={readInterview(assessment?.competencyInterview)}
+            requirements={postingRequirements(opportunity.posting?.matchCriteria, opportunity.posting?.content)} postingId={opportunity.postingId} />}
           {!contact.isAnonymized && <RecruitingAssessmentForm key={opportunity.id}
             id={opportunity.id} screening={textRecord(assessment?.screening)} disc={disc} discComplete={discComplete}
-            discFileId={assessment?.discFileId ?? null} opinion={textRecord(assessment?.opinion)}
-            author={author?.name ?? null} finalized={!!assessment?.opinionFinalizedAt} />}
+            discFileId={assessment?.discFileId ?? null} previousDiscs={previousDiscs.map((row) => ({
+              id: row.opportunityId, title: row.opportunity.posting?.title ?? 'Vaga anterior',
+            }))} />}
+          {!contact.isAnonymized && <OpinionEditor id={opportunity.id} content={recordedOpinion} prefill={opinionPrefill}
+            templates={opinionTemplates(org?.opinionTemplate).filter((item) => !item.inactive)}
+            revision={assessment?.opinionDraftAt?.toISOString() ?? ''}
+            issued={assessment?.opinionVersions.map(({ version, issuedAt }) => ({ version, date: issuedAt.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) })) ?? []}
+            author={author?.name ?? null} finalized={!!assessment?.opinionFinalizedAt} ai={opinionAiConfigured()} />}
           {isAdmin(ctx) && !contact.isAnonymized ? (
             <PrivacyControls contactId={contact.id} onHold={contact.retentionHold} />
           ) : null}

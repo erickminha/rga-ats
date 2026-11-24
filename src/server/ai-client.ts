@@ -116,6 +116,10 @@ export type AiTasks = {
     output: { model: string; answer: string };
   };
   /** The questions asked in one interview with the candidate's answers, and facts they stated. */
+  'opinion-draft': {
+    input: { section: string; source: string };
+    output: { model: string; text: string };
+  };
   'interview-insights': {
     input: { transcript: string };
     output: { model: string; qa: unknown; facts: unknown };
@@ -130,6 +134,7 @@ const TIMEOUT_MS: Record<AiTask, number> = {
   evaluate: 150_000,
   answer: 90_000,
   'interview-insights': 180_000,
+  'opinion-draft': 60_000,
 };
 
 /** Run one task on the configured provider. Throws AiUnavailableError, never the provider's own words. */
@@ -222,6 +227,8 @@ function mockTask<T extends AiTask>(task: T, raw: AiTasks[T]['input']): AiTasks[
         answer: `Mock corpus answer: found ${excerpts.length} relevant excerpt(s) across ${names.length} candidate(s) — ${names.join(', ')}.`,
       } as AiTasks[T]['output'];
     }
+    case 'opinion-draft':
+      return { model: 'mock', text: (raw as AiTasks['opinion-draft']['input']).source } as AiTasks[T]['output'];
     case 'interview-insights': {
       const { transcript } = raw as AiTasks['interview-insights']['input'];
       return { model, qa: qaFromDialogue(transcript), facts: {} } as AiTasks[T]['output'];

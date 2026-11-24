@@ -18,8 +18,8 @@ export function TagEditor({ contactId, tags }: { contactId: string; tags: string
         <span key={tag} className={`${badge} group gap-1`}>
           {tag}
           <button
-            title={`Remove ${tag}`}
-            aria-label={`Remove ${tag}`}
+            title={`Remover etiqueta ${tag}`}
+            aria-label={`Remover etiqueta ${tag}`}
             disabled={pending}
             onClick={() => save(tags.filter((t) => t !== tag))}
             className="-mr-1 flex size-4 cursor-pointer items-center justify-center rounded-full text-ink-3 transition-colors hover:text-critical group-hover:text-ink-2"

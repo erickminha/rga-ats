@@ -114,6 +114,8 @@ export default async function InterviewKitPage({ params }: { params: Promise<{ i
           </div>
         </div>
 
+        {operator && <a href={`/candidates/${opportunity.id}#entrevista-competencias`} className="mt-4 inline-block underline">Abrir roteiro de competências da participação</a>}
+
         {interview.focusAreas.length ? (
           <div className="mt-6">
             <p className={`${sectionLabel} mb-2`}>Temas da entrevista</p>

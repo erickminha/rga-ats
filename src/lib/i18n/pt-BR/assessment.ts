@@ -5,11 +5,14 @@ export const screeningLabels = {
 } as const;
 
 export const opinionFields = {
+  education: 'Formação e qualificações',
   history: 'Histórico profissional',
   experience: 'Experiência relevante para a vaga',
   interview: 'Impressões durante a entrevista',
   competencies: 'Competências observadas',
-  concerns: 'Pontos de atenção',
+  requirements: 'Aderência aos requisitos',
+  strengths: 'Pontos fortes',
+  concerns: 'Pontos de atenção profissionais',
   behavior: 'Síntese comportamental',
   recommendation: 'Recomendação profissional',
 } as const;

@@ -84,7 +84,7 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
       });
       await tx.storedFile.update({
         where: { id: resume.file.id, deletePendingAt: { gt: new Date() } },
-        data: { deletePendingAt: null, contactId: contact.id, ...textFields(resume.extracted, new Date()) },
+        data: { deletePendingAt: null, contactId: contact.id, resumeVersion: true, resumeContent: resume.extracted.text, uploadedById: ctx.userId, ...textFields(resume.extracted, new Date()) },
       });
     }
 

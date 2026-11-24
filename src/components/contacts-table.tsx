@@ -427,13 +427,7 @@ function ContactRowCells({ row: c, index, selected, onToggle, onTag }: RowProps)
         <span className="flex min-w-0 items-center gap-2.5">
           <Avatar name={c.name} seed={c.id} size={28} />
           <span className="min-w-0 truncate">
-            {c.latestOppId ? (
-              <CandidateLink id={c.latestOppId} lazy className="font-medium hover:underline">
-                {c.name}
-              </CandidateLink>
-            ) : (
-              <span className="font-medium">{c.name}</span>
-            )}
+            <Link href={`/contacts/${c.id}`} className="font-medium hover:underline">{c.name}</Link>
             {c.headline ? <span className="ml-2 text-xs text-ink-2">{c.headline}</span> : null}
           </span>
         </span>

@@ -13,7 +13,7 @@ export type SharePayload = {
   scope: ShareScope;
   id: string; // postingId, clientCompanyId, or opportunityId
   exp: number;
-  selection?: { clientId: string; candidates: { id: string; opinionHash?: string }[] };
+  selection?: { clientId: string; candidates: { id: string; opinionHash?: string; opinionPdfHash?: string; resumeId?: string; discId?: string }[] };
 };
 
 function secret(): string {
