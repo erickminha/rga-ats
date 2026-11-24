@@ -1,6 +1,6 @@
 import { RecruitingBoard } from '@/components/recruiting-board';
 import Link from 'next/link';
-import { Kanban, Plus } from 'lucide-react';
+import { Kanban, List, Plus } from 'lucide-react';
 import type { loadPipelinePage } from '@/app/(app)/page-loaders';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/empty-state';
@@ -8,6 +8,7 @@ import { PipelineFilters } from '@/components/pipeline-filters';
 import { PipelineList } from '@/components/pipeline-list';
 import { PipelineNavProvider } from '@/components/pipeline-nav';
 import { btnPrimary, inputClass } from '@/components/form-controls';
+import { buttonClass } from '@/components/ui/button';
 
 export function PipelineScreen({ data }: { data: Awaited<ReturnType<typeof loadPipelinePage>> }) {
   const listInput = {
@@ -31,11 +32,11 @@ export function PipelineScreen({ data }: { data: Awaited<ReturnType<typeof loadP
     <PipelineNavProvider listInput={listInput}>
       <div className="t-reveal flex h-screen flex-col">
         <div className="flex flex-wrap items-start justify-between gap-2 px-3 sm:px-0 sm:pr-6">
-          <PageHeader title="Funil de recrutamento" />
-          <div className="mt-6 flex items-center gap-2">
+          <PageHeader title="Funil de recrutamento" subtitle="Acompanhe os candidatos e movimente as etapas da seleção." />
+          <div className="mt-3 flex flex-wrap items-center gap-2 sm:mt-6">
             {!data.board && <PipelineFilters postingGroups={data.postingGroups} clients={data.clients} />}
-            <Link href={`/pipeline?${query}${data.board ? '' : '&view=kanban'}`} className="text-sm underline">
-              {data.board ? 'Lista' : 'Kanban'}
+            <Link href={`/pipeline?${query}${data.board ? '' : '&view=kanban'}`} className={buttonClass({ variant: 'secondary' })}>
+              {data.board ? <><List /> Lista</> : <><Kanban /> Kanban</>}
             </Link>
             {data.canAddCandidate && (selectedPosting ? (
               <Link href={`/contacts/busca?${addParams.toString()}`} className={btnPrimary}>

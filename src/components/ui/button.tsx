@@ -12,11 +12,11 @@ export type ButtonVariant = 'primary' | 'secondary' | 'tonal' | 'ghost' | 'criti
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 const base =
-  'inline-flex shrink-0 select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-medium transition-[background-color,color,box-shadow,transform,scale] duration-[120ms] ease-[var(--ease-standard)] active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:pointer-events-none disabled:opacity-40 [&_svg]:shrink-0';
+  'inline-flex shrink-0 select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-field font-semibold transition-[background-color,color,box-shadow,transform,scale] duration-[120ms] ease-[var(--ease-standard)] active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:pointer-events-none disabled:opacity-40 [&_svg]:shrink-0';
 
 const variants: Record<ButtonVariant, string> = {
-  primary: 'bg-brand text-on-brand hover:bg-brand/85',
-  secondary: 'bg-surface text-ink hover:bg-muted',
+  primary: 'bg-brand text-on-brand shadow-sm hover:bg-brand/90',
+  secondary: 'border border-line bg-surface text-ink hover:bg-muted',
   tonal: 'bg-muted text-ink hover:bg-recessed',
   ghost: 'text-ink-2 hover:bg-ink/[0.05] hover:text-ink',
   critical: 'bg-critical text-white hover:bg-critical/90',

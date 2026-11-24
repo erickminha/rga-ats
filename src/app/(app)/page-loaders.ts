@@ -74,7 +74,7 @@ async function dashboardInterviews(orgId: string) {
 export async function loadDashboardPage() {
   const ctx = await requireSession();
   const session = await getAuthSession();
-  const [interviews, org, postingCount, pendingApprovals, contactCount, transcriptCount, upcomingCount] =
+  const [interviews, org, postingCount, pendingApprovals, contactCount, transcriptCount, upcomingCount, activePostingCount, pipelineStages, pipelineTotals, clientCount] =
     await Promise.all([
       dashboardInterviews(ctx.orgId),
       session?.user.orgName != null
@@ -85,14 +85,22 @@ export async function loadDashboardPage() {
         : readOrgNavCookie(),
       db.posting.count({ where: { orgId: ctx.orgId } }),
       isAdmin(ctx) ? listPendingApprovals(ctx.orgId) : Promise.resolve([]),
-      db.contact.count({ where: { orgId: ctx.orgId } }),
+      db.contact.count({ where: { orgId: ctx.orgId, isAnonymized: false } }),
       db.transcript.count({ where: { orgId: ctx.orgId } }),
       db.interview.count({
         where: { orgId: ctx.orgId, state: { not: 'CANCELED' }, startAt: { gte: new Date() } },
       }),
+      db.posting.count({ where: { orgId: ctx.orgId, state: { in: ['PUBLISHED', 'INTERNAL'] } } }),
+      db.stage.findMany({ where: { orgId: ctx.orgId }, orderBy: { order: 'asc' }, select: { id: true, name: true } }),
+      db.opportunity.groupBy({ by: ['stageId'], where: { orgId: ctx.orgId, status: 'ACTIVE', contact: { isAnonymized: false } }, _count: { _all: true } }),
+      db.clientCompany.count({ where: { orgId: ctx.orgId } }),
     ]);
 
   return {
+    activePostingCount,
+    clientCount,
+    activeCount: pipelineTotals.reduce((total, stage) => total + stage._count._all, 0),
+    stageSummary: pipelineStages.map((stage) => ({ ...stage, count: pipelineTotals.find((row) => row.stageId === stage.id)?._count._all ?? 0 })),
     firstName: (session?.user.name ?? '').trim().split(/\s+/)[0],
     orgName: org?.name ?? '',
     logoFileId: org?.logoFileId ?? null,

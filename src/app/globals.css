@@ -677,3 +677,90 @@ body:has([data-drawer-intercepted]) [data-drawer-standalone] {
     scroll-behavior: auto !important;
   }
 }
+
+/* RGA design system — internal workspace and authentication. Official palette,
+   accessible action shade, restrained accents and no external browser font requests. */
+.rga-workspace, .rga-auth {
+  --color-canvas: #f5f5f5;
+  --color-sheet: #ffffff;
+  --color-surface: #ffffff;
+  --color-recessed: #f0f4f7;
+  --color-muted: #eaf1f6;
+  --color-ink: #161d27;
+  --color-ink-2: #536171;
+  --color-ink-3: #627386;
+  --color-line: #dce4ec;
+  --color-line-strong: #a9bbcb;
+  --color-brand: #116da9;
+  --color-on-brand: #ffffff;
+  --color-selected: #1581c9;
+  --color-info: #126ca8;
+  --color-positive: #267347;
+  --color-caution: #956211;
+  --color-critical: #b7363e;
+  --rga-blue: #1581c9;
+  --rga-purple: #6c336e;
+  --rga-yellow: #f9c82b;
+  font-family: var(--font-rga-lato, var(--font-geist)), system-ui, sans-serif;
+  font-size: 14px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  color-scheme: light;
+}
+.rga-workspace :is(h1,h2,h3), .rga-auth :is(h1,h2,h3), .rga-display {
+  font-family: var(--font-rga-poppins, var(--font-geist)), system-ui, sans-serif;
+  letter-spacing: -.025em;
+}
+.rga-sidebar {
+  color: #e4ebf3;
+  background: #161d27;
+  border-right: 1px solid #27384b;
+}
+.rga-sidebar a:focus-visible, .rga-sidebar button:focus-visible {
+  outline: 2px solid #f9c82b;
+  outline-offset: 2px;
+}
+.rga-sidebar a[aria-current='page'], .rga-sidebar a[data-pending='true'] {
+  background: #116da9;
+  color: white;
+  box-shadow: inset 3px 0 #f9c82b;
+}
+.rga-workspace main :is(a,button,summary,input,select,textarea):focus-visible,
+.rga-auth :is(a,button,summary,input,select,textarea):focus-visible {
+  outline: 2px solid #1581c9;
+  outline-offset: 2px;
+}
+.rga-workspace .rga-card, .rga-auth .rga-card {
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  background: var(--color-surface);
+  box-shadow: 0 2px 8px #161d2708;
+}
+.rga-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: #fff;
+  background: linear-gradient(112deg, #161d27 0%, #173c5b 60%, #245681 100%);
+  border-radius: 18px;
+}
+.rga-hero::after {
+  position: absolute;
+  z-index: -1;
+  content: '';
+  width: 310px;
+  aspect-ratio: 1;
+  right: -95px;
+  top: -155px;
+  border: 42px solid #1581c94d;
+  border-radius: 50%;
+  box-shadow: 0 0 0 40px #6c336e25, 0 0 0 80px #f9c82b0c;
+  pointer-events: none;
+}
+.rga-workspace main table thead th { background: #eaf1f6; color: #35475b; }
+.rga-workspace main table tbody tr:hover { background: #eaf5fc; }
+.rga-workspace .rga-stage { background: #e8eef4; border-color: #d7e2ed; }
+.rga-workspace .rga-stage-card { background: #fff; border: 1px solid #dce4ec; box-shadow: 0 2px 5px #161d2709; }
+@media (prefers-reduced-motion: reduce) {
+  .rga-workspace *, .rga-auth * { scroll-behavior: auto !important; }
+}

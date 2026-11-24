@@ -1,118 +1,92 @@
-import { dashboard } from '@/lib/i18n/pt-BR/dashboard';
-import { navigation } from '@/lib/i18n/pt-BR/navigation';
 import Link from 'next/link';
-import { Search } from 'lucide-react';
+import { ArrowUpRight, Briefcase, CalendarDays, Kanban, Plus, Search, Users } from 'lucide-react';
 import type { loadDashboardPage } from '@/app/(app)/page-loaders';
-import { OnboardingCard } from '@/components/onboarding-card';
 import { ApprovalQueue } from '@/components/approval-queue';
 import { DashboardInterviews } from '@/components/dashboard-interviews';
 import { LocalTime } from '@/components/local-time';
-import { inputClass, surface, noAutofill } from '@/components/form-controls';
+import { inputClass, noAutofill } from '@/components/form-controls';
 import { buttonClass } from '@/components/ui/button';
-import { Bot } from '@/components/ui/bot';
+
+const number = new Intl.NumberFormat('pt-BR');
 
 export function DashboardScreen({ data }: { data: Awaited<ReturnType<typeof loadDashboardPage>> }) {
-  const now = new Date();
-  const { upcomingCount, contactCount } = data;
-
-  const steps = [
-    {
-      ...dashboard.onboarding.posting,
-      done: data.postingCount > 0,
-      href: '/postings/new',
-    },
-    {
-      ...dashboard.onboarding.candidate,
-      done: data.contactCount > 0,
-      href: '/contacts/new',
-    },
-    {
-      ...dashboard.onboarding.interview,
-      done: data.interviews.length > 0,
-      href: '/interviews',
-    },
-    {
-      ...dashboard.onboarding.transcript,
-      done: data.transcriptCount > 0,
-      href: '/search',
-    },
-    {
-      ...dashboard.onboarding.branding,
-      done: !!data.logoFileId,
-      href: '/settings',
-    },
+  const metrics = [
+    { label: 'Vagas publicadas ou internas', value: data.activePostingCount, hint: `${number.format(data.postingCount)} cadastradas no total`, href: '/postings', icon: Briefcase, color: '#116da9', bg: '#e7f4fc' },
+    { label: 'Banco de talentos', value: data.contactCount, hint: 'Profissionais cadastrados', href: '/contacts', icon: Users, color: '#6c336e', bg: '#f4eaf5' },
+    { label: 'Participações ativas', value: data.activeCount, hint: 'Em acompanhamento no funil', href: '/pipeline', icon: Kanban, color: '#116da9', bg: '#e7f4fc' },
+    { label: 'Entrevistas futuras', value: data.upcomingCount, hint: 'Agendadas e não canceladas', href: '/interviews', icon: CalendarDays, color: '#80580b', bg: '#fff5d2' },
   ];
-
+  const quick = [
+    { label: 'Cadastrar vaga', hint: 'Iniciar um novo processo', href: '/postings/new', icon: Plus },
+    { label: 'Buscar profissionais', hint: 'Pesquisar no banco de talentos', href: '/contacts/busca', icon: Search },
+    { label: 'Acompanhar o funil', hint: 'Gerenciar etapas e candidatos', href: '/pipeline', icon: Kanban },
+    { label: 'Agenda de entrevistas', hint: 'Consultar os compromissos', href: '/interviews', icon: CalendarDays },
+  ];
+  const max = Math.max(1, ...data.stageSummary.map((stage) => stage.count));
+  const colors = ['#1581c9', '#307fb3', '#6c336e', '#9a629c', '#f9c82b'];
   return (
-    <div className="t-reveal">
-      <header className="flex items-center gap-3 px-6 pb-2 pt-6">
-        {data.logoFileId ? (
-          // eslint-disable-next-line @next/next/no-img-element -- org-uploaded logo via internal route
-          <img
-            src={`/api/logo/${data.logoFileId}`}
-            alt={data.orgName ? dashboard.logo(data.orgName) : dashboard.workspaceLogo}
-            className="size-9 shrink-0 rounded-field bg-surface object-contain p-1"
-          />
-        ) : null}
+    <div className="t-reveal mx-auto max-w-[1600px] px-4 pb-8 pt-5 sm:px-6 lg:px-8">
+      <header className="rga-hero mb-5 flex flex-wrap items-end justify-between gap-5 p-5 sm:p-7">
         <div className="min-w-0">
-          <h1 className="text-xl font-medium text-ink">
-            {dashboard.greeting(data.firstName)}
-          </h1>
-          <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-ink-2">
-            <LocalTime
-              date={now.toISOString()}
-              options={{ weekday: 'long', month: 'long', day: 'numeric' }}
-            />
-            <span>{dashboard.upcoming(upcomingCount)}</span>
-            <span>{dashboard.candidateCount(contactCount)}</span>
-          </p>
+          <p className="mb-2 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#d4e7f6]"><span className="size-2 rounded-full bg-[#f9c82b]" /> Central de recrutamento</p>
+          <h1 className="text-2xl font-semibold sm:text-3xl">{data.firstName ? `Olá, ${data.firstName}` : 'Olá!'}</h1>
+          <p className="mt-2 text-sm text-[#d4e7f6]">Acompanhe as vagas, os talentos e os próximos passos da sua operação.</p>
+          <p className="mt-3 text-xs capitalize text-[#d4e7f6]"><LocalTime date={new Date().toISOString()} options={{ weekday: 'long', month: 'long', day: 'numeric' }} /></p>
         </div>
+        <Link href="/postings/new" className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#f9c82b] px-4 text-sm font-bold text-[#161d27] hover:bg-[#ffda60]"><Plus size={18} /> Nova vaga</Link>
       </header>
 
-      <div className="mx-6 mt-2 grid gap-8 pb-10 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0">
-          <form method="get" action="/search" className="mb-6">
-            <div className="relative max-w-2xl">
-              <Search
-                size={16}
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3"
-              />
-              <input {...noAutofill}
-                type="search"
-                name="q"
-                aria-label={navigation.search}
-                placeholder={dashboard.searchPlaceholder}
-                className={`${inputClass} pl-9`}
-              />
+      <section aria-label="Indicadores" className="mb-5 grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-4">
+        {metrics.map(({ label, value, hint, href, icon: Icon, color, bg }) => (
+          <Link key={href} href={href} className="rga-card group flex min-w-0 flex-col gap-3 p-4 transition-shadow hover:shadow-lift">
+            <div className="flex items-center justify-between">
+              <span className="grid size-10 place-items-center rounded-xl" style={{ background: bg, color }}><Icon size={20} strokeWidth={1.8} /></span>
+              <ArrowUpRight size={18} className="text-ink-2 group-hover:text-brand" />
             </div>
-          </form>
+            <div><p className="text-sm font-bold text-ink-2">{label}</p><p className="rga-display mt-1 text-3xl font-semibold tabular-nums text-ink">{number.format(value)}</p></div>
+            <p className="text-xs text-ink-2">{hint}</p>
+          </Link>
+        ))}
+      </section>
 
-          <DashboardInterviews interviews={data.interviews} />
-        </div>
-
-        <div className="flex flex-col gap-4">
-          {data.isAdmin && data.pendingApprovals.length ? (
-            <ApprovalQueue items={data.pendingApprovals} />
-          ) : null}
-          <OnboardingCard steps={steps} />
-          {data.aiEnabled ? (
-            <div className={`${surface} p-5`}>
-              <h2 className="text-md font-medium text-ink">{dashboard.ai.title}</h2>
-              <p className="mt-1.5 text-sm text-ink-2">
-                {dashboard.ai.description}
-              </p>
-              <Link
-                href="/search"
-                className={buttonClass({ variant: 'tonal', size: 'sm', className: 'mt-4' })}
-              >
-                <Bot size={20} /> {dashboard.ai.open}{' '}
-                <span className="t-learn-arrow text-ink-3">→</span>
+      <div className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
+        <section className="rga-card min-w-0 p-5">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+            <div><h2 className="text-lg font-semibold">Funil de recrutamento</h2><p className="mt-1 text-xs text-ink-2">Participações ativas por etapa</p></div>
+            <Link href="/pipeline" className={buttonClass({ variant: 'secondary', size: 'sm' })}>Abrir funil <ArrowUpRight /></Link>
+          </div>
+          {data.stageSummary.length ? <div className="grid gap-3">
+            {data.stageSummary.map((stage, i) => (
+              <Link href={`/pipeline?stage=${encodeURIComponent(stage.id)}`} key={stage.id} className="group grid gap-1.5 rounded-lg p-1 hover:bg-muted">
+                <span className="flex items-center justify-between gap-2 text-sm"><span className="truncate">{stage.name}</span><strong className="tabular-nums">{number.format(stage.count)}</strong></span>
+                <span className="h-2.5 overflow-hidden rounded-full bg-recessed" aria-hidden="true"><span className="block h-full rounded-full" style={{ width: `${stage.count / max * 100}%`, background: colors[i % colors.length] }} /></span>
               </Link>
-            </div>
-          ) : null}
-        </div>
+            ))}
+          </div> : <p className="text-sm text-ink-2">Nenhuma etapa configurada.</p>}
+        </section>
+        <section className="rga-card p-5">
+          <h2 className="mb-4 text-lg font-semibold">Ações rápidas</h2>
+          <form method="get" action="/contacts/busca" className="mb-4 flex gap-2">
+            <input {...noAutofill} name="q" type="search" aria-label="Buscar talentos" placeholder="Nome, cargo ou telefone" className={inputClass} />
+            <button className={buttonClass({ variant: 'primary', icon: true })} aria-label="Buscar"><Search /></button>
+          </form>
+          <div className="grid gap-2">
+            {quick.map(({ label, hint, href, icon: Icon }) => (
+              <Link key={href} href={href} className="flex items-center gap-3 rounded-xl border border-line p-3 hover:bg-muted">
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#e7f4fc] text-[#116da9]"><Icon size={18} /></span>
+                <span className="min-w-0 flex-1"><span className="block text-sm font-bold">{label}</span><span className="block text-xs text-ink-2">{hint}</span></span>
+                <ArrowUpRight size={16} className="shrink-0 text-ink-2" />
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
+
+      <section className="rga-card p-5">
+        <div className="mb-4 flex items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">Agenda de entrevistas</h2><p className="mt-1 text-xs text-ink-2">Compromissos da operação</p></div><Link href="/interviews" className={buttonClass({ variant: 'secondary', size: 'sm' })}>Ver agenda <ArrowUpRight /></Link></div>
+        <DashboardInterviews interviews={data.interviews} />
+      </section>
+      {data.isAdmin && data.pendingApprovals.length ? <div className="mt-5"><ApprovalQueue items={data.pendingApprovals} /></div> : null}
     </div>
   );
 }

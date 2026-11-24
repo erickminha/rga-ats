@@ -9,7 +9,7 @@ import { buttonClass } from '@/components/ui/button';
  */
 
 const field =
-  'w-full rounded-field bg-recessed text-sm text-ink outline-none transition-[background-color,box-shadow] duration-[120ms] placeholder:text-ink-3 hover:bg-[color-mix(in_oklab,var(--color-recessed),var(--color-ink)_3%)] focus:is-focused disabled:opacity-40';
+  'w-full rounded-field border border-line bg-surface text-sm text-ink outline-none transition-[background-color,box-shadow] duration-[120ms] placeholder:text-ink-3 hover:bg-[color-mix(in_oklab,var(--color-recessed),var(--color-ink)_3%)] focus:is-focused disabled:opacity-40';
 
 export const inputClass = `${field} h-9 px-3`;
 
@@ -18,7 +18,7 @@ export const inputClass = `${field} h-9 px-3`;
  * delete button, a status): the input inside is `fieldBareInput`.
  */
 export const fieldShellClass =
-  'flex h-9 w-full items-center gap-1 rounded-field bg-recessed text-sm text-ink transition-[background-color,box-shadow] duration-[120ms] hover:bg-[color-mix(in_oklab,var(--color-recessed),var(--color-ink)_3%)] focus-within:is-focused';
+  'flex h-9 w-full items-center gap-1 rounded-field border border-line bg-surface text-sm text-ink transition-[background-color,box-shadow] duration-[120ms] hover:bg-[color-mix(in_oklab,var(--color-recessed),var(--color-ink)_3%)] focus-within:is-focused';
 
 export const fieldBareInput = 'h-full min-w-0 flex-1 bg-transparent px-3 outline-none placeholder:text-ink-3';
 
@@ -60,11 +60,11 @@ export const badge =
   'inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted px-2.5 text-xs text-ink-2';
 
 // Raised surface card
-export const surface = 'rounded-card bg-surface';
+export const surface = 'rounded-card border border-line bg-surface';
 
 // Interactive card — lifts on hover
 export const surfaceHover =
-  'rounded-card bg-surface transition-shadow duration-200 hover:shadow-lift';
+  'rounded-card border border-line bg-surface transition-shadow duration-200 hover:shadow-lift';
 
 // Section label — sentence case, quiet
 export const sectionLabel = 'text-xs font-medium text-ink-2';

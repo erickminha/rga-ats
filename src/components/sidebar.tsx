@@ -1,13 +1,13 @@
 'use client';
 
 import { navigation } from '@/lib/i18n/pt-BR/navigation';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { SourceLockup } from '@/components/powered-by';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   BarChart3,
   Briefcase,
+  Building2,
   CalendarDays,
   Inbox,
   Kanban,
@@ -26,23 +26,23 @@ import { Avatar } from '@/components/ui/orb';
 import { AskBox } from '@/components/ask-box';
 
 /** Items the mobile floating nav shows directly; the rest live under More. */
-const MOBILE_PRIMARY = ['/dashboard', '/pipeline', '/postings', '/interviews'];
+const MOBILE_PRIMARY = ['/dashboard', '/postings', '/pipeline', '/contacts'];
 
 // Institutional blue from the RGA palette, used on the selection outline.
 const activeAccent = 'ring-1 ring-inset ring-[#1581c9]';
 
-const nav = [
-  { href: '/dashboard', label: navigation.dashboard, icon: Home },
-  { href: '/search', label: navigation.search, icon: Search },
-  { href: '/review', label: navigation.review, icon: Inbox },
-  { href: '/pipeline', label: navigation.pipeline, icon: Kanban },
-  { href: '/postings', label: navigation.postings, icon: Briefcase },
-  { href: '/contacts', label: navigation.contacts, icon: Users },
-  { href: '/referrals', label: navigation.referrals, icon: UserPlus },
-  { href: '/interviews', label: navigation.interviews, icon: CalendarDays },
-  { href: '/tasks', label: navigation.tasks, icon: ListTodo },
-  { href: '/reports', label: navigation.reports, icon: BarChart3 },
-  { href: '/settings', label: navigation.settings, icon: Settings },
+const menu = [
+  { href: '/dashboard', label: 'Visão geral', short: 'Painel', icon: Home, group: 'OPERAÇÃO' },
+  { href: '/postings', label: 'Vagas', short: 'Vagas', icon: Briefcase, group: 'OPERAÇÃO' },
+  { href: '/pipeline', label: 'Funil de recrutamento', short: 'Funil', icon: Kanban, group: 'OPERAÇÃO' },
+  { href: '/contacts', label: 'Banco de talentos', short: 'Talentos', icon: Users, group: 'OPERAÇÃO' },
+  { href: '/clients', label: 'Empresas clientes', short: 'Empresas', icon: Building2, group: 'OPERAÇÃO' },
+  { href: '/interviews', label: 'Entrevistas', short: 'Agenda', icon: CalendarDays, group: 'ACOMPANHAMENTO' },
+  { href: '/tasks', label: 'Tarefas', short: 'Tarefas', icon: ListTodo, group: 'ACOMPANHAMENTO' },
+  { href: '/reports', label: 'Relatórios', short: 'Relatórios', icon: BarChart3, group: 'ACOMPANHAMENTO' },
+  { href: '/review', label: 'Revisão de candidaturas', short: 'Revisão', icon: Inbox, group: 'FERRAMENTAS' },
+  { href: '/referrals', label: 'Indicações', short: 'Indicações', icon: UserPlus, group: 'FERRAMENTAS' },
+  { href: '/settings', label: 'Configurações', short: 'Config.', icon: Settings, group: 'FERRAMENTAS' },
 ];
 
 export function Sidebar({
@@ -50,14 +50,17 @@ export function Sidebar({
   org,
   signOutAction,
   aiEnabled = false,
+  showClients = false,
 }: {
   user: { name: string; email: string };
   org: { name: string; logoFileId: string | null };
   signOutAction: () => Promise<void>;
   /** Whether the ask box answers questions (AI on) or only searches. */
   aiEnabled?: boolean;
+  showClients?: boolean;
 }) {
   const pathname = usePathname();
+  const nav = menu.filter((item) => item.href !== '/clients' || showClients);
   const [askOpen, setAskOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreTrigger = useRef<HTMLButtonElement>(null);
@@ -87,8 +90,6 @@ export function Sidebar({
   };
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const mobileSignOut = useRef<HTMLFormElement>(null);
-  const linkRefs = useRef(new Map<string, HTMLAnchorElement>());
-  const [pill, setPill] = useState<{ y: number; h: number } | null>(null);
 
   useEffect(() => {
     setPendingHref(null);
@@ -101,102 +102,55 @@ export function Sidebar({
   // The active pill slides to where you're going (transitions.dev "tabs sliding",
   // vertical). It moves on click, before the route resolves, so nav feels instant.
   const pendingLabel = nav.find(({ href }) => href === pendingHref)?.label;
-  const target = pendingHref ?? nav.find((n) => isActive(n.href))?.href ?? null;
-  useLayoutEffect(() => {
-    const el = target ? linkRefs.current.get(target) : undefined;
-    setPill(el ? { y: el.offsetTop, h: el.offsetHeight } : null);
-  }, [target]);
 
   const primary = nav.filter((n) => MOBILE_PRIMARY.includes(n.href));
   const overflow = nav.filter((n) => !MOBILE_PRIMARY.includes(n.href));
 
   return (
     <>
-      {/* Desktop: canvas-colored rail, no border — pills carry the state */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col md:flex">
-        {/* The logo: the lockup (public/brand) at 32px, its minimum */}
-        <div className="px-5 pb-4 pt-6">
-          <SourceLockup />
-        </div>
-
-        {/* Workspace — the customer's logo and name on a raised surface */}
-        <div className="mx-3 mb-5 flex items-center gap-3 rounded-card bg-surface p-2.5">
+      <aside className="rga-sidebar sticky top-0 hidden h-dvh w-60 shrink-0 flex-col md:flex">
+        <Link href="/dashboard" className="flex items-center gap-3 px-5 pb-5 pt-6">
           {org.logoFileId ? (
-            // eslint-disable-next-line @next/next/no-img-element -- org-uploaded logo via internal route
-            <img
-              src={`/api/logo/${org.logoFileId}`}
-              alt=""
-              aria-hidden
-              className="size-8 shrink-0 rounded-full object-contain"
-            />
+            // eslint-disable-next-line @next/next/no-img-element -- organization logo
+            <img src={`/api/logo/${org.logoFileId}`} alt="" className="size-11 rounded-xl bg-white object-contain p-1" />
           ) : (
-            <Avatar name={org.name || navigation.workspace} size={32} />
+            <span className="rga-display grid size-11 place-items-center rounded-xl bg-[#1581c9] text-sm font-bold text-white">RGA</span>
           )}
-          <span className="flex min-w-0 flex-col">
-            <span className="truncate text-sm font-medium text-ink">{org.name}</span>
-            <span className="text-xs text-ink-2">{navigation.workspace}</span>
+          <span className="min-w-0">
+            <span className="rga-display block text-lg font-semibold leading-6 text-white">RGA ATS</span>
+            <span className="block text-[10px] tracking-[.12em] text-[#b7c8dc]">RECURSOS HUMANOS</span>
           </span>
+        </Link>
+        <div className="mx-3 mb-3 rounded-xl border border-[#35445a] bg-[#202c3b] px-3 py-2.5">
+          <p className="truncate text-sm font-bold text-white">{org.name}</p>
+          <p className="text-xs text-[#b7c8dc]">Espaço de trabalho</p>
         </div>
-
-        <nav aria-label={navigation.main} className="relative flex flex-1 flex-col gap-0.5 overflow-y-auto px-3">
-          {pill ? (
-            <span
-              aria-hidden
-              className={cn(
-                'absolute inset-x-3 top-0 rounded-full bg-surface transition-[transform,height] duration-[var(--duration-fast)] ease-[var(--ease-smooth)]',
-                activeAccent,
-              )}
-              style={{ height: pill.h, transform: `translateY(${pill.y}px)` }}
-            />
-          ) : null}
-          {nav.map(({ href, label, icon: Icon }) => {
-            const active = isActive(href);
-            const pending = pendingHref === href;
-            return (
-              <Link
-                key={href}
-                ref={(el) => {
-                  if (el) linkRefs.current.set(href, el);
-                  else linkRefs.current.delete(href);
-                }}
-                href={href}
-                onClick={(e) => openAsk(href, e)}
-                onNavigate={() => go(href)}
-                title={href === '/search' ? navigation.searchShortcut : undefined}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'relative flex h-9 shrink-0 items-center gap-3 rounded-full px-3.5 text-sm transition-colors duration-[var(--duration-fast)] ease-[var(--ease-smooth)]',
-                  active || pending
-                    ? 'font-medium text-ink'
-                    : 'text-ink-2 hover:bg-ink/[0.04] hover:text-ink',
-                  active && !pill && ['bg-surface', activeAccent],
-                )}
-              >
-                <Icon
-                  size={16}
-                  strokeWidth={1.75}
-                  className={cn('shrink-0', pending && 'animate-pulse')}
-                />
-                {label}
-              </Link>
-            );
-          })}
+        <button type="button" onClick={() => setAskOpen(true)} className="mx-3 mb-3 flex items-center gap-2 rounded-xl border border-[#35445a] px-3 py-2.5 text-left text-sm text-[#dce8f5] hover:bg-[#27384b]">
+          <Search size={17} /> <span className="flex-1">Busca global</span><kbd className="text-[10px] text-[#b7c8dc]">Ctrl K</kbd>
+        </button>
+        <nav aria-label={navigation.main} className="flex flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
+          {['OPERAÇÃO', 'ACOMPANHAMENTO', 'FERRAMENTAS'].map((group) => (
+            <div key={group} className="grid gap-1">
+              <p className="px-3 pb-1 text-[10px] font-bold tracking-[.12em] text-[#a6b8ce]">{group}</p>
+              {nav.filter((item) => item.group === group).map(({ href, label, icon: Icon }) => (
+                <Link key={href} href={href} onNavigate={() => go(href)} aria-current={isActive(href) ? 'page' : undefined}
+                  data-pending={pendingHref === href || undefined}
+                  className="flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-[#dae5f2] transition-colors hover:bg-[#27384b]">
+                  <Icon size={18} strokeWidth={1.8} className="shrink-0" />{label}
+                </Link>
+              ))}
+            </div>
+          ))}
         </nav>
-
-        <div role="group" aria-label={navigation.account} className="m-3 flex items-center gap-3 rounded-card p-2">
+        <div role="group" aria-label={navigation.account} className="m-3 flex items-center gap-3 rounded-xl border border-[#35445a] bg-[#202c3b] p-2.5">
           <Avatar name={user.name || user.email} size={32} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-ink">{user.name}</p>
-            <p className="truncate text-xs text-ink-2">{user.email}</p>
+            <p className="truncate text-sm font-bold text-white">{user.name || 'Minha conta'}</p>
+            <p className="truncate text-xs text-[#b7c8dc]">{user.email}</p>
           </div>
           <form action={signOutAction}>
-            <button
-              type="submit"
-              title={navigation.signOut}
-              aria-label={navigation.signOut}
-              className="flex size-8 items-center justify-center rounded-full text-ink-2 transition-colors duration-[120ms] hover:bg-ink/[0.05] hover:text-ink"
-            >
-              <LogOut size={14} />
+            <button type="submit" title={navigation.signOut} aria-label={navigation.signOut} className="flex size-9 items-center justify-center rounded-lg text-[#dce8f5] hover:bg-[#35445a]">
+              <LogOut size={17} />
             </button>
           </form>
         </div>
@@ -204,8 +158,8 @@ export function Sidebar({
 
       {/* Mobile: floating white pill nav — icon over an 11px label */}
       <nav aria-label={navigation.main} className="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 md:hidden">
-        <div className="grid w-full max-w-sm grid-cols-[1fr_1.45fr_1fr_1fr_1fr] items-center gap-0.5 rounded-full bg-surface p-1.5 shadow-float">
-          {primary.map(({ href, label, icon: Icon }) => {
+        <div className="grid w-full max-w-sm grid-cols-5 items-center gap-0.5 rounded-2xl border border-line bg-surface p-1.5 shadow-float">
+          {primary.map(({ href, short, icon: Icon }) => {
             const active = isActive(href);
             return (
               <Link
@@ -220,7 +174,7 @@ export function Sidebar({
                 )}
               >
                 <Icon size={18} strokeWidth={1.75} className={cn(pendingHref === href && 'animate-pulse')} />
-                {label}
+                {short}
               </Link>
             );
           })}
@@ -250,6 +204,7 @@ export function Sidebar({
                 }}
                 className="menu-animate z-[350] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[200px] overflow-y-auto rounded-card bg-surface p-1 shadow-float"
               >
+                <DropdownMenu.Item onSelect={() => { searchFromMore.current = true; }} className="flex items-center gap-3 rounded-field px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"><Search size={16} /> Busca global</DropdownMenu.Item>
                 {overflow.map(({ href, label, icon: Icon }) => (
                   <DropdownMenu.Item key={href} asChild>
                     <Link

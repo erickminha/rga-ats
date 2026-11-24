@@ -2,13 +2,14 @@ import { navigation } from '@/lib/i18n/pt-BR/navigation';
 import { hasRecruitingRole } from '@/lib/recruiting-role';
 import { redirect } from 'next/navigation';
 import { signOut } from '@/lib/auth';
-import { getAuthSession, getOrgNav } from '@/lib/session';
+import { getAuthSession, getOrgNav, requireSession } from '@/lib/session';
 import { readOrgNavCookie } from '@/lib/org-nav-cookie';
 import { SourceCodeLinks } from '@/components/powered-by';
 import { Sidebar } from '@/components/sidebar';
 import { Toaster } from '@/components/toaster';
 import { PersistOrgNav } from '@/components/persist-org-nav';
 import { DrawerHost } from '@/components/drawer-host';
+import { canViewClientCompanies } from '@/server/client-companies';
 import { aiConfigured } from '@/server/ai-client';
 
 export default async function AppLayout({
@@ -57,16 +58,19 @@ export default async function AppLayout({
   const org = fetched ?? fromJwt ?? fromCookie;
   if (org && !org.onboardedAt) redirect('/onboarding');
 
+  const showClients = await canViewClientCompanies(await requireSession());
+
   return (
     // DrawerHost holds the candidate drawer for every page, so it can open on
     // the click and slide out on any exit (see drawer-host.tsx).
     <DrawerHost>
-    <div className="flex min-h-screen">
+    <div className="rga-workspace flex min-h-screen">
       <Sidebar
         user={{ name: session.user.name ?? '', email: session.user.email ?? '' }}
         org={{ name: org?.name ?? navigation.workspace, logoFileId: org?.logoFileId ?? null }}
         signOutAction={handleSignOut}
         aiEnabled={aiConfigured()}
+        showClients={showClients}
       />
       {fetched ? (
         <PersistOrgNav
@@ -75,7 +79,7 @@ export default async function AppLayout({
           onboardedAt={fetched.onboardedAt ? fetched.onboardedAt.toISOString() : null}
         />
       ) : null}
-      <main className="min-w-0 flex-1 pb-28 max-md:overflow-x-auto md:pb-0">
+      <main id="rga-main" className="min-w-0 flex-1 pb-28 max-md:overflow-x-auto md:pb-0">
         {children}
         <footer className="px-6 pb-6 pt-4"><SourceCodeLinks /></footer>
       </main>
