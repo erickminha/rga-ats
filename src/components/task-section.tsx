@@ -57,7 +57,7 @@ export function TaskSection({
         title="Tarefas"
         action={
           <button onClick={() => setOpen((v) => !v)} className={btnGhost}>
-            <ListTodo /> {open ? "Cancelar" : 'Add task'}
+            <ListTodo /> {open ? "Cancelar" : 'Adicionar tarefa'}
           </button>
         }
       />
@@ -81,7 +81,7 @@ export function TaskSection({
               <FormSelect
                 name="assigneeId"
                 options={[
-                  { value: '', label: 'Me' },
+                  { value: '', label: 'Eu' },
                   ...teammates.map((t) => ({ value: t.id, label: t.name })),
                 ]}
               />
@@ -90,7 +90,7 @@ export function TaskSection({
           {state?.error ? <p className="text-sm text-critical">{state.error}</p> : null}
           <div className="flex justify-end">
             <button type="submit" disabled={pending} className={btnPrimary}>
-              <TextSwap>{pending ? 'Adding…' : 'Add task'}</TextSwap>
+              <TextSwap>{pending ? 'Adicionando…' : 'Adicionar tarefa'}</TextSwap>
             </button>
           </div>
         </form>
@@ -110,7 +110,7 @@ export function TaskSection({
                     startTransition,
                     () => setDone([t.id, !t.completed]),
                     () => setTaskCompletedAction(t.id, !t.completed),
-                    t.completed ? 'Reopening the task' : 'Completing the task',
+                    t.completed ? 'Reabrindo a tarefa' : 'Concluindo a tarefa',
                   )
                 }
               />

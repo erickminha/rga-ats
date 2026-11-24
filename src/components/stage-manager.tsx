@@ -219,8 +219,8 @@ function StageName({
     const next = name.trim();
     if (!next) {
       setName(stage.name);
-      onError('A stage needs a name.');
-      return setState({ error: 'A stage needs a name.' });
+      onError('Informe o nome da etapa.');
+      return setState({ error: 'Informe o nome da etapa.' });
     }
     if (next === stage.name) return;
     setState('saving');

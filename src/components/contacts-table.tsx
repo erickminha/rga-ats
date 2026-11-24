@@ -136,7 +136,7 @@ export function ContactsTable({
       size: POOL_BULK_LIMIT,
       run: (chunk, final) => addContactsToPoolAction(poolId, chunk, final),
       refresh: revalidateListsAction,
-      copy: { failure: `Adding ${people(ids.length)} to the pool`, done: 'Adicionados', skipped: "não puderam ser adicionados" },
+      copy: { failure: `Adicionando ${people(ids.length)} ao grupo`, done: 'Adicionados', skipped: "não puderam ser adicionados" },
       onFailure: reselect,
     });
   };
@@ -150,7 +150,7 @@ export function ContactsTable({
       run: (chunk, final) => removeContactsFromPoolAction(poolId, chunk, final),
       onChunkSaved: (chunk) => applyCommitted((rows) => rows.filter((r) => !chunk.includes(r.id))),
       refresh: revalidateListsAction,
-      copy: { failure: `Removing ${people(ids.length)} from the pool`, done: 'Removidos', skipped: "não puderam ser removidos" },
+      copy: { failure: `Removendo ${people(ids.length)} do grupo`, done: 'Removidos', skipped: "não puderam ser removidos" },
       onFailure: reselect,
     });
   };
@@ -317,7 +317,7 @@ export function ContactsTable({
                 <Checkbox
                   checked={allSelected}
                   onChange={() => setSelected(allSelected ? EMPTY : new Set(visible.map((r) => r.id)))}
-                  aria-label={`Select all ${fmt(visible.length)} loaded`}
+                  aria-label={`Selecionar todos os ${fmt(visible.length)} registros carregados`}
                 />
               </th>
               {['Nome', 'E-mail', 'Etiquetas', 'Última participação', 'Etapa'].map((h) => (
@@ -421,7 +421,7 @@ function ContactRowCells({ row: c, index, selected, onToggle, onTag }: RowProps)
   return (
     <tr data-row-id={c.id} aria-rowindex={index + 2} className="transition-colors duration-[120ms] hover:bg-muted/60">
       <td className={cell}>
-        <Checkbox checked={selected} onChange={() => onToggle(c.id)} aria-label={`Select ${c.name}`} />
+        <Checkbox checked={selected} onChange={() => onToggle(c.id)} aria-label={`Selecionar ${c.name}`} />
       </td>
       <td className={cell}>
         <span className="flex min-w-0 items-center gap-2.5">

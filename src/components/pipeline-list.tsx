@@ -633,7 +633,7 @@ export function PipelineList({
                 <button
                   type="button"
                   onClick={() => (f.key === 'q' ? clearSearch() : nav.go(f.clear))}
-                  aria-label={`Remove ${f.label.toLowerCase()} filter`}
+                  aria-label={`Remover filtro ${f.label.toLowerCase()}`}
                   className="grid size-5 shrink-0 place-items-center rounded-full text-ink-3 transition-colors duration-[120ms] hover:bg-muted hover:text-ink"
                 >
                   <X size={12} />
@@ -672,7 +672,7 @@ export function PipelineList({
                     run: (chunk, final) => bulkMoveStageAction(chunk, stageId, final),
                     onChunkSaved: (chunk) => commitOp({ type: 'move', ids: chunk, stageId }),
                     refresh: revalidateListsAction,
-                    copy: { failure: `Moving ${candidates(ids.length)}`, done: 'Movidos', skipped: "não puderam ser movidos" },
+                    copy: { failure: `Movendo ${candidates(ids.length)}`, done: 'Movidos', skipped: "não puderam ser movidos" },
                     onFailure: reselect,
                   });
                 }}
@@ -699,7 +699,7 @@ export function PipelineList({
                       run: (chunk, final) => bulkArchiveAction(chunk, reasonId, final),
                       onChunkSaved: (chunk) => commitOp({ type: 'remove', ids: chunk }),
                       refresh: revalidateListsAction,
-                      copy: { failure: `Archiving ${candidates(ids.length)}`, done: 'Encerrados', skipped: "não puderam ser encerrados" },
+                      copy: { failure: `Encerrando ${candidates(ids.length)}`, done: 'Encerrados', skipped: "não puderam ser encerrados" },
                       onFailure: reselect,
                     });
                   }}
@@ -796,7 +796,7 @@ export function PipelineList({
                     onChange={() =>
                       setSelected(allVisibleSelected ? EMPTY : new Set(view.rows.map((r) => r.id)))
                     }
-                    aria-label={`Select all ${fmt(view.rows.length)} loaded`}
+                    aria-label={`Selecionar todos os ${fmt(view.rows.length)} registros carregados`}
                   />
                 </th>
                 {[
@@ -1009,7 +1009,7 @@ function PipelineRowView({
       className="transition-colors duration-[120ms] hover:bg-muted/60"
     >
       <td className={cell}>
-        <Checkbox checked={selected} onChange={() => onToggle(r.id)} aria-label={`Select ${r.name}`} />
+        <Checkbox checked={selected} onChange={() => onToggle(r.id)} aria-label={`Selecionar ${r.name}`} />
       </td>
       <td className={cell}>
         <CandidateLink id={r.id} lazy className="flex min-w-0 items-center gap-2.5">
