@@ -45,7 +45,7 @@ function describe(event: FeedEvent): string {
     case 'task.completed':
       return `Tarefa concluída: ${p.title}`;
     case 'opportunity.snoozed':
-      return `Adiado até ${p.until ? new Date(String(p.until)) .toLocaleDateString('pt-BR') : 'mais tarde'}`;
+      return `Adiado até ${p.until ? new Date(String(p.until )).toLocaleDateString('pt-BR') : 'mais tarde'}`;
     case 'opportunity.unsnoozed':
       return 'Adiamento removido';
     case 'offer.created':
@@ -75,7 +75,7 @@ function describe(event: FeedEvent): string {
     case 'opportunity.imported':
       return `Importado de ${p.source ?? 'outro ATS'}`;
     default:
-      return 'Atividade registrada';
+      return `Atividade registrada (${event.verb})`;
   }
 }
 
