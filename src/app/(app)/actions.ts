@@ -20,6 +20,8 @@ import {
   addNote,
   archiveOpportunity,
   CandidateResumeError,
+  ExistingCandidateError,
+  addExistingCandidate,
   createCandidate,
   moveStage,
   unarchiveOpportunity,
@@ -147,6 +149,37 @@ export async function setPostingOwnerAction(postingId: string, ownerId: string |
   revalidatePath(`/postings/${postingId}`);
   // every candidate page for this role shows it
   revalidatePath('/candidates/[id]', 'page');
+}
+
+export async function searchPipelineContactsAction(query: string) {
+  const ctx = await requireSession();
+  requireRecruitingAccess(ctx);
+  const q = query.trim().slice(0, 180);
+  if (q.length < 2) return [];
+  return db.contact.findMany({
+    where: { orgId: ctx.orgId, isAnonymized: false, OR: [
+      { name: { contains: q, mode: 'insensitive' } },
+      { headline: { contains: q, mode: 'insensitive' } },
+      { emails: { has: q.toLowerCase() } },
+    ] },
+    select: { id: true, name: true, headline: true, location: true, emails: true },
+    orderBy: [{ name: 'asc' }, { id: 'asc' }], take: 30,
+  });
+}
+
+export async function addExistingCandidateAction(input: { contactId: string; postingId: string; stageId: string }): Promise<{ error?: string }> {
+  const ctx = await requireSession();
+  requireRecruitingAccess(ctx);
+  try {
+    await addExistingCandidate(ctx, input);
+  } catch (error) {
+    if (error instanceof ExistingCandidateError) return { error: error.message };
+    throw error;
+  }
+  revalidatePath('/pipeline');
+  revalidatePath('/contacts');
+  revalidatePath('/postings/[id]', 'page');
+  return {};
 }
 
 export async function createCandidateAction(
