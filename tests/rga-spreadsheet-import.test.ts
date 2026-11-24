@@ -54,6 +54,29 @@ describe.skipIf(!hasDb)('RGA spreadsheet import', () => {
     expect(audit.map(e => (e.payload as {evidence: string}).evidence).sort()).toEqual(['ADMIN_ATTESTATION', 'SHEET_ACCEPTANCE']);
   });
 
+  it('links historical clients only with verified job IDs, titles and unique clients', async () => {
+    const { org, ctx } = await agency();
+    const client = await db.clientCompany.create({ data: { orgId: org.id, name: 'Empresa Fictícia' } });
+    const other = await db.clientCompany.create({ data: { orgId: org.id, name: 'Outro Cliente Fictício' } });
+    const posting = await db.posting.create({ data: { orgId: org.id, slug: 'vaga-ficticia', title: 'Técnico', state: 'PUBLISHED' } });
+    await db.importRef.create({ data: { orgId: org.id, provider: RGA_IMPORT_PROVIDER, kind: 'posting', externalId: WORK_SOURCE + ':X', internalId: posting.id } });
+    const file = (lines: string[]) => buildFile('postingClient', ['Gerar ID;Cliente;Cargo', ...lines].join('\n'),
+      mappingSuggestion('postingClient', ['Gerar ID','Cliente','Cargo']));
+    const row = 'X;Empresa Fictícia;TECNICO';
+    expect((await previewRgaImport(ctx, file([row, row]))).report.errors).toBe(2);
+    expect((await previewRgaImport(ctx, file(['X;Empresa Fictícia;Outro Cargo']))).report.errors).toBe(1);
+    const source = file([row, 'Z;Empresa Fictícia;Técnico']);
+    const preview = await previewRgaImport(ctx, source);
+    expect(preview.report).toMatchObject({ updated: 1, errors: 1 });
+    expect((await db.posting.findUniqueOrThrow({ where: { id: posting.id } })).clientCompanyId).toBeNull();
+    await confirmRgaImport(ctx, source, preview.ticket);
+    expect(await db.posting.findUniqueOrThrow({ where: { id: posting.id } })).toMatchObject({ clientCompanyId: client.id, state: 'PUBLISHED' });
+    expect((await previewRgaImport(ctx, source)).report.duplicates).toBe(1);
+    const conflict = file(['X;' + other.name + ';Técnico']);
+    expect((await previewRgaImport(ctx, conflict)).report.errors).toBe(1);
+    expect(await db.event.count({ where: { orgId: org.id, subjectId: posting.id, verb: 'posting.client_linked' } })).toBe(1);
+  });
+
   it('previews and records companies, vacancies and applicants without publishing, messaging or granting consent', async () => {
     const { org, ctx } = await agency();
     const companies = buildFile('company', [

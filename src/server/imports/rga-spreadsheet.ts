@@ -91,6 +91,9 @@ function parseFile(ctx: SessionContext, file: RgaSpreadsheet) {
     if (digest(term) !== '20b1ce34706f5790f82e468ebb5df1902dfd3e7264346bdd3f37261ef44512f8') throw new RgaImportError('O termo selecionado difere do termo do Banco de Talentos verificado pela RGA.');
     if (file.attestation && !/^[a-z0-9][a-z0-9._/-]{2,79}$/i.test(file.attestation)) throw new RgaImportError('Informe somente o código de referência do documento de atestação.');
   }
+  if (file.kind === 'postingClient' && !['externalId', 'title', 'clientName'].every(mapped)) {
+    throw new RgaImportError('Mapeie o ID original da vaga, o cliente e o cargo.');
+  }
   if (file.kind === 'company' && !mapped('name') && !mapped('legalName')) throw new RgaImportError('Mapeie o nome ou a razão social.');
   if (file.kind === 'posting' && (!mapped('title') || !mapped('externalId'))) throw new RgaImportError('Mapeie o título e o ID de origem da vaga.');
   if ((file.kind === 'candidate' || file.kind === 'talent') && (!mapped('name') || !['email', 'phone', 'externalId'].some(mapped))) {
@@ -584,7 +587,33 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
     return linked || linkedOpportunity || Object.keys(updates).length ? 'updated' : 'duplicates';
   }
 
-  const handler = file.kind === 'company' ? company : file.kind === 'posting' ? posting : person;
+  const repeatedIds = new Set<string>();
+  if (file.kind === 'postingClient') {
+    if (org.kind !== 'AGENCY') throw new RgaImportError('A conciliação está disponível no espaço da agência.');
+    const ids = new Set<string>();
+    for (const { fields } of parsed.records) {
+      if (ids.has(fields.externalId)) repeatedIds.add(fields.externalId);
+      ids.add(fields.externalId);
+    }
+  }
+  function linkPostingClient(fields: DataFields): Counts {
+    const ext = external(fields.externalId);
+    if (!ext || repeatedIds.has(ext)) throw new RgaImportError('ID de vaga ausente ou repetido na origem.');
+    const postingId = refId('posting', WORK_SOURCE + ':' + ext);
+    const job = postingId && jobRows.get(postingId);
+    if (!job || !fields.title || companyNameKey(fields.title) !== companyNameKey(job.title)) {
+      throw new RgaImportError('O ID original e o cargo não comprovam uma vaga existente.');
+    }
+    if (!fields.clientName) throw new RgaImportError('A empresa cliente não foi informada.');
+    const clientId = companyId({ clientName: fields.clientName }, WORK_SOURCE);
+    if (!clientId) throw new RgaImportError('Não foi possível conciliar a empresa.');
+    if (job.clientCompanyId === clientId) return 'duplicates';
+    if (job.clientCompanyId) throw new RgaImportError('A vaga já está vinculada a outra empresa. Revise o vínculo existente.');
+    write.postingUpdates.push({ id: job.id, data: { clientCompanyId: clientId } });
+    return 'updated';
+  }
+
+  const handler = file.kind === 'postingClient' ? linkPostingClient : file.kind === 'company' ? company : file.kind === 'posting' ? posting : person;
   const report: RgaImportReport = { total: parsed.records.length, created: 0, updated: 0, duplicates: 0, errors: 0, issues: [] };
   for (const { row, fields } of parsed.records) {
     try {
@@ -631,7 +660,13 @@ async function writeImport(tx: Prisma.TransactionClient, ctx: SessionContext, fi
   if (write.companyNew.length) await tx.clientCompany.createMany({ data: write.companyNew });
   for (const { id, data } of write.companyUpdates) await tx.clientCompany.updateMany({ where: { ...org, id }, data });
   if (write.postingNew.length) await tx.posting.createMany({ data: write.postingNew });
-  for (const { id, data } of write.postingUpdates) await tx.posting.updateMany({ where: { ...org, id }, data });
+  for (const { id, data } of write.postingUpdates) {
+    if (file.kind !== 'postingClient') { await tx.posting.updateMany({ where: { ...org, id }, data }); continue; }
+    const updated = await tx.posting.updateMany({ where: { ...org, id, clientCompanyId: null }, data });
+    if (updated.count !== 1) throw new RgaImportError('O vínculo da vaga mudou. Gere outra prévia.');
+    await emitEvent(tx, { ...org, ...actorOf(ctx), verb: 'posting.client_linked', subjectType: 'posting', subjectId: id,
+      payload: { jobId: job.id, clientCompanyId: String(data.clientCompanyId) } });
+  }
   const optOutAt = new Date();
   if (write.contactNew.length) await tx.contact.createMany({ data: write.contactNew.map((contact) => ({ ...contact, emailOptOutAt: optOutAt })) });
   for (const { id, data } of write.contactUpdates) {
