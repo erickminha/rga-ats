@@ -574,6 +574,7 @@ export async function CandidateProfile({ id }: { id: string }) {
             resume={
               resumeFile
                 ? {
+                    fileId: resumeFile.id,
                     href: `/api/files/${resumeFile.id}`,
                     note:
                       !resumeText && resumeFile.textStatus !== 'OK'

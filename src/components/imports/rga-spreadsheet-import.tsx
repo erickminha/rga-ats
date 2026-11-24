@@ -11,6 +11,7 @@ import { RgaImportReport } from './rga-import-report';
 
 export function RgaSpreadsheetImport() {
   const [kind, setKind] = useState<RgaImportKind>('company');
+  const [attestation, setAttestation] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [headerRow, setHeaderRow] = useState('1');
   const [headers, setHeaders] = useState<string[] | null>(null);
@@ -33,6 +34,7 @@ export function RgaSpreadsheetImport() {
     const form = new FormData();
     form.set('file', file);
     form.set('kind', kind);
+    if (kind === 'consent') form.set('attestation', attestation);
     form.set('headerRow', headerRow);
     for (const [key, value] of Object.entries(mapping)) form.set('map:' + key, value);
     if (step === 'confirm' && preview && confirmed) {
@@ -71,6 +73,7 @@ export function RgaSpreadsheetImport() {
             <select className={`${selectClass} min-w-0 w-full`} value={kind} disabled={pending} onChange={(event) => {
               const value = event.target.value as RgaImportKind;
               setKind(value);
+              setAttestation('');
               setHeaderRow(value === 'candidate' ? '5' : '1');
               setHeaders(null);
               clearPreview();
@@ -114,6 +117,13 @@ export function RgaSpreadsheetImport() {
             </div>
           ))}
         </div>
+        {kind === 'consent' && <label className="grid gap-1 text-sm">
+          Referência da atestação da RGA para aceites históricos em branco (opcional)
+          <input className={inputClass} value={attestation} disabled={pending} maxLength={80} onChange={(event) => {
+            setAttestation(event.target.value); clearPreview();
+          }} />
+          <span className="text-xs text-ink-2">Informe o código do documento aprovado que abrange este lote. Deixe vazio para conciliar apenas respostas explícitas. Revogações são preservadas.</span>
+        </label>}
         <button type="button" className={buttonClass({ variant: 'primary', className: 'justify-self-start' })} disabled={pending} onClick={() => run('preview')}>Gerar prévia</button>
       </Card> : null}
 

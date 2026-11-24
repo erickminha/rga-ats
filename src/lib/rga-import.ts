@@ -4,9 +4,11 @@ export const TALENT_SOURCE = 'rga-banco-de-talentos';
 
 export const importKinds = {
   company: 'Empresas',
+  postingClient: 'Conciliar empresas das vagas históricas',
   posting: 'Vagas',
   candidate: 'Candidatos da Gestão de Trabalho',
   talent: 'Banco de Talentos',
+  consent: 'Conciliar aceites do Banco de Talentos',
 } as const;
 
 export type RgaImportKind = keyof typeof importKinds;
@@ -43,6 +45,8 @@ const candidateAliases: Record<string, string> = {
 
 export const columnsByKind: Record<RgaImportKind, Column[]> = {
   company: business,
+  postingClient: [['externalId', 'ID original da vaga', 'Gerar ID'], ['clientName', 'Empresa cliente', 'Cliente'], ['title', 'Cargo da vaga', 'Cargo']],
+  consent: [['externalId', 'ID de origem', 'ID Origem'], ['acceptance', 'Termo de autorização do formulário']],
   posting: [
     ['externalId', 'ID de origem da vaga'], ['title', 'Título da vaga'], ['description', 'Descrição'],
     ['location', 'Localidade'], ['workplace', 'Modalidade'], ['commitment', 'Tipo de contratação'],
@@ -67,6 +71,7 @@ export type RgaImportReport = {
   updated: number;
   duplicates: number;
   errors: number;
+  consents?: { explicit: number; attested: number };
   issues: { row: number; message: string }[];
 };
 

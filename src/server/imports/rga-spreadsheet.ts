@@ -1,5 +1,5 @@
 import { readCareerProfile } from '@/lib/talent-profile';
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Prisma, type Contact, type ClientCompany, type Posting } from '@prisma/client';
 import { db } from '@/lib/db';
 import { brazilianStates, cnpjKey, companyNameKey, parseCompany, parsePhone, validCnpj } from '@/lib/client-company';
@@ -63,6 +63,7 @@ export type RgaSpreadsheet = {
   kind: RgaImportKind;
   headerRow: number;
   mapping: Record<string, unknown>;
+  attestation?: string;
 };
 
 function parseFile(ctx: SessionContext, file: RgaSpreadsheet) {
@@ -83,6 +84,16 @@ function parseFile(ctx: SessionContext, file: RgaSpreadsheet) {
     assignments.push([key, +index]);
   }
   const mapped = (key: string) => assignments.some(([name]) => name === key);
+  if (file.kind === 'consent') {
+    if (!mapped('externalId') || !mapped('acceptance')) throw new RgaImportError('Mapeie o ID de origem e o termo de autorização.');
+    const col = Number(file.mapping.acceptance);
+    const term = rows[file.headerRow - 1][col].trim().replace(/\s+/g, ' ');
+    if (digest(term) !== '20b1ce34706f5790f82e468ebb5df1902dfd3e7264346bdd3f37261ef44512f8') throw new RgaImportError('O termo selecionado difere do termo do Banco de Talentos verificado pela RGA.');
+    if (file.attestation && !/^[a-z0-9][a-z0-9._/-]{2,79}$/i.test(file.attestation)) throw new RgaImportError('Informe somente o código de referência do documento de atestação.');
+  }
+  if (file.kind === 'postingClient' && !['externalId', 'title', 'clientName'].every(mapped)) {
+    throw new RgaImportError('Mapeie o ID original da vaga, o cliente e o cargo.');
+  }
   if (file.kind === 'company' && !mapped('name') && !mapped('legalName')) throw new RgaImportError('Mapeie o nome ou a razão social.');
   if (file.kind === 'posting' && (!mapped('title') || !mapped('externalId'))) throw new RgaImportError('Mapeie o título e o ID de origem da vaga.');
   if ((file.kind === 'candidate' || file.kind === 'talent') && (!mapped('name') || !['email', 'phone', 'externalId'].some(mapped))) {
@@ -182,6 +193,7 @@ function selectionEvidence(fields: Prisma.JsonValue | Prisma.InputJsonValue | nu
 
 function emptyWrites() {
   return {
+    grants: [] as { contactId: string; row: number; evidence: string; reference: string }[],
     companyNew: [] as Prisma.ClientCompanyCreateManyInput[],
     companyUpdates: [] as { id: string; data: Prisma.ClientCompanyUpdateManyMutationInput }[],
     postingNew: [] as Prisma.PostingCreateManyInput[],
@@ -194,8 +206,50 @@ function emptyWrites() {
   };
 }
 
+async function planConsents(tx: Prisma.TransactionClient, ctx: SessionContext, file: RgaSpreadsheet, parsed: ReturnType<typeof parseFile>) {
+  const prefix = TALENT_SOURCE + ':id:';
+  const refs = await tx.importRef.findMany({
+    where: { orgId: ctx.orgId, kind: 'contact', provider: RGA_IMPORT_PROVIDER, externalId: { startsWith: prefix } },
+    select: { externalId: true, internalId: true },
+  });
+  const byOrigin = new Map(refs.map(ref => [ref.externalId.slice(prefix.length), ref.internalId]));
+  const eligible = await tx.contact.findMany({
+    where: { orgId: ctx.orgId, id: { in: [...byOrigin.values()] }, isAnonymized: false, retentionHold: false,
+      consents: { none: { purpose: 'PROFILE_STORAGE' } } }, select: { id: true },
+  });
+  const available = new Set(eligible.map(row => row.id));
+  const counts = new Map<string, number>();
+  for (const { fields } of parsed.records) {
+    const contact = byOrigin.get(fields.externalId);
+    if (contact) counts.set(contact, (counts.get(contact) ?? 0) + 1);
+  }
+  const write = emptyWrites();
+  const report: RgaImportReport = { total: parsed.records.length, created: 0, updated: 0, duplicates: 0, errors: 0, issues: [] };
+  for (const { row, fields } of parsed.records) {
+    const contactId = byOrigin.get(fields.externalId);
+    const explicit = fields.acceptance === 'Li as informações acima e concordo.';
+    let message = '';
+    if (!contactId) message = 'ID sem correspondência na importação original.';
+    else if (counts.get(contactId) !== 1) message = 'Mais de uma linha para a mesma pessoa. Revise todas as ocorrências.';
+    else if (!available.has(contactId)) { report.duplicates++; continue; }
+    else if (!explicit && fields.acceptance) message = 'Resposta diferente do aceite reconhecido. Exige revisão.';
+    else if (!explicit && !file.attestation) message = 'Aceite em branco e sem atestação documentada.';
+    else {
+      write.grants.push({ contactId, row, evidence: explicit ? 'SHEET_ACCEPTANCE' : 'ADMIN_ATTESTATION', reference: explicit ? '' : file.attestation! });
+      report.updated++;
+      continue;
+    }
+    report.errors++;
+    if (report.issues.length < 100) report.issues.push({ row, message });
+  }
+  const explicit = write.grants.filter(grant => grant.evidence === 'SHEET_ACCEPTANCE').length;
+  report.consents = { explicit, attested: write.grants.length - explicit };
+  return { write, report };
+}
+
 async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, file: RgaSpreadsheet, parsed: ReturnType<typeof parseFile>) {
   const orgId = ctx.orgId;
+  if (file.kind === 'consent') return planConsents(tx, ctx, file, parsed);
   const fileKey = parsed.key + JSON.stringify(parsed.assignments);
   const xlsx = file.name.toLowerCase().endsWith('.xlsx');
   const candidate = file.kind === 'candidate' || file.kind === 'talent';
@@ -533,7 +587,33 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
     return linked || linkedOpportunity || Object.keys(updates).length ? 'updated' : 'duplicates';
   }
 
-  const handler = file.kind === 'company' ? company : file.kind === 'posting' ? posting : person;
+  const repeatedIds = new Set<string>();
+  if (file.kind === 'postingClient') {
+    if (org.kind !== 'AGENCY') throw new RgaImportError('A conciliação está disponível no espaço da agência.');
+    const ids = new Set<string>();
+    for (const { fields } of parsed.records) {
+      if (ids.has(fields.externalId)) repeatedIds.add(fields.externalId);
+      ids.add(fields.externalId);
+    }
+  }
+  function linkPostingClient(fields: DataFields): Counts {
+    const ext = external(fields.externalId);
+    if (!ext || repeatedIds.has(ext)) throw new RgaImportError('ID de vaga ausente ou repetido na origem.');
+    const postingId = refId('posting', WORK_SOURCE + ':' + ext);
+    const job = postingId && jobRows.get(postingId);
+    if (!job || !fields.title || companyNameKey(fields.title) !== companyNameKey(job.title)) {
+      throw new RgaImportError('O ID original e o cargo não comprovam uma vaga existente.');
+    }
+    if (!fields.clientName) throw new RgaImportError('A empresa cliente não foi informada.');
+    const clientId = companyId({ clientName: fields.clientName }, WORK_SOURCE);
+    if (!clientId) throw new RgaImportError('Não foi possível conciliar a empresa.');
+    if (job.clientCompanyId === clientId) return 'duplicates';
+    if (job.clientCompanyId) throw new RgaImportError('A vaga já está vinculada a outra empresa. Revise o vínculo existente.');
+    write.postingUpdates.push({ id: job.id, data: { clientCompanyId: clientId } });
+    return 'updated';
+  }
+
+  const handler = file.kind === 'postingClient' ? linkPostingClient : file.kind === 'company' ? company : file.kind === 'posting' ? posting : person;
   const report: RgaImportReport = { total: parsed.records.length, created: 0, updated: 0, duplicates: 0, errors: 0, issues: [] };
   for (const { row, fields } of parsed.records) {
     try {
@@ -565,10 +645,28 @@ async function writeImport(tx: Prisma.TransactionClient, ctx: SessionContext, fi
     options: { kind: file.kind }, stats: { rga: report }, issueCount: report.errors,
     createdById: ctx.userId, finishedAt: new Date(),
   }, select: { id: true } });
+  if (write.grants.length) {
+    const fileSha256 = digest(file.data);
+    const grants = write.grants.map(grant => ({ ...grant, consentId: randomUUID() }));
+    await tx.consentRecord.createMany({ data: grants.map(grant => ({
+      ...org, id: grant.consentId, contactId: grant.contactId, purpose: 'PROFILE_STORAGE', policyVersion: 'rga-formulario-talentos-v1',
+    })) });
+    await tx.event.createMany({ data: grants.map(grant => ({
+      ...org, ...actorOf(ctx), verb: 'consent.reconciled', subjectType: 'contact', subjectId: grant.contactId,
+      payload: { consentId: grant.consentId, jobId: job.id, purpose: 'PROFILE_STORAGE', evidence: grant.evidence,
+        reference: grant.reference, row: grant.row, fileSha256 },
+    })) });
+  }
   if (write.companyNew.length) await tx.clientCompany.createMany({ data: write.companyNew });
   for (const { id, data } of write.companyUpdates) await tx.clientCompany.updateMany({ where: { ...org, id }, data });
   if (write.postingNew.length) await tx.posting.createMany({ data: write.postingNew });
-  for (const { id, data } of write.postingUpdates) await tx.posting.updateMany({ where: { ...org, id }, data });
+  for (const { id, data } of write.postingUpdates) {
+    if (file.kind !== 'postingClient') { await tx.posting.updateMany({ where: { ...org, id }, data }); continue; }
+    const updated = await tx.posting.updateMany({ where: { ...org, id, clientCompanyId: null }, data });
+    if (updated.count !== 1) throw new RgaImportError('O vínculo da vaga mudou. Gere outra prévia.');
+    await emitEvent(tx, { ...org, ...actorOf(ctx), verb: 'posting.client_linked', subjectType: 'posting', subjectId: id,
+      payload: { jobId: job.id, clientCompanyId: String(data.clientCompanyId) } });
+  }
   const optOutAt = new Date();
   if (write.contactNew.length) await tx.contact.createMany({ data: write.contactNew.map((contact) => ({ ...contact, emailOptOutAt: optOutAt })) });
   for (const { id, data } of write.contactUpdates) {
@@ -595,7 +693,8 @@ export async function previewRgaImport(ctx: SessionContext, file: RgaSpreadsheet
   return { report: plan.report, ticket: `${expiresAt}.${seal(ctx, file, parsed, plan, expiresAt)}` };
 }
 
-export async function confirmRgaImport(ctx: SessionContext, file: RgaSpreadsheet, ticket: string) {
+export async function confirmRgaImport(ctx: SessionContext, file: RgaSpreadsheet, ticket: string,
+  checkpoint?: (tx: Prisma.TransactionClient, jobId: string, errors: Set<number>) => Promise<void>) {
   requireAdmin(ctx);
   const match = /^(\d{13})\.([a-f0-9]{64})$/.exec(ticket);
   if (!match || Number(match[1]) <= Date.now()) throw new RgaImportError('A prévia expirou. Gere uma nova prévia antes de confirmar.');
@@ -607,7 +706,9 @@ export async function confirmRgaImport(ctx: SessionContext, file: RgaSpreadsheet
     if (!timingSafeEqual(Buffer.from(expected), Buffer.from(match[2]))) {
       throw new RgaImportError('O arquivo, o mapeamento ou os registros mudaram. Gere uma nova prévia.');
     }
-    return { id: await writeImport(tx, ctx, file, plan), report: plan.report };
+    const id = await writeImport(tx, ctx, file, plan);
+    await checkpoint?.(tx, id, new Set(plan.report.issues.map(issue => issue.row)));
+    return { id, report: plan.report };
   }, { isolationLevel: 'Serializable', timeout: 120_000 });
   invalidateLists(ctx.orgId);
   return result;

@@ -62,6 +62,9 @@ function sourceRevision(): string {
 }
 
 const nextConfig: NextConfig = {
+  // The candidate drawer is a parallel slot inside the authenticated route group.
+  // Keep public and login pages outside that group's slot on Next 16.4.
+  deprecated: { looseRouteMatching: true },
   logging: {
     serverFunctions: false,
     incomingRequests: { ignore: [/^\/(share|portal|schedule|offer|unsubscribe)\/(?!view(?:[/?]|$))/] },
