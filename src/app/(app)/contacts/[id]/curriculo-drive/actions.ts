@@ -16,3 +16,11 @@ export async function driveResumeAction(contactId: string, ticket?: string) {
     return { error: 'Não foi possível conciliar o documento. Confira a autorização, o ID de origem, o arquivo e a configuração de armazenamento. Gere outra prévia após a correção.' };
   }
 }
+
+export async function driveResumeBatchAction(tickets?: { id: string; ticket: string }[], offset = 0) {
+  const ctx = await requireSession();
+  try {
+    const { driveBatch } = await import('@/server/imports/rga-drive');
+    return { result: await driveBatch(ctx, tickets, offset) };
+  } catch { return { error: 'Não foi possível conferir o lote. Revise a integração e tente novamente.' }; }
+}

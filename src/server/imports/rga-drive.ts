@@ -38,7 +38,7 @@ const eligible = (orgId: string, id: string) => ({ orgId, id, isAnonymized: fals
   consents: { some: { orgId, purpose: 'PROFILE_STORAGE' as const, withdrawnAt: null } } });
 
 type Metadata = { size: number; md5: string; version: string };
-async function source(ctx: SessionContext, contactId: string) {
+async function source(ctx: SessionContext, contactId: string, rows?: string[][]) {
   if (!ctx.userId || !isAdmin(ctx) || ctx.orgId !== process.env.RGA_TALENT_SYNC_ORG_ID) throw new Error('FORBIDDEN');
   const folder = process.env.RGA_RESUME_FOLDER_ID;
   if (!folder || !idPattern.test(folder)) throw new Error('CONFIG');
@@ -48,7 +48,7 @@ async function source(ctx: SessionContext, contactId: string) {
   const refs = await db.importRef.findMany({ where: { orgId: ctx.orgId, provider: RGA_IMPORT_PROVIDER, kind: 'contact',
     internalId: contactId, externalId: { startsWith: prefix } }, take: 2, select: { externalId: true } });
   if (refs.length !== 1) throw new Error('IDENTITY');
-  const driveId = linkedResume(await readTalentSheet(), refs[0].externalId.slice(prefix.length));
+  const driveId = linkedResume(rows ?? await readTalentSheet(), refs[0].externalId.slice(prefix.length));
   if (!driveId) throw new Error('IDENTITY');
   const token = await readGoogleToken('https://www.googleapis.com/auth/drive.readonly');
   const endpoint = 'https://www.googleapis.com/drive/v3/files/' + driveId;
@@ -68,16 +68,16 @@ function signature(ctx: SessionContext, contactId: string, driveId: string, meta
   return createHmac('sha256', process.env.AUTH_SECRET).update(JSON.stringify([ctx.orgId, ctx.userId, contactId, driveId, meta, until])).digest('hex');
 }
 
-export async function previewDriveResume(ctx: SessionContext, contactId: string) {
-  const { driveId, meta } = await source(ctx, contactId);
+export async function previewDriveResume(ctx: SessionContext, contactId: string, rows?: string[][]) {
+  const { driveId, meta } = await source(ctx, contactId, rows);
   const until = Date.now() + 15 * 60000;
   return { size: meta.size, version: meta.version, ticket: until + '.' + signature(ctx, contactId, driveId, meta, until) };
 }
 
-export async function confirmDriveResume(ctx: SessionContext, contactId: string, ticket: string) {
+export async function confirmDriveResume(ctx: SessionContext, contactId: string, ticket: string, rows?: string[][]) {
   const result = /^(\d{13})\.([0-9a-f]{64})$/.exec(ticket);
   if (!result || Number(result[1]) < Date.now()) throw new Error('STALE');
-  const { driveId, meta, endpoint, headers } = await source(ctx, contactId);
+  const { driveId, meta, endpoint, headers } = await source(ctx, contactId, rows);
   if (!timingSafeEqual(Buffer.from(signature(ctx, contactId, driveId, meta, +result[1])), Buffer.from(result[2]))) throw new Error('STALE');
   if (process.env.NODE_ENV === 'production' || process.env.K_SERVICE) {
     const r2 = new URL(process.env.S3_ENDPOINT ?? '');
@@ -123,4 +123,69 @@ export async function confirmDriveResume(ctx: SessionContext, contactId: string,
     });
   } finally { if (!linked) await discardUnlinkedFile(ctx.orgId, file.id); }
   return linked;
+}
+
+const bulkKind = 'resume-batch';
+const batchSize = 5;
+
+/** Use the same confirmed single-file path for every member of a bounded lot. */
+export async function driveBatch(ctx: SessionContext, tickets?: { id: string; ticket: string }[], offset = 0) {
+  if (!isAdmin(ctx) || !ctx.userId || ctx.orgId !== process.env.RGA_TALENT_SYNC_ORG_ID) throw new Error('FORBIDDEN');
+  if (tickets && (!Array.isArray(tickets) || tickets.length > batchSize || !tickets.length ||
+    new Set(tickets.map(t => t.id)).size !== tickets.length ||
+    tickets.some(t => typeof t.id !== 'string' || typeof t.ticket !== 'string' || t.ticket.length > 100))) throw new Error('INVALID_BATCH');
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > 5000) throw new Error('OFFSET');
+  const rows = await readTalentSheet();
+  const prefix = TALENT_SOURCE + ':id:';
+  const [origins, markers, contacts] = await Promise.all([
+    db.importRef.findMany({ where: { orgId: ctx.orgId, provider: RGA_IMPORT_PROVIDER, kind: 'contact', externalId: { startsWith: prefix } },
+      select: { externalId: true, internalId: true }, orderBy: { externalId: 'asc' } }),
+    db.importRef.findMany({ where: { orgId: ctx.orgId, provider, kind: bulkKind }, select: { externalId: true } }),
+    db.contact.findMany({ where: { orgId: ctx.orgId, isAnonymized: false, retentionHold: false,
+      consents: { some: { orgId: ctx.orgId, purpose: 'PROFILE_STORAGE', withdrawnAt: null } } }, select: { id: true } }),
+  ]);
+  const eligibleIds = new Set(contacts.map(c => c.id));
+  const done = new Set(markers.map(m => m.externalId));
+  const offers = new Map(tickets?.map(entry => [entry.id, entry.ticket]));
+  const prepared: { id: string; ticket: string }[] = [];
+  let pending = 0, blocked = 0, copied = 0, unchanged = 0, errors = 0, processed = 0;
+  const keyColumn = rows[0]?.indexOf('ID Origem') ?? -1;
+  const fileColumn = rows[0]?.indexOf('Upload de Currículo') ?? -1;
+  if (keyColumn < 0 || fileColumn < 0) throw new Error('HEADERS');
+  const byOrigin = new Map<string, string>();
+  const seenFiles = new Set<string>();
+  const ambiguousFiles = new Set<string>();
+  for (const row of rows.slice(1)) {
+    const key = row[keyColumn]?.trim();
+    const file = driveFileId(row[fileColumn] ?? '');
+    if (file && seenFiles.has(file)) ambiguousFiles.add(file);
+    if (file) seenFiles.add(file);
+    if (key) byOrigin.set(key, byOrigin.has(key) ? '' : file ?? '');
+  }
+  for (const ref of origins) {
+    const id = ref.internalId;
+    const file = byOrigin.get(ref.externalId.slice(prefix.length));
+    if (!eligibleIds.has(id) || !file || ambiguousFiles.has(file)) { blocked++; continue; }
+    const externalId = hash(id + '/' + file);
+    if (done.has(externalId)) continue;
+    pending++;
+    if (tickets && !offers.has(id)) continue;
+    // A failed metadata lookup must not prevent later files reaching review.
+    // Preview performs no writes; callers can explicitly select another page.
+    if (!tickets && (pending <= offset || pending > offset + batchSize)) continue;
+    if (tickets) {
+      try {
+        const created = await confirmDriveResume(ctx, id, offers.get(id)!, rows);
+        const key = { orgId: ctx.orgId, provider, kind: bulkKind, externalId };
+        await db.importRef.upsert({ where: { orgId_provider_kind_externalId: key }, create: { ...key, internalId: id, created: false }, update: {} });
+        if (created) copied++; else unchanged++;
+      } catch { errors++; }
+      processed++;
+    } else {
+      try { prepared.push({ id, ticket: (await previewDriveResume(ctx, id, rows)).ticket }); }
+      catch { errors++; }
+    }
+  }
+  if (tickets) errors += tickets.length - processed;
+  return { pending, blocked, copied, unchanged, errors, tickets: prepared };
 }
