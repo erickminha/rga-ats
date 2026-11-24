@@ -100,20 +100,21 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
                 Ver empresa cliente: {linkedClient.name}
               </Link>
             ) : null}
-            <PostingClientForm key={posting.clientCompanyId ?? 'unassigned'} postingId={posting.id} clientId={linkedClient?.id ?? null} choices={choices} />
+            {canEditDetails ? <PostingClientForm key={posting.clientCompanyId ?? 'unassigned'} postingId={posting.id} clientId={linkedClient?.id ?? null} choices={choices} /> : null}
           </div>
         ) : null}
         {canRecruit ? <div className="mt-6">
-          <LogoUpload
+          {canEditDetails ? <LogoUpload
             logoFileId={posting.logoFileId}
             upload={uploadPostingLogoAction.bind(null, posting.id)}
             remove={removePostingLogoAction.bind(null, posting.id)}
             label={posting.clientCompanyId ? 'Logotipo do cliente' : 'Logotipo da vaga'}
-          />
+          /> : null}
           {canManageClient && linkedClient && isAdmin(ctx) ? <div className="mt-3">
             <PublicClientIdentityForm key={linkedClient.id} postingId={posting.id} clientId={linkedClient.id} allowed={!!publicClientName(posting)} />
           </div> : null}
         </div> : null}
+        {canRecruit && posting.state === 'PUBLISHED' ? (
         <div className="mt-6">
           <p className="mb-2 text-xs text-ink-2">
             Compartilhe com o cliente um link de consulta com os nomes dos candidatos e suas etapas. Anotações, avaliações e remuneração ficam privadas.
@@ -124,20 +125,21 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
               id={posting.id}
               subject={{ name: posting.title, detail: posting.location, seed: posting.id }}
             />
-            {posting.clientCompanyId ? (
+            {linkedClient?.active ? (
               <ShareLinkButton
                 scope="client"
-                id={posting.clientCompanyId}
+                id={linkedClient.id}
                 label={`Todas as vagas de ${linkedClient?.name ?? organization.client.singular}`}
                 subject={{
                   name: linkedClient?.name ?? organization.client.singular,
                   detail: 'Todas as vagas',
-                  seed: posting.clientCompanyId,
+                  seed: linkedClient.id,
                 }}
               />
             ) : null}
           </div>
         </div>
+        ) : null}
       </div>
 
       {canEditDetails ? (

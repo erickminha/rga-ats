@@ -2,6 +2,7 @@
 
 import { groups, logo } from '@/lib/i18n/pt-BR/organization';
 import { revalidatePath } from 'next/cache';
+import { lockPostingForEdit, mayEditPostingDetails } from '@/server/posting-policy';
 import { storeFile } from '@/server/storage';
 import { redirect } from 'next/navigation';
 import { AccessRole, Prisma, type OrgKind, type StageType } from '@prisma/client';
@@ -459,22 +460,28 @@ export async function saveBrandKitAction(input: unknown) {
 export async function uploadPostingLogoAction(postingId: string, formData: FormData) {
   const ctx = await requireSession();
   requireRecruitingAccess(ctx);
-  const posting = await db.posting.findFirst({ where: { id: postingId, orgId: ctx.orgId } });
-  if (!posting) throw new Error('Posting not found.');
   const file = formData.get('logo');
   if (!(file instanceof File) || file.size === 0) return;
-  const stored = await storeLogo(ctx.orgId, file);
-  await db.posting.update({ where: { id: posting.id }, data: { logoFileId: stored.id } });
-  revalidatePath(`/postings/${posting.id}`);
+  await savePostingLogo(ctx, postingId, file);
 }
 
 export async function removePostingLogoAction(postingId: string) {
   const ctx = await requireSession();
   requireRecruitingAccess(ctx);
-  const posting = await db.posting.findFirst({ where: { id: postingId, orgId: ctx.orgId } });
-  if (!posting) throw new Error('Posting not found.');
-  await db.posting.update({ where: { id: posting.id }, data: { logoFileId: null } });
-  revalidatePath(`/postings/${posting.id}`);
+  await savePostingLogo(ctx, postingId, null);
+}
+
+async function savePostingLogo(ctx: Awaited<ReturnType<typeof requireSession>>, postingId: string, file: File | null) {
+  await db.$transaction(async (tx) => {
+    const posting = await lockPostingForEdit(tx, ctx, postingId);
+    if (!posting) throw new Error('Vaga não encontrada.');
+    if (!mayEditPostingDetails(ctx, posting.state, posting.org.requirePostingApproval)) {
+      throw new Error('Somente administradores podem editar vagas publicadas quando a aprovação está ativa.');
+    }
+    const logo = file ? await storeLogo(ctx.orgId, file) : null;
+    await tx.posting.update({ where: { id: posting.id }, data: { logoFileId: logo?.id ?? null } });
+  });
+  revalidatePath(`/postings/${postingId}`);
 }
 
 export async function setRequirePostingApprovalAction(enabled: boolean) {

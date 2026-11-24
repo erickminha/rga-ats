@@ -1,4 +1,5 @@
 import { navigation } from '@/lib/i18n/pt-BR/navigation';
+import { hasRecruitingRole } from '@/lib/recruiting-role';
 import { redirect } from 'next/navigation';
 import { signOut } from '@/lib/auth';
 import { getAuthSession, getOrgNav } from '@/lib/session';
@@ -20,6 +21,24 @@ export default async function AppLayout({
   const session = await getAuthSession();
   if (!session?.user?.id || !session.user.orgId) redirect('/login');
 
+  async function handleSignOut() {
+    'use server';
+    await signOut({ redirectTo: '/login' });
+  }
+
+  if (!hasRecruitingRole(session.user.accessRole)) {
+    return (
+      <main>
+        <header className="flex items-center justify-between gap-3 px-6 py-4">
+          <a href="/interviews" className="font-medium">Minhas entrevistas</a>
+          <form action={handleSignOut}><button className="text-sm underline" type="submit">Sair</button></form>
+        </header>
+        {children}
+        <footer className="px-6 pb-6 pt-4"><SourceCodeLinks /></footer>
+      </main>
+    );
+  }
+
   const fromJwt =
     session.user.orgName != null
       ? {
@@ -37,11 +56,6 @@ export default async function AppLayout({
   if (!(fromJwt ?? fromCookie ?? fetched)?.onboardedAt) fetched ??= await getOrgNav(session.user.orgId);
   const org = fetched ?? fromJwt ?? fromCookie;
   if (org && !org.onboardedAt) redirect('/onboarding');
-
-  async function handleSignOut() {
-    'use server';
-    await signOut({ redirectTo: '/login' });
-  }
 
   return (
     // DrawerHost holds the candidate drawer for every page, so it can open on

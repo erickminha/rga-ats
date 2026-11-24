@@ -1,4 +1,6 @@
-import { ArrowUpRight, Mail, MapPin, Phone } from 'lucide-react';
+import { notFound } from 'next/navigation';
+import { shareableOpportunity } from '@/server/share-links';
+import { ArrowUpRight, MapPin } from 'lucide-react';
 import { db } from '@/lib/db';
 import { Avatar } from '@/components/ui/orb';
 import { SiteIcon } from '@/components/site-icon';
@@ -27,17 +29,18 @@ const host = (url: string) => {
 
 export async function CandidatePresentation({ orgId, opportunityId }: { orgId: string; opportunityId: string }) {
   const opportunity = await db.opportunity.findFirst({
-    where: { id: opportunityId, orgId },
+    where: { id: opportunityId, ...shareableOpportunity(orgId) },
     include: {
       contact: {
-        include: {
+        select: {
+          id: true, name: true, headline: true, location: true, links: true,
           resumeFile: { select: { parsed: true } },
           caseStudies: { orderBy: { position: 'asc' } },
         },
       },
     },
   });
-  if (!opportunity) return null;
+  if (!opportunity) notFound();
   const { contact } = opportunity;
 
   const spotlight = await db.aiEvaluation.findFirst({
@@ -48,12 +51,7 @@ export async function CandidatePresentation({ orgId, opportunityId }: { orgId: s
 
   const resume = readResumeView(contact.resumeFile?.parsed);
   const role = contact.headline?.split(' at ')[0] ?? contact.headline;
-  // Their own words: the resume's summary, or (with no parsed resume) the start of its text
-  const about =
-    resume?.summary ??
-    (contact.resumeText && !resume?.experience.length
-      ? `${contact.resumeText.slice(0, 1200)}${contact.resumeText.length > 1200 ? '…' : ''}`
-      : null);
+  const about = resume?.summary;
   const highlights = mergeHighlights(resume ? resumeHighlights(resume.experience) : [], readHighlights(spotlight?.highlights));
   const standout = highlights.length ? highlights.map((h) => h.text) : (spotlight?.strengths ?? []);
   const links = contact.links.map((l) => (l.startsWith('http') ? l : `https://${l}`));
@@ -70,16 +68,6 @@ export async function CandidatePresentation({ orgId, opportunityId }: { orgId: s
             {contact.location ? (
               <span className="flex items-center gap-1.5">
                 <MapPin size={14} /> {contact.location}
-              </span>
-            ) : null}
-            {contact.emails[0] ? (
-              <a href={`mailto:${contact.emails[0]}`} className="flex items-center gap-1.5 transition-colors duration-[120ms] hover:text-ink">
-                <Mail size={14} /> {contact.emails[0]}
-              </a>
-            ) : null}
-            {contact.phones[0] ? (
-              <span className="flex items-center gap-1.5">
-                <Phone size={14} /> {contact.phones[0]}
               </span>
             ) : null}
           </p>

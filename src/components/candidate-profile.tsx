@@ -252,7 +252,7 @@ export async function CandidateProfile({ id }: { id: string }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <ShareLinkButton
+            {!opportunity.confidential && !opportunity.contact.isAnonymized ? <ShareLinkButton
               scope="candidate"
               id={opportunity.id}
               label="Presentation"
@@ -261,7 +261,7 @@ export async function CandidateProfile({ id }: { id: string }) {
                 detail: opportunity.posting?.title ?? contact.headline,
                 seed: contact.id,
               }}
-            />
+            /> : null}
           </div>
         </div>
 

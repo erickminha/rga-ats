@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { decodeCursor } from '@/lib/list-cursor';
-import { getSessionContext } from '@/lib/session';
+import { canManageRecruiting, getSessionContext } from '@/lib/session';
 import { cachedPipelineCounts, getListMeta } from '@/server/lists/cache';
 import { pipelineFilterFor, pipelinePage } from '@/server/lists/pipeline';
 import { limitParam, listJson, listParams } from '@/app/api/lists/params';
@@ -18,6 +18,7 @@ const KEYS = ['posting', 'client', 'stage', 'q', 'status', 'sort'] as const;
 export async function GET(request: NextRequest) {
   const ctx = await getSessionContext();
   if (!ctx) return listJson({ error: 'unauthorized' }, 401);
+  if (!canManageRecruiting(ctx)) return listJson({ error: 'forbidden' }, 403);
   const params = request.nextUrl.searchParams;
   const input = listParams(params, KEYS);
   const sort = input.sort === 'name' ? 'name' : 'time';

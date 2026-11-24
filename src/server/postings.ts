@@ -1,3 +1,4 @@
+import { lockPostingForEdit, mayEditPostingDetails } from '@/server/posting-policy';
 import { PostingState, type Commitment, type Prisma, type WorkplaceType } from '@prisma/client';
 import { postingContent } from '@/lib/public-careers';
 import { db } from '@/lib/db';
@@ -94,13 +95,9 @@ export async function updatePostingDetails(
   const posting = await db.$transaction(async (tx) => {
     // Serialize changes to content with the client identity and approval paths.
     await lockClientWrites(tx, ctx.orgId);
-    await tx.$queryRaw`SELECT id FROM "Posting" WHERE id = ${postingId} AND "orgId" = ${ctx.orgId} FOR NO KEY UPDATE`;
-    const current = await tx.posting.findFirst({
-      where: { id: postingId, orgId: ctx.orgId },
-      include: { org: { select: { slug: true, requirePostingApproval: true } } },
-    });
+    const current = await lockPostingForEdit(tx, ctx, postingId);
     if (!current) throw new PostingEditError('Vaga não encontrada.');
-    if (!isAdmin(ctx) && current.state === 'PUBLISHED' && current.org.requirePostingApproval) {
+    if (!mayEditPostingDetails(ctx, current.state, current.org.requirePostingApproval)) {
       throw new PostingEditError('Somente administradores podem editar vagas publicadas quando a aprovação está ativa.');
     }
     const data = {

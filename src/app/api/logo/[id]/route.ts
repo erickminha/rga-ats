@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { hasRecruitingRole } from '@/lib/recruiting-role';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { publicPostingLogo } from '@/lib/public-careers';
@@ -24,7 +25,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const isPublic = !!org || postings.some((p) => p.state === 'PUBLISHED' && publicPostingLogo(p, p.org.kind === 'AGENCY') === id);
   if (!isPublic) {
     const session = postings.length ? await auth() : null;
-    if (session?.user?.orgId !== file.orgId) return new NextResponse('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    if (session?.user?.orgId !== file.orgId || !hasRecruitingRole(session.user.accessRole)) return new NextResponse('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
   }
 
   let body: ReadableStream<Uint8Array>;

@@ -1,4 +1,5 @@
 import { randomInt } from 'crypto';
+import { canManageRecruiting, type SessionContext } from '@/lib/session';
 import { db } from '@/lib/db';
 import { verifyShareToken, type SharePayload, type ShareScope } from '@/lib/share-token';
 
@@ -30,6 +31,35 @@ function newCode(): string {
   let code = '';
   for (let i = 0; i < CODE_LENGTH; i++) code += ALPHABET[randomInt(ALPHABET.length)];
   return code;
+}
+
+export const shareablePosting = { state: 'PUBLISHED' } as const;
+export function shareableOpportunity(orgId: string) {
+  return { orgId, confidential: false, contact: { orgId, isAnonymized: false } };
+}
+
+export async function createRecruitingShare(ctx: SessionContext, scope: ShareScope, id: string) {
+  if (!canManageRecruiting(ctx)) return { error: 'Seu perfil não pode compartilhar dados externamente.' } as const;
+  const { orgId } = ctx;
+  let target: { id: string } | null;
+  switch (scope) {
+    case 'candidate':
+      target = await db.opportunity.findFirst({ where: { id, ...shareableOpportunity(orgId) }, select: { id: true } });
+      break;
+    case 'posting':
+      target = await db.posting.findFirst({ where: { id, orgId, ...shareablePosting }, select: { id: true } });
+      break;
+    case 'client':
+      target = await db.clientCompany.findFirst({
+        where: { id, orgId, active: true, postings: { some: { orgId, ...shareablePosting } } },
+        select: { id: true },
+      });
+      break;
+    default:
+      return { error: 'Tipo de compartilhamento inválido.' } as const;
+  }
+  if (!target) return { error: 'Registro indisponível para compartilhamento.' } as const;
+  return getOrCreateShareLink(orgId, scope, target.id);
 }
 
 /** The live link for this target, or a new one. The caller checks the target is in `orgId`. */

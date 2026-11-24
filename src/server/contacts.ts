@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
-import type { SessionContext } from '@/lib/session';
+import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
 import { parseCsv } from '@/lib/csv';
 import { capName } from '@/lib/utils';
 import { invalidateContactCounts, invalidateLists } from '@/server/lists/cache';
@@ -70,6 +70,7 @@ function cleanLink(raw: string): string {
  * the list back); an empty string removes that value.
  */
 export async function updateContactDetails(ctx: SessionContext, contactId: string, patch: ContactDetailsPatch) {
+  requireRecruitingAccess(ctx);
   const data: { emails?: string[]; phones?: string[]; location?: string | null; links?: string[] } = {};
   const dedupe = (values: string[]) => [...new Set(values.filter(Boolean))];
   if (patch.emails) {

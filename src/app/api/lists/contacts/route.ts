@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { decodeCursor } from '@/lib/list-cursor';
-import { getSessionContext } from '@/lib/session';
+import { canManageRecruiting, getSessionContext } from '@/lib/session';
 import { contactsPage } from '@/server/lists/contacts';
 import { limitParam, listJson, listParams } from '@/app/api/lists/params';
 
@@ -13,6 +13,7 @@ const KEYS = ['q', 'tag', 'pool'] as const;
 export async function GET(request: NextRequest) {
   const ctx = await getSessionContext();
   if (!ctx) return listJson({ error: 'unauthorized' }, 401);
+  if (!canManageRecruiting(ctx)) return listJson({ error: 'forbidden' }, 403);
   const params = request.nextUrl.searchParams;
   const rawAfter = params.get('after');
   const after = rawAfter ? decodeCursor(rawAfter, 'created') : null;

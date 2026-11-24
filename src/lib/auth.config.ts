@@ -1,3 +1,4 @@
+import { hasRecruitingRole, workspaceHome } from '@/lib/recruiting-role';
 import type { NextAuthConfig } from 'next-auth';
 
 /**
@@ -24,7 +25,7 @@ export const authConfig = {
       // /demo signs a visitor in to the demo workspace (app/demo/route.ts).
       if (nextUrl.pathname === '/self-hosted') return true;
       if (nextUrl.pathname === '/' || nextUrl.pathname === '/demo') {
-        if (auth?.user?.orgId) return Response.redirect(new URL('/dashboard', nextUrl));
+        if (auth?.user?.orgId) return Response.redirect(new URL(workspaceHome(auth.user.accessRole), nextUrl));
         return true;
       }
       // The list data routes are fetched by the page, not navigated to: a
@@ -35,8 +36,14 @@ export const authConfig = {
       const isAuthPage =
         nextUrl.pathname.startsWith('/login') || nextUrl.pathname.startsWith('/signup');
       if (isAuthPage) {
-        if (loggedIn) return Response.redirect(new URL('/dashboard', nextUrl));
+        if (loggedIn) return Response.redirect(new URL(workspaceHome(auth.user.accessRole), nextUrl));
         return true;
+      }
+      if (loggedIn && !hasRecruitingRole(auth.user.accessRole)) {
+        const path = nextUrl.pathname;
+        if (/^\/interviews(?:\/[^/]+)?\/?$/.test(path) || /^\/api\/files\/[^/]+\/?$/.test(path)) return true;
+        if (path.startsWith('/api/')) return Response.json({ error: 'forbidden' }, { status: 403 });
+        return Response.redirect(new URL('/interviews', nextUrl));
       }
       return loggedIn;
     },

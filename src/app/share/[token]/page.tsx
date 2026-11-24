@@ -2,7 +2,7 @@ import { appLocale } from '@/lib/i18n';
 import { notFound } from 'next/navigation';
 import { PoweredBySource } from '@/components/powered-by';
 import { db } from '@/lib/db';
-import { resolveShare } from '@/server/share-links';
+import { resolveShare, shareableOpportunity, shareablePosting } from '@/server/share-links';
 import { ensureSamplePresentation, SAMPLE_PRESENTATION_CODE } from '@/server/sample-boards';
 
 /** Share links are for the people they're sent to, never search results. */
@@ -39,10 +39,14 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     );
   }
 
+  if (payload.scope === 'client' && !await db.clientCompany.findFirst({
+    where: { id: payload.id, orgId: org.id, active: true }, select: { id: true },
+  })) notFound();
+
   const postingWhere =
     payload.scope === 'posting' ? { id: payload.id } : { clientCompanyId: payload.id };
   const postings = await db.posting.findMany({
-    where: { orgId: org.id, ...postingWhere },
+    where: { orgId: org.id, ...shareablePosting, ...postingWhere },
     include: { clientCompany: { select: { name: true } } },
     orderBy: { createdAt: 'desc' },
   });
@@ -54,7 +58,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   const [stages, opportunities] = await Promise.all([
     db.stage.findMany({ where: { orgId: org.id }, orderBy: { order: 'asc' } }),
     db.opportunity.findMany({
-      where: { orgId: org.id, postingId: { in: postingIds } },
+      where: { ...shareableOpportunity(org.id), postingId: { in: postingIds } },
       include: {
         contact: { select: { name: true } },
         stage: { select: { name: true, order: true } },

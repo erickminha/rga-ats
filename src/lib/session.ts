@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { unstable_cache, updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { hasRecruitingRole } from '@/lib/recruiting-role';
 import { db } from '@/lib/db';
 
 export type SessionContext = {
@@ -22,7 +23,7 @@ export function isAdmin(ctx: SessionContext): boolean {
 }
 
 export function canManageRecruiting(ctx: SessionContext): boolean {
-  return isAdmin(ctx) || ctx.accessRole === 'TEAM_MEMBER' || (ctx.accessRole === 'API' && !!ctx.apiKeyId);
+  return hasRecruitingRole(ctx.accessRole) || (ctx.accessRole === 'API' && !!ctx.apiKeyId);
 }
 
 export function requireRecruitingAccess(ctx: SessionContext) {
@@ -33,14 +34,20 @@ export function requireRecruitingAccess(ctx: SessionContext) {
 export const getAuthSession = cache(async () => auth());
 
 /** Resolve the signed-in user's tenant context, or redirect to login. */
-export const requireSession = cache(async (): Promise<SessionContext> => {
+export const requireAuthenticatedSession = cache(async (): Promise<SessionContext> => {
   const session = await getAuthSession();
   if (!session?.user?.id || !session.user.orgId) redirect('/login');
   return {
     userId: session.user.id,
     orgId: session.user.orgId,
-    accessRole: String(session.user.accessRole ?? 'TEAM_MEMBER'),
+    accessRole: String(session.user.accessRole ?? ''),
   };
+});
+
+export const requireSession = cache(async (): Promise<SessionContext> => {
+  const ctx = await requireAuthenticatedSession();
+  if (!canManageRecruiting(ctx)) redirect('/interviews');
+  return ctx;
 });
 
 /**
@@ -53,7 +60,7 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
   return {
     userId: session.user.id,
     orgId: session.user.orgId,
-    accessRole: String(session.user.accessRole ?? 'TEAM_MEMBER'),
+    accessRole: String(session.user.accessRole ?? ''),
   };
 });
 

@@ -13,7 +13,7 @@ import type {
 } from '@prisma/client';
 import { db } from '@/lib/db';
 import { BULK_LIMIT, POOL_BULK_LIMIT, type BulkResult } from '@/lib/bulk';
-import { requireRecruitingAccess, isAdmin, requireSession } from '@/lib/session';
+import { requireAuthenticatedSession, requireRecruitingAccess, isAdmin, requireSession } from '@/lib/session';
 import { invalidateContactCounts, invalidateLists, invalidatePipelineCounts } from '@/server/lists/cache';
 import { createPosting, PostingEditError, setPostingOwner, setPostingState, updatePostingDetails } from '@/server/postings';
 import {
@@ -53,7 +53,7 @@ import {
 import { EncryptedDocumentError } from '@/server/text/types';
 import { requestBaseUrl } from '@/lib/base-url';
 import { normalizeBookingUrl } from '@/lib/booking';
-import { getOrCreateShareLink } from '@/server/share-links';
+import { createRecruitingShare } from '@/server/share-links';
 import { getPendingApproval } from '@/server/approvals';
 import { submitReferral } from '@/server/referrals';
 import { submitFeedback } from '@/server/feedback';
@@ -322,7 +322,7 @@ export async function submitFeedbackAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const ctx = await requireSession();
+  const ctx = await requireAuthenticatedSession();
   const opportunityId = String(formData.get('opportunityId') ?? '');
   const overallRating = Number.parseInt(String(formData.get('overallRating') ?? ''), 10);
   const summary = String(formData.get('summary') ?? '').trim();
@@ -828,18 +828,9 @@ export async function createShareLinkAction(
   scope: 'posting' | 'client' | 'candidate',
   id: string,
 ): Promise<{ url?: string; expiresAt?: string; error?: string }> {
-  const ctx = await requireSession();
-  if (scope === 'posting') {
-    const posting = await db.posting.findFirst({ where: { id, orgId: ctx.orgId } });
-    if (!posting) return { error: 'Posting not found.' };
-  } else if (scope === 'candidate') {
-    const opp = await db.opportunity.findFirst({ where: { id, orgId: ctx.orgId } });
-    if (!opp) return { error: 'Candidate not found.' };
-  } else {
-    const client = await db.clientCompany.findFirst({ where: { id, orgId: ctx.orgId } });
-    if (!client) return { error: 'Client not found.' };
-  }
-  const link = await getOrCreateShareLink(ctx.orgId, scope, id);
+  const ctx = await requireAuthenticatedSession();
+  const link = await createRecruitingShare(ctx, scope, id);
+  if ('error' in link) return { error: link.error };
   return { url: `${await requestBaseUrl()}/share/${link.code}`, expiresAt: link.expiresAt.toISOString() };
 }
 

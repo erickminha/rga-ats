@@ -1,7 +1,8 @@
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import { sendEmail } from '@/server/email';
-import type { SessionContext } from '@/lib/session';
+import { interviewAccess } from '@/server/interview-access';
+import { canManageRecruiting, type SessionContext } from '@/lib/session';
 
 export const RATING_LABELS: Record<number, string> = {
   1: 'Strong no',
@@ -25,6 +26,8 @@ export type ScorecardAnswer = { label: string; kind: 'RATING' | 'TEXT'; value: s
 export async function submitFeedback(ctx: SessionContext, input: SubmitFeedbackInput) {
   if (!ctx.userId) throw new Error('Feedback requires a user author');
   const authorId = ctx.userId;
+  const restricted = !canManageRecruiting(ctx);
+  if (restricted && !input.interviewId) throw new Error('Selecione uma entrevista atribuída a você.');
   if (input.overallRating < 1 || input.overallRating > 4) throw new Error('Invalid rating');
 
   // Validate answers against the org's live questions and snapshot label+kind
@@ -58,7 +61,7 @@ export async function submitFeedback(ctx: SessionContext, input: SubmitFeedbackI
 
     if (input.interviewId) {
       const interview = await tx.interview.findFirst({
-        where: { id: input.interviewId, orgId: ctx.orgId, opportunityId: opportunity.id },
+        where: { ...interviewAccess(ctx), id: input.interviewId, opportunityId: opportunity.id },
       });
       if (!interview) throw new Error('Interview not found');
     }

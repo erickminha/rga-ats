@@ -1,3 +1,4 @@
+import { lockPostingForEdit, mayEditPostingDetails } from '@/server/posting-policy';
 import { postingContent, publicClientName } from '@/lib/public-careers';
 import { Prisma, type PostingState } from '@prisma/client';
 import { db } from '@/lib/db';
@@ -168,11 +169,12 @@ export async function setPostingClient(ctx: SessionContext, postingId: string, c
   await assertAccess(ctx);
   const posting = await db.$transaction(async (tx) => {
     await lockClientWrites(tx, ctx.orgId);
-    const current = await tx.posting.findFirst({
-      where: { id: postingId, orgId: ctx.orgId }, select: { id: true, clientCompanyId: true, content: true },
-    });
+    const current = await lockPostingForEdit(tx, ctx, postingId);
     if (!current) throw new ClientCompanyError('Vaga não encontrada.');
-    if (current.clientCompanyId === clientId) return current;
+    if (current.clientCompanyId === clientId) return { id: current.id, clientCompanyId: current.clientCompanyId, content: current.content };
+    if (!mayEditPostingDetails(ctx, current.state, current.org.requirePostingApproval)) {
+      throw new ClientCompanyError('Somente administradores podem editar vagas publicadas quando a aprovação está ativa.');
+    }
     if (clientId && !(await tx.clientCompany.findFirst({
       where: { id: clientId, orgId: ctx.orgId, active: true }, select: { id: true },
     }))) throw new ClientCompanyError('Selecione uma empresa ativa do seu espaço de trabalho.');

@@ -11,9 +11,16 @@
 | Cadastrar e editar empresas e contatos comerciais da agência | Sim | Sim | Sim | Restrito | Restrito |
 | Autorizar a divulgação do cliente e resolver uma aprovação de vaga pendente | Sim | Sim | Restrito | Restrito | Restrito |
 | Cadastrar candidatos com currículo, mover etapas e registrar entrevistas | Sim | Sim | Sim | Restrito | Restrito |
-| Consultas e avaliações já disponíveis aos perfis limitados | Conforme os fluxos existentes | Conforme os fluxos existentes | Conforme os fluxos existentes | Conforme os fluxos existentes | Conforme os fluxos existentes |
+| Consultar a base de candidatos, buscar e exportar dados | Sim | Sim | Sim, conforme as regras dos exportadores | Restrito | Restrito |
+| Consultar o kit e o currículo atual e enviar a própria avaliação | Sim | Sim | Sim | Entrevistas atribuídas e não canceladas | Entrevistas atribuídas e não canceladas |
+| Atualizar cadastro ou campos de candidato, enviar e cancelar e-mails e alterar situação de entrevistas | Sim | Sim | Sim | Restrito | Restrito |
+| Criar links externos | Sim, para registros elegíveis | Sim, para registros elegíveis | Sim, para registros elegíveis | Restrito | Restrito |
 
 Alterar perfil, desativar ou reativar uma conta revoga as sessões anteriores na próxima requisição autenticada. Convites vinculam a pessoa à organização do administrador e geram a senha temporária pelo fluxo existente. A aprovação de vagas, quando habilitada, também reserva aos administradores a edição de detalhes de vagas já publicadas. Integrações pessoais existentes permanecem disponíveis a quem as usa. A autorização da API por chave mantém o escopo anterior. O cadastro manual aceita currículo de até 5 MB e preserva currículos já associados ao contato.
+
+Os perfis limitados entram em **Minhas entrevistas**. O kit mostra a identidade profissional do candidato, o currículo atual e os detalhes da entrevista atribuída. Anotações internas, outras avaliações, dados de contato e o perfil completo ficam restritos à operação. A autorização do currículo é conferida a cada solicitação e deixa de valer quando a atribuição é removida ou a entrevista é cancelada.
+
+Links de vaga e empresa só mostram vagas publicadas. O link da empresa também exige um cadastro ativo. A apresentação de candidato e as listas públicas excluem processos confidenciais e perfis anonimizados. A apresentação individual omite e-mail, telefone e o trecho de texto bruto do currículo. Links emitidos antes desta revisão seguem sujeitos a esses filtros e ao vencimento original. O modelo antigo não identifica o emissor para revogação seletiva por perfil.
 
 ## Ativação na implantação autorizada
 

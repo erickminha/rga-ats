@@ -1,3 +1,4 @@
+import { interviewAccess } from '@/server/interview-access';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 /**
  * Page data loaders. Server components call these directly, so each page's
@@ -8,7 +9,7 @@ import { organization } from '@/lib/i18n/pt-BR/organization';
 import type { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { decodeCursor } from '@/lib/list-cursor';
-import { canManageRecruiting, getAuthSession, isAdmin, requireSession } from '@/lib/session';
+import { canManageRecruiting, requireAuthenticatedSession, getAuthSession, isAdmin, requireSession } from '@/lib/session';
 import { readOrgNavCookie } from '@/lib/org-nav-cookie';
 import { aiConfigured } from '@/server/ai';
 import { searchAll } from '@/server/contacts';
@@ -251,18 +252,19 @@ function interviewRow(iv: InterviewListRow) {
 
 /** Scheduled interviews from an hour ago on (soonest first), plus the 20 most recent others. */
 export async function loadInterviewsPage() {
-  const ctx = await requireSession();
+  const ctx = await requireAuthenticatedSession();
+  const scope = interviewAccess(ctx);
   const cutoff = new Date(Date.now() - 3_600_000);
   const [upcoming, past, suggested] = await Promise.all([
     db.interview.findMany({
-      where: { orgId: ctx.orgId, state: 'SCHEDULED', startAt: { gte: cutoff } },
+      where: { AND: [scope, { state: 'SCHEDULED', startAt: { gte: cutoff } }] },
       orderBy: { startAt: 'asc' },
       take: 100,
       select: interviewListSelect,
     }),
     db.interview.findMany({
       where: {
-        orgId: ctx.orgId,
+        ...scope,
         OR: [{ state: { not: 'SCHEDULED' } }, { startAt: { lt: cutoff } }],
       },
       orderBy: { startAt: 'desc' },
@@ -271,7 +273,7 @@ export async function loadInterviewsPage() {
     }),
     // The signed-in person's notetaker meetings waiting for them (only
     // theirs), each with who it could have been with.
-    meetingsToReview(ctx),
+    canManageRecruiting(ctx) ? meetingsToReview(ctx) : Promise.resolve([]),
   ]);
   return { upcoming: upcoming.map(interviewRow), past: past.map(interviewRow), suggested };
 }

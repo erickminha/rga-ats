@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { Prisma } from '@prisma/client';
+import { hasRecruitingRole } from '@/lib/recruiting-role';
 import { auth } from '@/lib/auth';
 import { csvLine, EXPORT_BATCH, streamReadOnly } from '@/lib/csv-stream';
 
@@ -16,6 +17,7 @@ export const maxDuration = 300;
 export async function GET() {
   const session = await auth();
   if (!session?.user?.orgId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!hasRecruitingRole(session.user.accessRole)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   const orgId = session.user.orgId;
 
   async function* lines(tx: Prisma.TransactionClient): AsyncGenerator<string> {

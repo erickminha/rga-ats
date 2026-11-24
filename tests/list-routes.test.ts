@@ -5,10 +5,11 @@ import { candidate, createOrg } from './fixtures';
 import { encodeCursor } from '@/lib/list-cursor';
 
 // The routes read the session through getSessionContext; tests set it here.
-const session = vi.hoisted(() => ({ orgId: '' as string | null }));
+const session = vi.hoisted(() => ({ orgId: '' as string | null, role: 'SUPER_ADMIN' }));
 vi.mock('@/lib/session', () => ({
+  canManageRecruiting: (ctx: { accessRole: string }) => ctx.accessRole === 'SUPER_ADMIN',
   getSessionContext: async () =>
-    session.orgId ? { userId: null, orgId: session.orgId, accessRole: 'SUPER_ADMIN' } : null,
+    session.orgId ? { userId: null, orgId: session.orgId, accessRole: session.role } : null,
   requireSession: async () => ({ userId: null, orgId: session.orgId, accessRole: 'SUPER_ADMIN' }),
   getAuthSession: async () => null,
   isAdmin: () => true,
@@ -38,6 +39,19 @@ describe('list routes without a session', () => {
     }
   });
 
+  it('blocks internal contact and pipeline lists for both restricted roles', async () => {
+    session.orgId = 'org-ficticia';
+    try {
+      for (const role of ['LIMITED_TEAM_MEMBER', 'INTERVIEWER']) {
+        session.role = role;
+        expect((await get(pipeline, '')).status).toBe(403);
+        expect((await get(contacts, '')).status).toBe(403);
+      }
+    } finally {
+      session.role = 'SUPER_ADMIN';
+    }
+  });
+
   it('middleware answers 401 for /api/lists/* when signed out, and still redirects pages', () => {
     const authorized = authConfig.callbacks.authorized as unknown as (args: {
       auth: unknown;
@@ -47,7 +61,7 @@ describe('list routes without a session', () => {
     expect(res).toBeInstanceOf(Response);
     expect((res as Response).status).toBe(401);
     expect(authorized({ auth: null, request: { nextUrl: new URL('http://localhost/pipeline') } })).toBe(false);
-    expect(authorized({ auth: { user: { id: 'u' } }, request: { nextUrl: new URL('http://localhost/api/lists/pipeline') } })).toBe(true);
+    expect(authorized({ auth: { user: { id: 'u', accessRole: 'TEAM_MEMBER' } }, request: { nextUrl: new URL('http://localhost/api/lists/pipeline') } })).toBe(true);
   });
 });
 

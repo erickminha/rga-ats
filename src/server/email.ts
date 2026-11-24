@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 import { db } from '@/lib/db';
 import { publicClientName } from '@/lib/public-careers';
 import { emitEvent } from '@/server/events';
-import type { SessionContext } from '@/lib/session';
+import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
 
 /**
  * Email delivery with merge tokens, scheduling, and automation.
@@ -147,6 +147,7 @@ export async function sendEmail(input: SendEmailInput, privateBody?: string) {
 }
 
 export async function cancelScheduledEmail(ctx: SessionContext, messageId: string) {
+  requireRecruitingAccess(ctx);
   const message = await db.emailMessage.findFirst({
     where: { id: messageId, orgId: ctx.orgId, status: 'SCHEDULED' },
   });

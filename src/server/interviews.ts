@@ -169,6 +169,7 @@ export async function setInterviewState(
   interviewId: string,
   state: InterviewState,
 ) {
+  requireRecruitingAccess(ctx);
   return db.$transaction(async (tx) => {
     const interview = await tx.interview.findFirst({
       where: { id: interviewId, orgId: ctx.orgId },

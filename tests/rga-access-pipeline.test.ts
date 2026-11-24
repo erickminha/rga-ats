@@ -1,3 +1,9 @@
+import proxy from '@/proxy';
+import { createRecruitingShare } from '@/server/share-links';
+import { interviewAccess, resumeAccess } from '@/server/interview-access';
+import { submitFeedback } from '@/server/feedback';
+import { setInterviewState } from '@/server/interviews';
+import { updateContactDetails } from '@/server/contacts';
 import bcrypt from 'bcryptjs';
 import { NextRequest } from 'next/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -6,7 +12,7 @@ import { db } from '@/lib/db';
 import { handlers } from '@/lib/auth';
 import type { SessionContext } from '@/lib/session';
 import { submitApplication } from '@/server/applications';
-import { saveClientCompany, setPublicClientIdentity } from '@/server/client-companies';
+import { saveClientCompany, setPostingClient, setPublicClientIdentity } from '@/server/client-companies';
 import { parseCompany } from '@/lib/client-company';
 import { createCandidate, moveStage } from '@/server/opportunities';
 import { createPosting, setPostingState, updatePostingDetails } from '@/server/postings';
@@ -98,6 +104,56 @@ describe.skipIf(!hasDb)('Perfis e funil RGA', () => {
     expect(roleEvents).toBe(1);
   });
 
+  it('limits authenticated restricted profiles to assigned interview kits, resumes and feedback', async () => {
+    vi.stubEnv('AUTH_URL', origin);
+    const { org, stages, admin } = await createOrg();
+    const [assigned, other] = await Promise.all([candidate(org.id, stages, [[0, 0]]), candidate(org.id, stages, [[0, 0]])]);
+    const makeResume = async (contactId: string) => {
+      const file = await db.storedFile.create({ data: { orgId: org.id, contactId, key: crypto.randomUUID(), filename: 'ficticio.pdf', mime: 'application/pdf', size: 1 } });
+      await db.contact.update({ where: { id: contactId }, data: { resumeFileId: file.id } });
+      return file;
+    };
+    const [allowedFile, deniedFile] = await Promise.all([makeResume(assigned.contact.id), makeResume(other.contact.id)]);
+    const people = await Promise.all([activeUser(org.id, 'LIMITED_TEAM_MEMBER'), activeUser(org.id, 'INTERVIEWER')]);
+    const interview = (opportunityId: string, panelists: { id: string }[]) => db.interview.create({ data: {
+      orgId: org.id, opportunityId, panelists: { connect: panelists.map(({ id }) => ({ id })) }, title: 'Entrevista fictícia', startAt: new Date(),
+    } });
+    const included = await interview(assigned.opportunity.id, people);
+    const excluded = await interview(other.opportunity.id, []);
+    const protect = proxy as unknown as (request: NextRequest) => Promise<Response>;
+    for (const user of people) {
+      const cookie = await logIn(user.email);
+      const authenticated = (await sessionWith(cookie))?.user;
+      expect(authenticated?.accessRole).toBe(user.accessRole);
+      const ctx = context(authenticated!);
+      for (const path of ['/search', '/contacts', '/pipeline', `/candidates/${other.opportunity.id}`]) {
+        const response = await protect(new NextRequest(origin + path, { headers: { cookie } }));
+        expect(new URL(response.headers.get('location')!).pathname).toBe('/interviews');
+      }
+      expect((await protect(new NextRequest(origin + '/api/lists/contacts', { headers: { cookie } }))).status).toBe(403);
+      expect(await db.interview.findMany({ where: interviewAccess(ctx), select: { id: true } })).toEqual([{ id: included.id }]);
+      expect(await db.storedFile.findFirst({ where: { ...resumeAccess(ctx), id: deniedFile.id } })).toBeNull();
+      expect(await db.storedFile.findFirst({ where: { ...resumeAccess(ctx), id: allowedFile.id } })).not.toBeNull();
+      const feedback = { summary: 'Avaliação fictícia', overallRating: 3 };
+      await expect(submitFeedback(ctx, { ...feedback, opportunityId: other.opportunity.id, interviewId: excluded.id })).rejects.toThrow();
+      await expect(submitFeedback(ctx, { ...feedback, opportunityId: assigned.opportunity.id })).rejects.toThrow();
+      expect((await submitFeedback(ctx, { ...feedback, opportunityId: assigned.opportunity.id, interviewId: included.id })).authorId).toBe(user.id);
+      await expect(setInterviewState(ctx, included.id, 'COMPLETED')).rejects.toThrow(/perfil/);
+      await expect(updateContactDetails(ctx, assigned.contact.id, { location: 'Recife' })).rejects.toThrow(/perfil/);
+      for (const scope of ['candidate', 'posting', 'client'] as const) {
+        expect(await createRecruitingShare(ctx, scope, assigned.opportunity.id)).toHaveProperty('error');
+      }
+    }
+    expect((await setInterviewState(context(admin), included.id, 'COMPLETED')).state).toBe('COMPLETED');
+    await db.interview.update({ where: { id: included.id }, data: { panelists: { disconnect: { id: people[0].id } } } });
+    expect(await db.storedFile.findFirst({ where: { ...resumeAccess(context(people[0])), id: allowedFile.id } })).toBeNull();
+    const recruiter = context(await activeUser(org.id, 'TEAM_MEMBER'));
+    expect(await createRecruitingShare(recruiter, 'candidate', assigned.opportunity.id)).toHaveProperty('code');
+    await db.opportunity.update({ where: { id: assigned.opportunity.id }, data: { confidential: true } });
+    expect(await createRecruitingShare(recruiter, 'candidate', assigned.opportunity.id)).toHaveProperty('error');
+    expect(await db.storedFile.findFirst({ where: { ...resumeAccess(recruiter), id: deniedFile.id } })).not.toBeNull();
+  });
+
   it('serializes simultaneous attempts to remove the last two active principal administrators', async () => {
     const { org, admin } = await createOrg();
     const second = await activeUser(org.id, 'SUPER_ADMIN');
@@ -128,10 +184,15 @@ describe.skipIf(!hasDb)('Perfis e funil RGA', () => {
     expect(edited).toMatchObject({ slug: posting.slug, state: 'DRAFT', clientCompanyId: client.id, content: { requirements, description: 'Descrição fictícia' } });
     await expect(setPublicClientIdentity(ctx, posting.id, client.id, true)).rejects.toThrow(/administradores/);
     expect((await setPostingState(ctx, posting.id, 'PUBLISHED')).state).toBe('PENDING_APPROVAL');
+    expect(await createRecruitingShare(ctx, 'posting', posting.id)).toHaveProperty('error');
+    expect(await createRecruitingShare(ctx, 'client', client.id)).toHaveProperty('error');
     await expect(setPostingState(ctx, posting.id, 'DRAFT')).rejects.toThrow(/administradores/);
     await expect(setPostingState(restricted, posting.id, 'PUBLISHED')).rejects.toThrow(/perfil/);
     expect((await setPostingState(context(admin), posting.id, 'PUBLISHED')).state).toBe('PUBLISHED');
     await expect(updatePostingDetails(ctx, posting.id, { ...input, title: 'Mudança sem aprovação' })).rejects.toThrow(/administradores/);
+    await expect(setPostingClient(ctx, posting.id, null)).rejects.toThrow(/administradores/);
+    expect(await createRecruitingShare(ctx, 'posting', posting.id)).toHaveProperty('code');
+    expect(await createRecruitingShare(ctx, 'client', client.id)).toHaveProperty('code');
   });
 
   it('reconciles only the configured agency, keeps existing references, and uses Candidatura for new public applications', async () => {
