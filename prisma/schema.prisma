@@ -41,6 +41,7 @@ model Organization {
   // Bias control: hide teammates' scorecards until your own is submitted
   hideFeedbackUntilSubmitted Boolean @default(false)
   assessmentTemplates Json?
+  opinionTemplate Json?
   // GDPR retention: anonymize archived candidates after N months (null = keep forever)
   retentionMonths Int?
   // Show the voluntary EEO/OFCCP self-ID block on apply forms
@@ -352,9 +353,23 @@ model RecruitingAssessment {
   opinion             Json?
   opinionAuthorId     String?
   opinionFinalizedAt  DateTime?
+  opinionDraftAt      DateTime?
+  clientFeedback      Json?
+  opinionVersions     ProfessionalOpinionVersion[]
   updatedAt           DateTime    @updatedAt
 
   @@index([discFileId])
+}
+
+model ProfessionalOpinionVersion {
+  opportunityId String
+  assessment RecruitingAssessment @relation(fields: [opportunityId], references: [opportunityId], onDelete: Cascade)
+  version Int
+  content Json
+  authorId String?
+  issuedAt DateTime
+
+  @@id([opportunityId, version])
 }
 
 // ---------- Pipeline configuration ----------
