@@ -1,3 +1,5 @@
+import { saveArchiveReasonAction, seedRgaArchiveReasonsAction } from '@/app/org-actions';
+import { outcomeCategory, outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import { settings } from '@/lib/i18n/pt-BR/settings';
 import Link from 'next/link';
@@ -590,11 +592,18 @@ export default async function SettingsPage({
 
         {section === 'data' && admin ? (
         <Group title={settings.controls.archive}>
-          <Row className="flex flex-wrap gap-2">
-            {archiveReasons.map((r) => (
-              <span key={r.id} className={badge}>
-                {r.name}
-              </span>
+          <Row className="grid gap-3">
+            <form action={seedRgaArchiveReasonsAction}>
+              <button className={btnTonal}>Aplicar motivos iniciais da RGA</button>
+            </form>
+            {[...archiveReasons, null].map((reason) => (
+              <form key={reason?.id ?? 'new'} action={saveArchiveReasonAction.bind(null, reason?.id ?? null)} className="flex flex-wrap items-center gap-2">
+                <input name="name" aria-label="Nome do motivo" placeholder="Novo motivo" maxLength={120} required defaultValue={reason?.name} className={inputClass} />
+                <select name="category" aria-label="Categoria" defaultValue={outcomeCategory(reason)}>
+                  {Object.entries(outcomeNames).map(([key, label]) => <option key={key} value={key} disabled={!!reason && key !== outcomeCategory(reason)}>{label}</option>)}
+                </select>
+                <button className={btnTonal}>{reason ? 'Salvar' : 'Adicionar motivo'}</button>
+              </form>
             ))}
           </Row>
         </Group>

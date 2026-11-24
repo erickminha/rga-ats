@@ -1,3 +1,4 @@
+import { RecruitingBoard } from '@/components/recruiting-board';
 import Link from 'next/link';
 import { Kanban, Plus } from 'lucide-react';
 import type { loadPipelinePage } from '@/app/(app)/page-loaders';
@@ -16,28 +17,43 @@ export function PipelineScreen({ data }: { data: Awaited<ReturnType<typeof loadP
     q: data.q,
     status: data.archived ? 'archived' : '',
     sort: data.sort,
+    reason: data.reason,
   };
+
+  const query = new URLSearchParams(Object.entries({ posting: data.postingFilter, client: data.clientFilter, q: data.q }).filter(([, val]) => val)).toString();
 
   // No key on the list: a filter change updates it in place (focus stays on
   // the tile that was clicked); it resets its own selection and loaded pages.
   return (
     <PipelineNavProvider listInput={listInput}>
       <div className="t-reveal flex h-screen flex-col">
-        <div className="flex items-start justify-between pr-6">
-          <PageHeader title="Pipeline" />
+        <div className="flex flex-wrap items-start justify-between gap-2 px-3 sm:px-0 sm:pr-6">
+          <PageHeader title="Funil de recrutamento" />
           <div className="mt-6 flex items-center gap-2">
-            <PipelineFilters postingGroups={data.postingGroups} clients={data.clients} />
+            {!data.board && <PipelineFilters postingGroups={data.postingGroups} clients={data.clients} />}
+            <Link href={`/pipeline?${query}${data.board ? '' : '&view=kanban'}`} className="text-sm underline">
+              {data.board ? 'Lista' : 'Kanban'}
+            </Link>
             <Link href="/contacts/new" className={btnPrimary}>
-              <Plus /> Add candidate
+              <Plus /> Adicionar candidato
             </Link>
           </div>
         </div>
 
-        {data.empty ? (
+        {data.archived && <form action="/pipeline" className="mx-6 mb-3 flex flex-wrap items-center gap-2">
+          <input type="hidden" name="status" value="archived" />
+          {Array.from(new URLSearchParams(query)).map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}
+          <label>Motivo <select name="reason" defaultValue={data.reason}>
+            <option value="">Todos os motivos</option>
+            {data.archiveReasons.map((reason) => <option key={reason.id} value={reason.id}>{reason.name}</option>)}
+          </select></label>
+          <button className="underline">Filtrar</button>
+        </form>}
+        {data.board ? <RecruitingBoard stages={data.board} query={query} /> : data.empty ? (
           <EmptyState
             icon={Kanban}
-            title="Pipeline is empty"
-            description="Add a candidate to see them move through your hiring stages."
+            title="O funil está vazio"
+            description="Adicione uma candidatura para acompanhar sua evolução pelas etapas."
           />
         ) : (
           <PipelineList

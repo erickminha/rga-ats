@@ -186,25 +186,27 @@ export async function createCandidateAction(
   redirect('/pipeline');
 }
 
-export async function moveStageAction(opportunityId: string, stageId: string) {
+export async function moveStageAction(opportunityId: string, stageId: string, options?: { hireDate?: string; note?: string }) {
   const ctx = await requireSession();
-  await moveStage(ctx, opportunityId, stageId);
+  await moveStage(ctx, opportunityId, stageId, { requireHireDate: true, hireDate: options?.hireDate, note: options?.note });
   revalidatePath('/pipeline');
+  revalidatePath('/postings/[id]', 'page');
   revalidatePath('/review'); // Advance on the review queue
   revalidatePath(`/candidates/${opportunityId}`);
 }
 
-export async function archiveOpportunityAction(opportunityId: string, archiveReasonId: string) {
+export async function archiveOpportunityAction(opportunityId: string, archiveReasonId: string, note?: string) {
   const ctx = await requireSession();
-  await archiveOpportunity(ctx, opportunityId, archiveReasonId);
+  await archiveOpportunity(ctx, opportunityId, archiveReasonId, { note });
   revalidatePath('/pipeline');
+  revalidatePath('/postings/[id]', 'page');
   revalidatePath('/review'); // Archive on the review queue
   revalidatePath(`/candidates/${opportunityId}`);
 }
 
-export async function unarchiveOpportunityAction(opportunityId: string) {
+export async function unarchiveOpportunityAction(opportunityId: string, stageId?: string) {
   const ctx = await requireSession();
-  await unarchiveOpportunity(ctx, opportunityId);
+  await unarchiveOpportunity(ctx, opportunityId, stageId || undefined);
   revalidatePath('/pipeline');
   revalidatePath(`/candidates/${opportunityId}`);
 }
@@ -765,7 +767,7 @@ export async function bulkMoveStageAction(
   const ctx = await requireSession();
   let skipped = Math.max(0, opportunityIds.length - BULK_LIMIT);
   for (const id of opportunityIds.slice(0, BULK_LIMIT)) {
-    await moveStage(ctx, id, stageId, { invalidate: false }).catch(() => skipped++);
+    await moveStage(ctx, id, stageId, { invalidate: false, requireHireDate: true }).catch(() => skipped++);
   }
   if (isFinal(final)) {
     invalidatePipelineCounts(ctx.orgId);

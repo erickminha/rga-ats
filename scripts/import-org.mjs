@@ -159,7 +159,7 @@ async function main() {
     }));
 
     await insertAll(tx, 'stage', dump.stages.map((s) => ({ id: remap(s.id), orgId, name: s.name, type: s.type, order: s.order })));
-    await insertAll(tx, 'archiveReason', dump.archiveReasons.map((r) => ({ id: remap(r.id), orgId, name: r.name, countsAsRejection: r.countsAsRejection })));
+    await insertAll(tx, 'archiveReason', dump.archiveReasons.map((r) => ({ id: remap(r.id), orgId, name: r.name, countsAsRejection: r.countsAsRejection, category: r.category ?? null })));
     await insertAll(tx, 'emailTemplate', (dump.emailTemplates ?? []).map((t) => ({ id: remap(t.id), orgId, name: t.name, subject: t.subject, body: t.body })));
 
     // Automation pointers now that templates exist
@@ -252,6 +252,7 @@ async function main() {
           source: o.source,
           archiveReasonId: mapped(o.archiveReasonId),
           archivedAt: o.archivedAt ? new Date(o.archivedAt) : null,
+          hiredAt: o.hiredAt ? new Date(o.hiredAt) : null,
           ownerId: mapped(o.ownerId),
           confidential: o.confidential ?? false,
           customFields: o.customFields ?? undefined,

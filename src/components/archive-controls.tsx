@@ -1,90 +1,65 @@
 'use client';
 
-import { useOptimistic, useTransition } from 'react';
-import type { OpportunityStatus } from '@prisma/client';
+import { useState, useTransition } from 'react';
+import type { ArchiveCategory, OpportunityStatus, StageType } from '@prisma/client';
 import { archiveOpportunityAction, unarchiveOpportunityAction } from '@/app/(app)/actions';
-import { Dropdown } from '@/components/dropdown';
 import { SnoozeControl } from '@/components/snooze-control';
 import { StageSelect } from '@/components/stage-select';
 import { buttonClass } from '@/components/ui/button';
 import { Badge } from '@/components/ui/primitives';
-import { runOptimistic } from '@/lib/optimistic';
+import { outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
 
-type Status = { status: OpportunityStatus; reason: string | null };
-
-/**
- * The candidate header's status controls: the stage picker (or the
- * Archived badge), snooze, and archive/unarchive. They share one optimistic
- * status, so archiving swaps all of them at once instead of leaving a live
- * stage picker next to "Unarchive" until the server answers.
- *
- * Nothing here is disabled while a change saves: the new state is already
- * on screen, and Next runs server actions one at a time.
- */
-export function CandidateStatusControls({
-  opportunityId,
-  status: serverStatus,
-  archiveReason,
-  stageId,
-  stages,
-  snoozedUntil,
-  reasons,
-}: {
+export function CandidateStatusControls({ opportunityId, status, archiveReason, stageId, stages, snoozedUntil, reasons }: {
   opportunityId: string;
   status: OpportunityStatus;
   archiveReason: string | null;
   stageId: string;
-  stages: { id: string; name: string }[];
+  stages: { id: string; name: string; type: StageType }[];
   snoozedUntil: string | null;
-  reasons: { id: string; name: string }[];
+  reasons: { id: string; name: string; category: ArchiveCategory }[];
 }) {
-  const [, startTransition] = useTransition();
-  const [{ status, reason }, setStatus] = useOptimistic<Status>({
-    status: serverStatus,
-    reason: archiveReason,
+  const [category, setCategory] = useState<ArchiveCategory>('REJECTION');
+  const [message, setMessage] = useState('');
+  const [pending, transition] = useTransition();
+  const submit = (action: () => Promise<void>) => transition(async () => {
+    setMessage('');
+    try { await action(); } catch { setMessage('Não foi possível atualizar a participação. Confira os dados e tente novamente.'); }
   });
-  const archived = status === 'ARCHIVED';
-
-  const archive = (reasonId: string) =>
-    runOptimistic(
-      startTransition,
-      () => setStatus({ status: 'ARCHIVED', reason: reasons.find((r) => r.id === reasonId)?.name ?? null }),
-      () => archiveOpportunityAction(opportunityId, reasonId),
-      'Archiving',
-    );
-  const unarchive = () =>
-    runOptimistic(
-      startTransition,
-      () => setStatus({ status: 'ACTIVE', reason: null }),
-      () => unarchiveOpportunityAction(opportunityId),
-      'Unarchiving',
-    );
-
   return (
     <>
-      {archived ? (
-        <Badge tone="critical">Archived{reason ? ` · ${reason}` : ''}</Badge>
-      ) : (
+      {status === 'ACTIVE' && <>
         <StageSelect onSurface opportunityId={opportunityId} currentStageId={stageId} stages={stages} />
-      )}
-      {status === 'ACTIVE' ? (
         <SnoozeControl opportunityId={opportunityId} snoozedUntil={snoozedUntil} />
-      ) : null}
-      {archived ? (
-        <button onClick={unarchive} className={buttonClass({ variant: 'ghost', size: 'xs' })}>
-          Unarchive
-        </button>
-      ) : (
-        <Dropdown
-          compact
-          onSurface
-          label="Archive"
-          options={reasons.map((r) => ({ value: r.id, label: r.name }))}
-          onSelect={(reasonId) => {
-            if (reasonId) archive(reasonId);
-          }}
-        />
-      )}
+        <details>
+          <summary className="cursor-pointer text-sm">Encerrar participação</summary>
+          <form className="mt-2 grid gap-2 rounded-field border border-line p-3" action={(form) => submit(() =>
+            archiveOpportunityAction(opportunityId, String(form.get('reason')), String(form.get('note') ?? ''))
+          )}>
+            <label>Categoria <select value={category} onChange={(event) => setCategory(event.target.value as ArchiveCategory)}>
+              {Object.entries(outcomeNames).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </select></label>
+            <label>Motivo <select key={category} name="reason" required defaultValue="">
+              <option value="">Selecione</option>
+              {reasons.filter((reason) => reason.category === category).map((reason) => <option key={reason.id} value={reason.id}>{reason.name}</option>)}
+            </select></label>
+            <label>Observação interna <textarea className="block w-full rounded border border-line p-2" name="note" maxLength={2000} /></label>
+            <button className={buttonClass({ variant: 'tonal', size: 'sm' })} disabled={pending}>Confirmar encerramento</button>
+          </form>
+        </details>
+      </>}
+      {status === 'HIRED' && <Badge tone="positive">Contratado</Badge>}
+      {status === 'ARCHIVED' && <>
+        <Badge tone="critical">{archiveReason ?? 'Participação encerrada'}</Badge>
+        <form className="flex flex-wrap items-center gap-2" action={(form) =>
+          submit(() => unarchiveOpportunityAction(opportunityId, String(form.get('stage') || '')))}>
+          <select name="stage" aria-label="Etapa para reabertura" defaultValue="">
+            <option value="">Restaurar etapa anterior</option>
+            {stages.filter((stage) => stage.type !== 'HIRED').map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+          </select>
+          <button className={buttonClass({ variant: 'tonal', size: 'sm' })} disabled={pending}>Reabrir participação</button>
+        </form>
+      </>}
+      {message && <p role="alert" className="text-sm">{message}</p>}
     </>
   );
 }

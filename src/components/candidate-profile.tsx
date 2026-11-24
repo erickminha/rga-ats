@@ -1,3 +1,4 @@
+import { outcomeCategory, outcomeNames, dateBR } from '@/lib/i18n/pt-BR/recruiting';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import Link from 'next/link';
 import { CandidateLink } from '@/components/candidate-link';
@@ -271,14 +272,15 @@ export async function CandidateProfile({ id }: { id: string }) {
         {/* Where this application stands and what to do with it, then who
             the person is: origin and tags. */}
         <div className="mt-5 flex flex-wrap items-center gap-2">
+          {opportunity.hiredAt && <span>Contratação em {dateBR(opportunity.hiredAt, 'UTC')}</span>}
           <CandidateStatusControls
             opportunityId={opportunity.id}
             status={opportunity.status}
-            archiveReason={opportunity.archiveReason?.name ?? null}
+            archiveReason={opportunity.archiveReason ? `${outcomeNames[outcomeCategory(opportunity.archiveReason)]} · ${opportunity.archiveReason.name}` : null}
             stageId={opportunity.stageId}
-            stages={stages.map((s) => ({ id: s.id, name: s.name }))}
+            stages={stages.map(({ id, name, type }) => ({ id, name, type }))}
             snoozedUntil={opportunity.snoozedUntil?.toISOString() ?? null}
-            reasons={archiveReasons.map((r) => ({ id: r.id, name: r.name }))}
+            reasons={archiveReasons.map((r) => ({ id: r.id, name: r.name, category: outcomeCategory(r) }))}
           />
           <span aria-hidden className="mx-1 h-4 w-px bg-line" />
           <Badge>
@@ -669,6 +671,7 @@ export async function CandidateProfile({ id }: { id: string }) {
             <SectionHeader title="Activity" />
             <ActivityFeed
               events={events.map((e) => ({
+                actorName: e.actorId ? teammates.find((person) => person.id === e.actorId)?.name ?? 'Usuário da equipe' : null,
                 id: e.id,
                 verb: e.verb,
                 payload: e.payload as Record<string, unknown> | null,

@@ -21,6 +21,7 @@ export type PipelineFilter = {
   orgId: string;
   view: PipelineView;
   stageId?: string;
+  reasonId?: string;
   /**
    * The postings in scope: ?posting, or every posting of ?client. null means
    * any posting (including none); an empty list means nothing can match.
@@ -36,6 +37,7 @@ export type PipelineParams = {
   stage?: string;
   q?: string;
   status?: string;
+  reason?: string;
   sort?: string;
 };
 
@@ -58,6 +60,7 @@ export function pipelineFilterFor(
     orgId,
     view: input.status === 'archived' ? 'archived' : 'active',
     stageId: input.stage || undefined,
+    reasonId: input.status === 'archived' ? input.reason || undefined : undefined,
     postingIds,
     q: input.q?.trim() || undefined,
   };
@@ -116,6 +119,7 @@ export function pipelineFilterSql(
   }
   if (stage && f.stageId) parts.push(Prisma.sql`o."stageId" = ${f.stageId}`);
   if (f.postingIds) parts.push(Prisma.sql`o."postingId" = ANY(${f.postingIds}::text[])`);
+  if (f.reasonId) parts.push(Prisma.sql`o."archiveReasonId" = ${f.reasonId}`);
   const q = searchText(f);
   if (q) {
     const p = likePattern(q);

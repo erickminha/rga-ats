@@ -302,6 +302,7 @@ model Opportunity {
   archiveReasonId String?
   archiveReason   ArchiveReason?    @relation(fields: [archiveReasonId], references: [id])
   archivedAt      DateTime?
+  hiredAt         DateTime?         @db.Date
   ownerId         String?
   owner           User?             @relation("OpportunityOwner", fields: [ownerId], references: [id])
   confidential    Boolean           @default(false)
@@ -364,12 +365,19 @@ model Stage {
   @@index([orgId])
 }
 
+enum ArchiveCategory {
+  REJECTION
+  WITHDRAWAL
+  ADMINISTRATIVE
+}
+
 model ArchiveReason {
   id                String  @id @default(uuid())
   orgId             String
   org               Organization @relation(fields: [orgId], references: [id])
   name              String
   countsAsRejection Boolean @default(true)
+  category          ArchiveCategory?
 
   opportunities Opportunity[]
 

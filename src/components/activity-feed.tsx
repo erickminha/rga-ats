@@ -1,8 +1,10 @@
+import { isArchiveCategory, outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
 type FeedEvent = {
   id: string;
   verb: string;
   payload: Record<string, unknown> | null;
   occurredAt: string;
+  actorName?: string | null;
 };
 
 function describe(event: FeedEvent): string {
@@ -11,13 +13,13 @@ function describe(event: FeedEvent): string {
     case 'opportunity.created':
       return `Added to pipeline in ${p.stageName ?? 'a stage'}`;
     case 'opportunity.stage_changed':
-      return `Moved from ${p.from} to ${p.to}`;
+      return `Da etapa ${p.from} para ${p.to}${p.note ? ` · ${p.note}` : ''}`;
     case 'opportunity.hired':
-      return `Hired 🎉 (${p.from} → ${p.to})`;
+      return `Contratação registrada${typeof p.hiredAt === 'string' ? ` em ${p.hiredAt.split('-').reverse().join('/')}` : ''}`;
     case 'opportunity.archived':
-      return `Archived — ${p.reason}`;
+      return `${typeof p.category === 'string' && isArchiveCategory(p.category) ? outcomeNames[p.category] : 'Participação encerrada'} · ${p.reason ?? 'Sem informação'}${p.stage ? ` · Etapa: ${p.stage}` : ''}${p.note ? ` · ${p.note}` : ''}`;
     case 'opportunity.unarchived':
-      return 'Restored to pipeline';
+      return 'Participação reaberta';
     case 'note.added':
       return 'Note added';
     case 'application.received':
@@ -79,7 +81,7 @@ function describe(event: FeedEvent): string {
 
 export function ActivityFeed({ events }: { events: FeedEvent[] }) {
   if (events.length === 0) {
-    return <p className="text-sm text-ink-2">No activity yet.</p>;
+    return <p className="text-sm text-ink-2">Nenhuma atividade registrada.</p>;
   }
   return (
     <ol className="flex flex-col">
@@ -90,12 +92,14 @@ export function ActivityFeed({ events }: { events: FeedEvent[] }) {
           <span aria-hidden className="absolute left-0 top-1.5 size-2 rounded-full bg-ink-3" />
           <p className="text-sm">{describe(event)}</p>
           <p className="mt-0.5 text-xs text-ink-2">
-            {new Date(event.occurredAt).toLocaleString(undefined, {
-              month: 'short',
-              day: 'numeric',
-              hour: 'numeric',
+            {new Date(event.occurredAt).toLocaleString('pt-BR', {
+              timeZone: 'America/Sao_Paulo', hour12: false,
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
               minute: '2-digit',
-            })}
+            })}{event.actorName && ` · ${event.actorName}`}
           </p>
         </li>
       ))}
