@@ -72,7 +72,7 @@ export function maskPhone(value: string) {
   return `(${number.slice(0, 2)}) ${rest}`;
 }
 
-function parsePhone(raw: string | null) {
+export function parsePhone(raw: string | null) {
   if (!raw) return null;
   if (!/^(?:\+55)?[\d().\s-]+$/.test(raw)) throw new Error('Informe um número brasileiro com DDD.');
   const number = digits(raw.replace(/^\+55\s*/, ''));

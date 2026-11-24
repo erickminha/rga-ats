@@ -1,5 +1,5 @@
 /** Minimal RFC-4180 CSV parser (quotes, escaped quotes, CRLF). `delimiter` for ";" or tab files. */
-export function parseCsv(text: string, delimiter = ','): string[][] {
+export function parseCsv(text: string, delimiter = ',', keepEmptyRows = false): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = '';
@@ -21,11 +21,10 @@ export function parseCsv(text: string, delimiter = ','): string[][] {
       if (ch === '\r' && text[i + 1] === '\n') i++;
       row.push(cell);
       cell = '';
-      if (row.some((c) => c !== '')) rows.push(row);
+      if (keepEmptyRows || row.some((c) => c !== '')) rows.push(row);
       row = [];
     } else cell += ch;
   }
-  row.push(cell);
-  if (row.some((c) => c !== '')) rows.push(row);
+  if ((keepEmptyRows && row.length) || cell !== '' || row.some((c) => c !== '')) rows.push([...row, cell]);
   return rows;
 }

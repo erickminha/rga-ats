@@ -25,9 +25,16 @@ describe('readSpreadsheet', () => {
     expect(names(utf16)).toEqual(['Acme']);
   });
 
+  it('uses the selected header for strict import and rejects files exceeding the row limit', () => {
+    expect(readSpreadsheet(bytes('Observação, com, várias, vírgulas\n\nNome;Cidade;Observação\nPessoa;Recife;Texto, com, muitas, vírgulas'), { headerRow: 3 }))
+      .toEqual([['Observação, com, várias, vírgulas'], [''], ['Nome', 'Cidade', 'Observação'], ['Pessoa', 'Recife', 'Texto, com, muitas, vírgulas']]);
+    expect(() => readSpreadsheet(bytes('Nome\n' + 'Pessoa\n'.repeat(5000)), { headerRow: 1 })).toThrow('5.000 linhas');
+  });
+
   it('reads an Excel workbook written by openpyxl: first sheet, heading column, shared and rich strings', () => {
     const data = readFileSync(path.join(__dirname, 'support/clients.xlsx'));
     expect(names(data)).toEqual(['Acme, Inc.', 'Zoë Studio GmbH', 'Initech Labs']);
+    expect(readSpreadsheet(data, { headerRow: 1 })).toEqual(readSpreadsheet(data));
   });
 
   it('reads inline strings, sparse cells and a sheet the workbook names in its relationships', () => {
