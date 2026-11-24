@@ -485,7 +485,11 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
       existingId = existing?.values().next().value;
     }
     namedContacts.set(id, name);
-    const updates = current ? onlyMissing(current, { headline, location, salaryExpectation }) : {};
+    const updates: Partial<Pick<ContactMatch, 'headline' | 'location' | 'salaryExpectation' | 'emails' | 'phones'>>
+      & { careerProfile?: ReturnType<typeof readCareerProfile> } = current ? onlyMissing(
+        { headline: current.headline, location: current.location, salaryExpectation: current.salaryExpectation },
+        { headline, location, salaryExpectation },
+      ) : {};
     if (current) {
       const profile = readCareerProfile(current.careerProfile);
       const missing = Object.entries(careerProfile).filter(([key]) => !profile[key as keyof typeof profile]);
