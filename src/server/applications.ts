@@ -186,7 +186,7 @@ export async function submitApplication(input: ApplicationInput) {
       await tx.storedFile.update({
         where: { id: resume.fileId, deletePendingAt: { gt: new Date() } },
         data: {
-          contactId: contact.id, deletePendingAt: null,
+          contactId: contact.id, deletePendingAt: null, resumeVersion: true, resumeContent: resume.extracted.text,
           ...textFields(resume.extracted, new Date()),
           ...(newContact ? parseQueueFields(resume.extracted.status, org) : {}),
         },

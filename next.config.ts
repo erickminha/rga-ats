@@ -26,7 +26,7 @@ const OCR_LANGS = (() => {
   return langs.length && langs.every((l) => /^[a-z]{3}(?:_[a-z]+)?$/i.test(l)) ? langs : ['eng'];
 })();
 const OCR_FILES = [
-  ...OCR_LANGS.flatMap((lang) => [
+  ...[...new Set(['eng', 'por', ...OCR_LANGS])].flatMap((lang) => [
     `node_modules/@tesseract.js-data/${lang}/package.json`,
     `node_modules/@tesseract.js-data/${lang}/4.0.0_best_int/${lang}.traineddata.gz`,
   ]),

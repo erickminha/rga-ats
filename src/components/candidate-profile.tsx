@@ -562,6 +562,7 @@ export async function CandidateProfile({ id }: { id: string }) {
             }
           />
 
+          {!contact.isAnonymized && <Link className="text-sm underline" href={`/contacts/${contact.id}#curriculos`}>Gerenciar cadastro e versões de currículo</Link>}
           {!contact.isAnonymized && <RecruitingAssessmentForm key={opportunity.id}
             id={opportunity.id} screening={textRecord(assessment?.screening)} disc={disc} discComplete={discComplete}
             discFileId={assessment?.discFileId ?? null} opinion={textRecord(assessment?.opinion)}

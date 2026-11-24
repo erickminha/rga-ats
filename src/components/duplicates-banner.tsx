@@ -25,14 +25,14 @@ export function DuplicatesBanner({
         {duplicates.map((d) => (
           <div key={d.id} className="flex items-center justify-between gap-3">
             <p className="text-sm">
-              {d.name}
+              <a className="underline" href={`/contacts/${d.id}`}>{d.name}</a>
               {d.email ? <span className="text-ink-2"> · {d.email}</span> : null}{' '}
-              <span className="text-ink-2">tem e-mail, telefone ou link em comum com este perfil.</span>
+              <span className="text-ink-2">tem nome ou dados de contato semelhantes. Confira os dois cadastros.</span>
             </p>
             <button
               disabled={pending}
               onClick={() => {
-                if (!confirm(`Merge ${d.name} into this profile? Their applications, emails, and consents move here and the duplicate is deleted. This cannot be undone.`)) return;
+                if (!confirm(`Unificar o cadastro de ${d.name} neste perfil? Os currículos e as participações ficam no cadastro principal. A unificação é irreversível.`)) return;
                 startTransition(async () => {
                   const result = await mergeContactsAction(contactId, d.id);
                   setError(result.error ?? null);

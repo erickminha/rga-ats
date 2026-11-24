@@ -16,3 +16,11 @@ Use o endereço de homologação informado pela administração. Entre com a con
 Em **Configurações → Dados**, use **Aplicar motivos iniciais da RGA**. O comando adapta motivos herdados com nome exato e sem categoria, preserva os IDs e adiciona sugestões ausentes. Revise a categoria dos motivos antigos, pois os registros sem categoria explícita continuam seguindo o indicador anterior de reprovação. Em **Configurações → E-mail**, **Traduzir modelos padrão de e-mail** altera somente modelos que ainda correspondem exatamente ao original.
 
 As migrações `20261124160000_recruiting_outcomes` e `20261124170000_recruiting_assessments` são aditivas. O scanner e o armazenamento privado precisam estar operacionais antes de anexar currículos ou relatórios no ambiente hospedado. O guia anterior lista as dependências de privacidade e infraestrutura. [Consolidação de segurança](rga-consolidacao-seguranca.md)
+
+## Cadastro no banco de talentos e currículos
+
+Use **Banco de talentos → Adicionar candidato** para guardar o cadastro sem iniciar uma seleção. Você pode voltar à ficha, corrigir os dados e anexar currículos. Em **Currículos e documentos**, abra os arquivos da pessoa e indique o principal ou vincule uma versão a uma participação ativa. Trocar o principal preserva a versão usada nos processos anteriores. O histórico da ficha abre a participação específica para consultar entrevistas, DISC e parecer.
+
+Confirme a intenção com a pessoa antes de registrar sua preferência em **Preferências de armazenamento e contato**. Para avaliar duplicatas, abra os dois cadastros e confira os dados de contato e as participações antes de unificar. Uma semelhança de nome é apenas uma sugestão. Continue usando **Configurações → Importações → Planilhas da RGA** para importações com prévia e relatório.
+
+O OCR aceita o modelo português local. Em uma implantação autorizada, use `OCR_LANGS=por+eng` no build e no processo do ATS para currículos mistos. Os dois modelos são distribuídos com o aplicativo. O OCR precisa da rotina de processamento e de acesso ao armazenamento privado. Revise o documento e corrija o perfil manualmente quando o resultado estiver incompleto.

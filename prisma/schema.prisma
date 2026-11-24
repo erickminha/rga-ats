@@ -232,6 +232,8 @@ model Contact {
   org            Organization @relation(fields: [orgId], references: [id])
   name           String
   headline       String?
+  careerProfile  Json?
+  salaryExpectation Int?
   location       String?
   emails         String[]
   phones         String[]
@@ -983,6 +985,9 @@ model StoredFile {
   org       Organization @relation(fields: [orgId], references: [id])
   key       String // storage key (blob path or local relative path)
   filename  String
+  resumeVersion Boolean @default(false)
+  resumeContent String?
+  uploadedById String?
   mime      String
   size      Int
   // Owning candidate, for files that are theirs (see Contact.files)
@@ -1035,6 +1040,7 @@ model StoredFile {
   @@index([parseStatus, parseQueuedAt]) // the parse queue
   @@index([parseCheckedAt, orgId]) // today's parses, per org and overall
   @@index([orgId, parseQueuedAt]) // Settings: the last 30 days
+  @@index([contactId, resumeVersion])
 }
 
 enum TextStatus {

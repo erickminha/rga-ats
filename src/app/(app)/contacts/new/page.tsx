@@ -1,12 +1,21 @@
+import { TalentProfileForm } from '@/components/talent-profile-form';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
 import { canManageRecruiting, requireSession } from '@/lib/session';
 import { PageHeader } from '@/components/page-header';
 import { NewCandidateForm } from '@/components/new-candidate-form';
 
-export default async function NewCandidatePage() {
+export default async function NewCandidatePage({ searchParams }: { searchParams: Promise<{ mode?: string }> }) {
   const ctx = await requireSession();
   if (!canManageRecruiting(ctx)) notFound();
+  if ((await searchParams).mode !== 'application') return (
+    <div className="max-w-3xl px-6 pb-8">
+      <PageHeader title="Cadastrar profissional" subtitle="Adicione o contato ao banco de talentos." />
+      <div className="rounded-card bg-surface p-5"><TalentProfileForm /></div>
+      <Link href="/contacts/new?mode=application" className="mt-4 inline-block underline">Cadastrar com participação em uma vaga</Link>
+    </div>
+  );
   const [stages, postings] = await Promise.all([
     db.stage.findMany({ where: { orgId: ctx.orgId, type: { not: 'HIRED' } }, orderBy: { order: 'asc' } }),
     db.posting.findMany({

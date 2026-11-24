@@ -106,13 +106,13 @@ async function anonymizeContact(orgId: string, id: string, rule: Prisma.ContactW
       where: { id },
       data: {
         name: 'Candidato anonimizado', headline: null, location: null, emails: [], phones: [], links: [], tags: [],
-        resumeFileId: null, resumeText: null, isAnonymized: true, emailOptOutAt: null, emailBouncedAt: null,
+        resumeFileId: null, resumeText: null, careerProfile: Prisma.DbNull, salaryExpectation: null, isAnonymized: true, emailOptOutAt: null, emailBouncedAt: null,
         pools: { set: [] },
       },
     });
     await tx.storedFile.updateMany({
       where: { orgId, id: { in: fileIds } },
-      data: { filename: 'arquivo-em-exclusao', parsed: Prisma.DbNull, textError: null, parseError: null, ocrError: null, deletePendingAt: new Date() },
+      data: { filename: 'arquivo-em-exclusao', resumeContent: null, uploadedById: null, parsed: Prisma.DbNull, textError: null, parseError: null, ocrError: null, deletePendingAt: new Date() },
     });
     await emitEvent(tx, {
       orgId, ...(ctx ? actorOf(ctx) : { actorType: 'system' as const }),
