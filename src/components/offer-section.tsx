@@ -223,7 +223,7 @@ export function OfferSection({
                         setError(result.error ?? null);
                         setNotice(
                           result.pendingApproval
-                            ? 'Sent for approval — an admin will review before the candidate sees it.'
+                            ? 'Enviada para aprovação — um administrador revisará a proposta antes de disponibilizá-la ao candidato.'
                             : null,
                         );
                       })

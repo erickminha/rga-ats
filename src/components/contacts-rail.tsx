@@ -69,7 +69,7 @@ export function ContactsRail({
                     current === p.id ? 'bg-surface text-ink' : 'text-ink-2 hover:bg-ink/[0.04] hover:text-ink',
                   )}
                 >
-                  <span className="flex" title={p.kind === 'DYNAMIC' ? 'Saved segment (live filter)' : 'Static pool'}>
+                  <span className="flex" title={p.kind === 'DYNAMIC' ? 'Segmento salvo (filtro dinâmico)' : 'Grupo manual'}>
                     <StatusDot tone={p.kind === 'DYNAMIC' ? 'info' : 'neutral'} />
                   </span>
                   <span className="truncate">{p.name}</span>

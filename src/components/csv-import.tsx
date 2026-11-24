@@ -43,7 +43,7 @@ export function CsvImport() {
           created += r.created;
           skipped += r.skipped;
           errs.push(...r.errors);
-          if (r.errors[0]?.startsWith('Missing required')) break;
+          if (r.errors[0]?.startsWith('Campo obrigatório ausente')) break;
         }
       } catch {
         errs.unshift('A importação foi interrompida. As linhas anteriores foram salvas. Tente novamente para continuar. Os e-mails já cadastrados serão ignorados.');
