@@ -179,7 +179,7 @@ export default async function ReportsPage({
   const reasonName = new Map(archiveReasons.map((r) => [r.id, r.name]));
   const archiveData = archiveCounts
     .map((a) => ({
-      name: (a.archiveReasonId && reasonName.get(a.archiveReasonId)) || 'No reason',
+      name: (a.archiveReasonId && reasonName.get(a.archiveReasonId)) || 'Sem motivo',
       count: a._count,
     }))
     .sort((a, b) => b.count - a.count);

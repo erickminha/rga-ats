@@ -26,7 +26,7 @@ const WORKPLACE_LABELS: Record<string, string> = {
 };
 
 const VISIBILITY = [
-  { key: '', label: 'All open jobs', tone: 'neutral' },
+  { key: '', label: 'Todas as vagas abertas', tone: 'neutral' },
   { key: 'PUBLISHED', label: 'External', tone: 'positive' },
   { key: 'INTERNAL', label: 'Internal only', tone: 'info' },
 ] as const;
@@ -102,11 +102,11 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
         {data.rows.length === 0 ? (
           <EmptyState
             icon={Briefcase}
-            title={data.archived ? 'No archived postings' : 'No postings match'}
+            title={data.archived ? 'Nenhuma vaga encerrada' : 'Nenhuma vaga corresponde aos filtros'}
             description={
               data.archived
                 ? 'Closed roles will appear here.'
-                : 'Create a posting to start collecting candidates against a role.'
+                : 'Crie uma vaga para começar a receber candidaturas.'
             }
           />
         ) : (

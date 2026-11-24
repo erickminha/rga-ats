@@ -227,7 +227,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
               postingTitle={posting.title}
               criteria={criteria}
               aiEnabled={aiOn}
-              label={criteria.length ? 'Edit criteria' : 'Add criteria'}
+              label={criteria.length ? 'Editar critérios' : 'Adicionar critérios'}
             />
           </div>
           <p className="mb-4 text-sm text-ink-2">

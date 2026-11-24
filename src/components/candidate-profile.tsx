@@ -548,14 +548,14 @@ export async function CandidateProfile({ id }: { id: string }) {
                     note:
                       !resumeText && resumeFile.textStatus !== 'OK'
                         ? textPending(resumeFile)
-                          ? 'Reading this resume…'
+                          ? 'Lendo currículo…'
                           : ocrPending(resumeFile)
-                            ? 'Reading this scanned resume…'
+                            ? 'Lendo currículo digitalizado…'
                             : resumeFile.textStatus === 'EMPTY'
-                              ? 'No text could be read from this resume — it may be a scanned image.'
+                              ? 'O currículo pode conter apenas uma imagem. Abra o arquivo para conferir.'
                               : 'The text of this resume couldn’t be read.'
                         : resumeFile.ocrStatus === 'OK'
-                          ? 'Read from a scan — may contain errors.'
+                          ? 'Texto extraído de imagem. Confira possíveis erros.'
                           : null,
                   }
                 : null

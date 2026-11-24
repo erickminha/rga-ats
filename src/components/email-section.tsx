@@ -156,7 +156,7 @@ export function EmailSection({
         </div>
       ) : !open ? (
         <p className="text-sm text-ink-2">
-          {toEmail ? 'No emails yet.' : 'Add an email address to this contact to send email.'}
+          {toEmail ? 'Nenhum e-mail registrado.' : 'Cadastre um endereço de e-mail para enviar mensagens.'}
         </p>
       ) : null}
     </section>
