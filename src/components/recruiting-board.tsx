@@ -43,7 +43,7 @@ export function RecruitingBoard({ stages, query }: { stages: BoardStage[]; query
             {(row.postingTitle || row.clientName) && <p className="mb-2 break-words text-xs font-medium text-ink">{[row.postingTitle, row.clientName].filter(Boolean).join(' · ')}</p>}
             {row.location && <p className="mb-2 flex items-start gap-1 text-xs text-ink-2"><MapPin size={13} className="shrink-0" />{row.location}</p>}
             {(row.phone || row.email) && <div className="mb-3 flex flex-wrap gap-2 text-xs text-ink-2">
-              {row.phone && <a className="inline-flex items-center gap-1 rounded-field border border-line px-2 py-1 hover:text-brand" href={`tel:${row.phone.replace(/[^+\\d]/g, '')}`}><Phone size={13} />{row.phone}</a>}
+              {row.phone && <a className="inline-flex items-center gap-1 rounded-field border border-line px-2 py-1 hover:text-brand" href={`tel:${row.phone.replace(/[^+\d]/g, '')}`}><Phone size={13} />{row.phone}</a>}
               {row.email && <a className="inline-flex items-center gap-1 rounded-field border border-line px-2 py-1 hover:text-brand" href={`mailto:${row.email}`} aria-label={`Enviar e-mail para ${row.name}`}><Mail size={13} /> E-mail</a>}
             </div>}
             {stage.type !== 'HIRED' && <StageSelect opportunityId={row.id} currentStageId={stage.id} stages={stages} onSurface />}

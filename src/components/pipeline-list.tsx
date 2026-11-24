@@ -1026,7 +1026,7 @@ function PipelineRowView({
             </a>
           ) : null}
           {r.phone ? (
-            <a href={`tel:${r.phone.replace(/[^+\\d]/g, '')}`} aria-label={`Ligar para ${r.name}`} title={r.phone} className="hover:text-brand"><Phone size={14} /></a>
+            <a href={`tel:${r.phone.replace(/[^+\d]/g, '')}`} aria-label={`Ligar para ${r.name}`} title={r.phone} className="hover:text-brand"><Phone size={14} /></a>
           ) : null}
           {r.link ? (
             <a
