@@ -66,7 +66,7 @@ export function PostingStateScope({
 
 export function PostingStateBadge() {
   const { state } = useScope();
-  const badge = POSTING_STATE_BADGES[state] ?? { label: state, tone: 'neutral' as Tone };
+  const badge = POSTING_STATE_BADGES[state] ?? { label: 'Situação não informada', tone: 'neutral' as Tone };
   return <Badge tone={badge.tone}>{badge.label}</Badge>;
 }
 

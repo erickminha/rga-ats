@@ -138,7 +138,7 @@ export function AiEvaluationSection({
                         value={ev.recommendation}
                         max={4}
                         height={8}
-                        label={`${RATING_LABELS[ev.recommendation]}, ${ev.recommendation} of 4`}
+                        label={`${RATING_LABELS[ev.recommendation]}, ${ev.recommendation} de 4`}
                       />
                       <span aria-hidden className="shrink-0 text-xs tabular-nums text-ink-2">
                         {ev.recommendation} de 4

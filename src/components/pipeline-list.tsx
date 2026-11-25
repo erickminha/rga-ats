@@ -390,7 +390,7 @@ export function PipelineList({
     const added = store.pages > seenPages.current;
     seenPages.current = store.pages;
     if (!added) return;
-    const of = matching === null ? '' : ` of ${fmt(matching)}${capped ? '+' : ''}`;
+    const of = matching === null ? '' : ` de ${fmt(matching)}${capped ? '+' : ''}`;
     setAnnouncement(`Loaded more candidates. Showing ${fmt(store.rows.length)}${of}.`);
     const want = focusAfterLoad.current;
     focusAfterLoad.current = null;
@@ -654,7 +654,7 @@ export function PipelineList({
         {selected.size > 0 ? (
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium tabular-nums text-ink-2">
-              {fmt(selected.size)} selecionados{matching === null ? '' : ` of ${fmt(matching)}`}
+              {fmt(selected.size)} selecionados{matching === null ? '' : ` de ${fmt(matching)}`}
             </span>
             <span className="flex items-center gap-1.5">
               <ArrowRight size={13} className="text-ink-2" />

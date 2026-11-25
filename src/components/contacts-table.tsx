@@ -30,12 +30,11 @@ import { LoadMore } from '@/components/list/load-more';
 import { useWindowedRows } from '@/components/list/virtual-rows';
 import { EmptyState } from '@/components/empty-state';
 import { FormSelect } from '@/components/form-select';
-import { badge, surface } from '@/components/form-controls';
+import { surface } from '@/components/form-controls';
 import { buttonClass } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/orb';
 import { Badge } from '@/components/ui/primitives';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CandidateLink } from '@/components/candidate-link';
 import { cn } from '@/lib/utils';
 
 export type { ContactRow };
@@ -155,16 +154,6 @@ export function ContactsTable({
     });
   };
 
-  // Tag badges in rows filter by that tag; stable so rows stay memoized.
-  const navRef = useRef(nav);
-  useEffect(() => {
-    navRef.current = nav;
-  });
-  const goTag = useCallback(
-    (tag: string, e: React.MouseEvent) => navRef.current.go({ tag, pool: '', q: '' }, e),
-    [],
-  );
-
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const { slots, complete, scrollToIndex } = useWindowedRows({
     rows: visible,
@@ -198,7 +187,7 @@ export function ContactsTable({
     const added = store.pages > seenPages.current;
     seenPages.current = store.pages;
     if (!added) return;
-    const of = count ? ` of ${fmt(count.count)}${count.capped ? '+' : ''}` : '';
+    const of = count ? ` de ${fmt(count.count)}${count.capped ? '+' : ''}` : '';
     setAnnouncement(`Loaded more contacts. Showing ${fmt(store.rows.length)}${of}.`);
     const want = focusAfterLoad.current;
     focusAfterLoad.current = null;
@@ -245,7 +234,7 @@ export function ContactsTable({
       {ids.length ? (
         <div className={`${surface} flex flex-wrap items-center gap-3 px-4 py-2.5`}>
           <span className="text-xs font-medium tabular-nums text-ink-2">
-            {fmt(ids.length)} selecionados{shownTotal ? ` of ${fmt(shownTotal.count)}${shownTotal.capped ? '+' : ''}` : ''}
+            {fmt(ids.length)} selecionados{shownTotal ? ` de ${fmt(shownTotal.count)}${shownTotal.capped ? '+' : ''}` : ''}
           </span>
           {staticPools.length ? (
             <span className="flex items-center gap-2">
@@ -299,16 +288,16 @@ export function ContactsTable({
           aria-busy={stale || (!cached && store.status === 'loading') || undefined}
           data-loaded-count={visible.length}
           className={cn(
-            'w-full min-w-[760px] table-fixed border-separate border-spacing-0 text-sm transition-opacity duration-150 motion-reduce:transition-none',
+            'w-full min-w-[900px] table-fixed border-separate border-spacing-0 text-sm transition-opacity duration-150 motion-reduce:transition-none',
             stale && 'opacity-60 delay-[120ms]',
           )}
         >
           <colgroup>
             <col className="w-12" />
-            <col className="w-[34%]" />
-            <col className="w-[22%]" />
-            <col className="w-[16%]" />
-            <col className="w-[16%]" />
+            <col className="w-[26%]" />
+            <col className="w-[23%]" />
+            <col className="w-[32%]" />
+            <col className="w-36" />
             <col className="w-32" />
           </colgroup>
           <thead>
@@ -320,7 +309,7 @@ export function ContactsTable({
                   aria-label={`Selecionar todos os ${fmt(visible.length)} registros carregados`}
                 />
               </th>
-              {['Nome', 'E-mail', 'Etiquetas', 'Última participação', 'Etapa'].map((h) => (
+              {['Nome', 'Cargo pretendido', 'Observação', 'Data de candidatura ↓', 'Etapa'].map((h) => (
                 <th key={h} className={`${headCell} text-xs font-medium text-ink-2`}>
                   {h}
                 </th>
@@ -345,7 +334,6 @@ export function ContactsTable({
                   index={slot.index}
                   selected={selected.has(slot.row.id)}
                   onToggle={toggle}
-                  onTag={goTag}
                 />
               ),
             )}
@@ -391,7 +379,6 @@ type RowProps = {
   index: number;
   selected: boolean;
   onToggle: (id: string) => void;
-  onTag: (tag: string, e: React.MouseEvent) => void;
 };
 
 /** Same contact data, even as a new object (a server render of rows already shown). */
@@ -413,11 +400,10 @@ const ContactRowView = memo(
     sameContact(a.row, b.row) &&
     a.index === b.index &&
     a.selected === b.selected &&
-    a.onToggle === b.onToggle &&
-    a.onTag === b.onTag,
+    a.onToggle === b.onToggle,
 );
 
-function ContactRowCells({ row: c, index, selected, onToggle, onTag }: RowProps) {
+function ContactRowCells({ row: c, index, selected, onToggle }: RowProps) {
   return (
     <tr data-row-id={c.id} aria-rowindex={index + 2} className="transition-colors duration-[120ms] hover:bg-muted/60">
       <td className={cell}>
@@ -428,36 +414,16 @@ function ContactRowCells({ row: c, index, selected, onToggle, onTag }: RowProps)
           <Avatar name={c.name} seed={c.id} size={28} />
           <span className="min-w-0 truncate">
             <Link href={`/contacts/${c.id}`} className="font-medium hover:underline">{c.name}</Link>
-            {c.headline ? <span className="ml-2 text-xs text-ink-2">{c.headline}</span> : null}
           </span>
         </span>
       </td>
-      <td className={`${cell} text-ink-2`}>{c.email ?? '—'}</td>
+      <td className={`${cell} text-ink-2`} title={c.desiredRole ?? c.headline ?? undefined}>{c.desiredRole ?? c.headline ?? '—'}</td>
       <td className={cell}>
-        {c.tags.length ? (
-          <span className="flex gap-1 overflow-hidden">
-            {c.tags.slice(0, 3).map((t) => (
-              <Link
-                key={t}
-                href={listHref('/contacts', `tag=${encodeURIComponent(t)}`)}
-                prefetch={false}
-                onClick={(e) => onTag(t, e)}
-                className={`${badge} shrink-0 hover:text-ink`}
-              >
-                {t}
-              </Link>
-            ))}
-            {c.tags.length > 3 ? (
-              <span className="self-center text-xs tabular-nums text-ink-2">+{c.tags.length - 3}</span>
-            ) : null}
-          </span>
-        ) : (
-          <span className="text-ink-2">—</span>
-        )}
+        {c.observation ? <Link href={`/contacts/${c.id}#observacao`} className="line-clamp-2 whitespace-normal break-words text-xs leading-4 text-ink-2 hover:underline" title={c.observation}>{c.observation}</Link> : <span className="text-ink-3">—</span>}
       </td>
-      <td className={`${cell} text-ink-2`}>{c.latestPosting ?? (c.latestOppId ? "Geral" : '—')}</td>
+      <td className={`${cell} tabular-nums text-ink-2`}>{c.registeredAt ? new Date(c.registeredAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'}</td>
       <td className={cell}>
-        {c.latestStage ? <Badge tone={c.archived ? 'critical' : undefined}>{c.latestStage}</Badge> : '—'}
+        {c.latestStage ? <Badge tone={c.archived ? 'neutral' : undefined}>{c.latestStage === 'archived' ? 'Encerrado' : c.latestStage}</Badge> : <span className="text-ink-2">Banco de talentos</span>}
       </td>
     </tr>
   );

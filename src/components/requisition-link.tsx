@@ -26,7 +26,7 @@ export function RequisitionLink({
       label={current?.code ?? 'no req'}
       showSelectedInTrigger={false}
       value={requisitionId ?? ''}
-      allLabel="No requisition"
+      allLabel="Sem requisição"
       options={requisitions.map((r) => ({ value: r.id, label: r.code }))}
       onSelect={(value) => startTransition(() => linkPostingRequisitionAction(postingId, value))}
     />

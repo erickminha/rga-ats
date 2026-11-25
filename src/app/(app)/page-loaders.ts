@@ -212,13 +212,14 @@ export async function loadContactsPage(input: ContactsInput) {
   const poolId = filter.pool ?? '';
   const after = decodeCursor(input.after, 'created');
 
-  const [pools, activePool] = await Promise.all([
+  const [pools, activePool, talentTags] = await Promise.all([
     db.talentPool.findMany({
       where: { orgId: ctx.orgId },
       orderBy: { name: 'asc' },
       select: { id: true, name: true, kind: true, rules: true },
     }),
     resolvePool(ctx.orgId, filter.pool),
+    db.$queryRaw<{ tag: string }[]>`SELECT DISTINCT tag FROM "Contact", LATERAL unnest(tags) AS t(tag) WHERE "orgId" = ${ctx.orgId} AND NOT "isAnonymized" ORDER BY tag LIMIT 200`,
   ]);
   const advanced = (rules: unknown) => !!rules && typeof rules === 'object' && 'advanced' in rules && rules.advanced === true;
   if (activePool && advanced(activePool.rules)) redirect(`/contacts/busca?pool=${encodeURIComponent(activePool.id)}`);
@@ -232,6 +233,7 @@ export async function loadContactsPage(input: ContactsInput) {
   return {
     q,
     tag,
+    talentTags: talentTags.map(row => row.tag),
     poolId,
     after: after ? (input.after ?? '') : '',
     pools: pools.map((p) => ({ id: p.id, name: p.name, kind: p.kind, advanced: advanced(p.rules) })),

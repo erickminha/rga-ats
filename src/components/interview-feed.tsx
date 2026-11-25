@@ -275,7 +275,7 @@ export function PullQuestions({ opportunityId, transcriptId, title }: { opportun
       >
         <Bot size={16} /> Extrair perguntas
       </button>
-      <span className="text-xs text-ink-2">{error ?? `From ${title}`}</span>
+      <span className="text-xs text-ink-2">{error ?? `De ${title}`}</span>
     </div>
   );
 }

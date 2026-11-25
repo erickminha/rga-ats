@@ -34,3 +34,16 @@ export const inheritedReasons = [
   ['Offer declined', 'Recusou a proposta', 'WITHDRAWAL'],
   ['Position filled', 'Vaga preenchida', 'ADMINISTRATIVE'],
 ] as const;
+
+const legacyStageLabels: Record<string, string> = {
+  'New lead': 'Novo talento', 'Reached out': 'Contato realizado', Responded: 'Respondeu',
+  'New applicant': 'Nova candidatura', 'Phone screen': 'Triagem por telefone', 'On-site': 'Entrevista presencial',
+  Offer: 'Proposta', Hired: 'Contratado',
+};
+export function displayStageName(name: unknown) {
+  return typeof name === 'string' ? legacyStageLabels[name] ?? name : 'não informada';
+}
+export function displayArchiveReason(name: unknown) {
+  if (typeof name !== 'string') return 'Sem informação';
+  return inheritedReasons.find(([old]) => old === name)?.[1] ?? name;
+}

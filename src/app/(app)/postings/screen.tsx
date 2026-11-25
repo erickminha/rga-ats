@@ -4,13 +4,12 @@ import type { loadPostingsPage } from '@/app/(app)/page-loaders';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/empty-state';
 import { PostingStateBadge, PostingStateMenu, PostingStateScope } from '@/components/posting-state-menu';
-import { POSTING_STATE_BADGES as STATE_BADGES } from '@/lib/posting-states';
 import { RequisitionsManager } from '@/components/requisitions-manager';
 import { RequisitionLink } from '@/components/requisition-link';
 import { btnPrimary, inputClass, noAutofill } from '@/components/form-controls';
 import { buttonClass } from '@/components/ui/button';
 import { Orb } from '@/components/ui/orb';
-import { Badge, Card, Chip, SectionHeader, Segmented, StatusDot } from '@/components/ui/primitives';
+import { Chip, Segmented, StatusDot } from '@/components/ui/primitives';
 
 const COMMITMENT_LABELS: Record<string, string> = {
   FULL_TIME: 'Tempo integral',
@@ -26,7 +25,9 @@ const WORKPLACE_LABELS: Record<string, string> = {
 };
 
 const VISIBILITY = [
-  { key: '', label: 'Todas as vagas abertas', tone: 'neutral' },
+  { key: '', label: 'Todas', tone: 'neutral' },
+  { key: 'DRAFT', label: 'Rascunhos', tone: 'neutral' },
+  { key: 'PENDING_APPROVAL', label: 'Aguardando aprovação', tone: 'caution' },
   { key: 'PUBLISHED', label: 'Externa', tone: 'positive' },
   { key: 'INTERNAL', label: 'Somente interna', tone: 'info' },
 ] as const;
@@ -35,7 +36,7 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
   const href = (over: Record<string, string>) => {
     const params = new URLSearchParams();
     const merged = {
-      status: data.archived ? "encerrados" : '',
+      status: data.archived ? "archived" : '',
       state: data.stateFilter,
       q: data.q,
       ...over,
@@ -45,8 +46,6 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
     return qs ? `/postings?${qs}` : '/postings';
   };
 
-  // Drafts carry only id + title; borrow the state from the table when it's in view.
-  const stateOf = (id: string) => data.rows.find((r) => r.id === id)?.state ?? 'DRAFT';
 
   return (
     <div className="t-reveal flex h-screen flex-col">
@@ -67,10 +66,10 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
           ) : null}
           <Segmented
             size="sm"
-            value={data.archived ? "encerrados" : 'active'}
+            value={data.archived ? "archived" : 'active'}
             items={[
-              { value: 'active', label: "Ativos", href: href({ status: '', state: '' }) },
-              { value: 'archived', label: "Encerrados", href: href({ status: 'archived', state: '' }) },
+              { value: 'active', label: "Em andamento", href: href({ status: '', state: '' }) },
+              { value: 'archived', label: "Encerradas", href: href({ status: 'archived', state: '' }) },
             ]}
           />
           {!data.archived
@@ -125,7 +124,7 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
                     'Situação',
                     '',
                   ].map((h) => (
-                    <th key={h} className="whitespace-nowrap px-4 py-3 text-xs font-medium text-ink-2">
+                    <th key={h} className="whitespace-nowrap px-3 py-2.5 text-xs font-medium text-ink-2">
                       {h}
                     </th>
                   ))}
@@ -143,13 +142,13 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
                       requireApproval={data.org?.requirePostingApproval ?? false}
                     >
                       <tr className="transition-colors duration-[120ms] hover:bg-muted/60">
-                        <td className="px-4 py-3 font-medium">
+                        <td className="px-3 py-2.5 font-medium">
                           <Link href={`/postings/${p.id}`} className="flex items-center gap-3 hover:underline">
                             <Orb seed={p.id} size={24} />
                             <span className="truncate">{p.title}</span>
                           </Link>
                         </td>
-                        <td className="max-w-52 px-4 py-3 text-ink-2">
+                        <td className="max-w-52 px-3 py-2.5 text-ink-2">
                           <span className="flex items-center gap-2.5">
                             {logoId ? (
                               // eslint-disable-next-line @next/next/no-img-element -- uploaded logo via public route
@@ -166,7 +165,7 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
                             <span className="truncate">{p.orgLabel}</span>
                           </span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2.5">
                           {p.state === 'PUBLISHED' && data.org?.slug ? (
                             <a
                               href={`/careers/${data.org.slug}/${p.slug}`}
@@ -179,24 +178,24 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
                             <span className="text-ink-3">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-ink-2">
-                          {WORKPLACE_LABELS[p.workplaceType] ?? p.workplaceType}
+                        <td className="px-3 py-2.5 text-ink-2">
+                          {WORKPLACE_LABELS[p.workplaceType] ?? 'Não informada'}
                         </td>
-                        <td className="px-4 py-3 text-ink-2">
-                          {COMMITMENT_LABELS[p.commitment] ?? p.commitment}
+                        <td className="px-3 py-2.5 text-ink-2">
+                          {COMMITMENT_LABELS[p.commitment] ?? 'Não informado'}
                         </td>
-                        <td className="px-4 py-3 text-ink-2">{p.location ?? '—'}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2.5 text-ink-2">{p.location ?? '—'}</td>
+                        <td className="px-3 py-2.5">
                           {data.canEditPostings ? <RequisitionLink
                             postingId={p.id}
                             requisitionId={p.requisitionId}
                             requisitions={data.openReqs}
                           /> : null}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2.5">
                           <PostingStateBadge />
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-3 py-2.5 text-right">
                           {data.canEditPostings ? <PostingStateMenu /> : null}
                         </td>
                       </tr>
@@ -208,30 +207,10 @@ export function PostingsScreen({ data }: { data: Awaited<ReturnType<typeof loadP
           </div>
         )}
 
-        {!data.archived && data.drafts.length ? (
-          <section className="mt-8">
-            <SectionHeader title="Rascunhos" />
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3">
-              {data.drafts.map((d) => {
-                const state = STATE_BADGES[stateOf(d.id)] ?? STATE_BADGES.DRAFT;
-                return (
-                  <Link key={d.id} href={`/postings/${d.id}`}>
-                    <Card interactive className="h-full p-4">
-                      <div className="flex items-start justify-between">
-                        <Orb seed={d.id} size={40} />
-                        <Badge tone={state.tone}>{state.label}</Badge>
-                      </div>
-                      <h3 className="mt-6 truncate text-md font-medium">{d.title}</h3>
-                      <p className="mt-1 text-sm text-ink-2">Aguardando publicação</p>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
-
-        <RequisitionsManager requisitions={data.requisitions} />
+        <details className="mt-5 rounded-card border border-line bg-surface px-3 py-2.5">
+          <summary className="cursor-pointer font-medium text-sm">Requisições ({data.requisitions.length})</summary>
+          <RequisitionsManager requisitions={data.requisitions} />
+        </details>
         <div className="pb-8" />
       </div>
     </div>

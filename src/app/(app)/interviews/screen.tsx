@@ -15,7 +15,7 @@ const STATE_TONES: Record<string, Tone> = {
   CANCELED: 'critical',
 };
 
-const sentence = (v: string) => v.charAt(0) + v.slice(1).toLowerCase().replace(/_/g, ' ');
+const stateLabels: Record<string, string> = { SCHEDULED: 'Agendada', COMPLETED: 'Concluída', CANCELED: 'Cancelada' };
 
 export function InterviewsScreen({ data }: { data: Awaited<ReturnType<typeof loadInterviewsPage>> }) {
   const { upcoming, past, suggested } = data;
@@ -36,7 +36,7 @@ export function InterviewsScreen({ data }: { data: Awaited<ReturnType<typeof loa
           </p>
           <p className="mt-0.5 truncate text-xs text-ink-2">
             {iv.postingTitle ?? "Geral"}
-            {iv.panelistNames.length ? ` · with ${iv.panelistNames.join(', ')}` : ''}
+            {iv.panelistNames.length ? ` · com ${iv.panelistNames.join(', ')}` : ''}
             {iv.location ? ` · ${iv.location}` : ''}
           </p>
         </div>
@@ -45,7 +45,7 @@ export function InterviewsScreen({ data }: { data: Awaited<ReturnType<typeof loa
         <span className="text-xs tabular-nums text-ink-2">
           <LocalTime date={iv.startAt} />
         </span>
-        <Badge tone={STATE_TONES[iv.state] ?? 'neutral'}>{sentence(iv.state)}</Badge>
+        <Badge tone={STATE_TONES[iv.state] ?? 'neutral'}>{stateLabels[iv.state] ?? 'Situação não informada'}</Badge>
       </div>
     </Link>
   );

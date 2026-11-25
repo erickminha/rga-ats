@@ -35,6 +35,9 @@ export type ContactRow = {
   id: string;
   name: string;
   headline: string | null;
+  desiredRole?: string | null;
+  observation?: string | null;
+  registeredAt?: string;
   email: string | null;
   tags: string[];
   latestOppId: string | null;

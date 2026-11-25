@@ -48,7 +48,7 @@ export function ContactsSearch() {
               setDraft({ from: committedQ, value: e.target.value });
               if (hint) setHint(false);
             }}
-            placeholder="Buscar pelo nome ou título profissional…"
+            placeholder="Buscar pelo nome ou cargo pretendido…"
             aria-label="Buscar contatos"
             aria-describedby={hint ? 'contacts-q-hint' : undefined}
             className={`${inputClass} pl-9`}
