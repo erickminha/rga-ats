@@ -16,7 +16,7 @@ export function OpinionTemplateForm({ template }: { template?: OpinionTemplate }
     <label className="grid gap-1">Nome do modelo <input name="name" maxLength={100} className={inputClass} defaultValue={template?.name} /></label>
     <h3 className="font-medium">Seções do parecer</h3>
     {opinionKeys.map((key) => <label key={key}><input name="section" type="checkbox" value={key}
-      defaultChecked={template?.sections.includes(key) ?? true} disabled={key === 'recommendation'} /> {opinionFields[key]}</label>)}
+      defaultChecked={template?.sections.includes(key) ?? key !== 'complementary'} disabled={key === 'recommendation'} /> {opinionFields[key]}</label>)}
     <div className="flex flex-wrap gap-2">
       <button className={btnTonal}>Salvar modelo de parecer</button>
       {template && <>
@@ -91,6 +91,7 @@ export function OpinionEditor({ id, templates, content, prefill, revision, issue
         <button type="button" className={btnTonal} onClick={() => { update(suggestion.key, suggestion.text); setSuggestion(undefined); }}>Copiar sugestão para revisão</button>
       </div>}
     </details>}
+    {revision && <a className="mt-3 inline-block underline" target="_blank" rel="noreferrer" href={`/api/pareceres/${id}/preview`}>Visualizar PDF do rascunho salvo</a>}
     {!!issued.length && <section className="mt-4 grid gap-2">
       <h3 className="font-medium">Versões emitidas</h3>
       {issued.map(({ version, date }) => <p key={version} className="flex flex-wrap gap-2 text-sm">

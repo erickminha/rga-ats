@@ -80,6 +80,13 @@ export async function saveRecruitingAssessment(ctx: SessionContext, opportunityI
       const sourceDisc = reused && reused.disc && typeof reused.disc === 'object' && !Array.isArray(reused.disc) ? reused.disc : null;
       if (reuseId && (!sourceDisc || sourceDisc.complete !== true)) throw new Error('Avaliação anterior indisponível.');
       const current = await tx.recruitingAssessment.findUnique({ where: { opportunityId } });
+      const reuseDays = Number(process.env.RGA_DISC_REUSE_MAX_DAYS ?? 0);
+      if (reuseId && sourceDisc && Number.isSafeInteger(reuseDays) && reuseDays > 0) {
+        const date = typeof sourceDisc.date === 'string' ? Date.parse(sourceDisc.date + 'T00:00:00-03:00') : NaN;
+        if (!Number.isFinite(date) || Date.now() - date > reuseDays * 86400000) {
+          throw new Error('A avaliação de origem está fora do prazo de reaproveitamento ou não tem data comprovada.');
+        }
+      }
       if (reuseId && current?.discFileId) throw new Error('Remova o relatório atual antes de reaproveitar outra avaliação.');
       const previousDisc = current?.disc && typeof current.disc === 'object' && !Array.isArray(current.disc) ? current.disc : null;
       const discOrigin = previousDisc?.sourceOpportunityId ? {

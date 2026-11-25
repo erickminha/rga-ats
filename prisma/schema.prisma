@@ -42,6 +42,7 @@ model Organization {
   hideFeedbackUntilSubmitted Boolean @default(false)
   assessmentTemplates Json?
   opinionTemplate Json?
+  discAiSettings Json?
   // GDPR retention: anonymize archived candidates after N months (null = keep forever)
   retentionMonths Int?
   // Show the voluntary EEO/OFCCP self-ID block on apply forms
@@ -320,6 +321,7 @@ model Opportunity {
   updatedAt       DateTime          @updatedAt
 
   recruitingAssessment RecruitingAssessment?
+  nativeDiscs NativeDisc[]
   stageTransitions StageTransition[]
   notes            Note[]
   interviews       Interview[]
@@ -1482,3 +1484,25 @@ model CaseStudy {
   @@index([orgId])
 }
 
+
+model NativeDisc {
+  id String @id @default(uuid())
+  opportunityId String
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  createdById String
+  tokenHash String @unique
+  questionnaireVersion String
+  scoringKey Json?
+  simulation Boolean @default(false)
+  answers Json?
+  results Json?
+  revision Int @default(0)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  submittedAt DateTime?
+  cancelledAt DateTime?
+  emailedAt DateTime?
+  reviewedAt DateTime?
+
+  @@index([opportunityId, createdAt])
+}

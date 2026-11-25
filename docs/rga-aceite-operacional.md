@@ -29,3 +29,18 @@ Atualização de 24/11/2026. A situação se refere ao fluxo completo descrito n
 O estado “Implementada, mas não testada” se refere ao aceite na revisão publicada. As evidências locais do PR #16 estão em [evidências do PR](evidencias-pr16/).
 
 A simulação integrada usou uma conta administrativa local, uma fonte de planilha simulada e um PDF fictício. O navegador confirmou a importação cadastral, a prévia em lote de currículos e a criação da versão privada. [Prévia cadastral em desktop](evidencias-5a/rga-m5a-preview-desktop.jpg) · [Confirmação de currículo no celular](evidencias-5a/rga-m5a-preview-mobile.jpg)
+
+## DISC nativo e parecer
+
+| Funcionalidade | Situação | Evidência ou condição de aceite |
+| --- | --- | --- |
+| Convite e questionário nativo | Implementada, mas não testada em homologação | Link com expiração e rascunho no servidor. Confirmação de publicação pendente |
+| Pontuação e interpretação | Implementada parcialmente | Instrumento provisório restrito a registros fictícios na organização de teste. Uso real depende da validação explícita da RGA |
+| Central DISC e preenchimento do parecer | Implementada parcialmente | Pontuações, revisão e emissão reaproveitam a ficha e o editor. Administração de provedores e recálculo auditado permanecem pendentes |
+
+A jornada local com PostgreSQL descartável e Chromium confirmou o convite em desktop, os dez grupos respondidos em tela de 390 × 844, a revisão, o preenchimento do parecer e o download do PDF versionado. [Questionário no celular](evidencias-disc/questionario-mobile.jpg) · [Revisão no desktop](evidencias-disc/revisao-desktop.jpg)
+
+### Complemento de auditoria
+Interpretação local gerada no envio, revisão textual editável com controle de concorrência, auditoria da interpretação e seleção do DISC nativo revisado para preenchimento do parecer sem sobrescrever o DISC legado. Seções de instrumentos, referências e verificações complementares incluídas. Integração dos SVGs RGA na navegação, incluindo Central DISC. A chave continua provisória, sem liberação real. Validação da versão consolidada permanece pendente.
+
+Administração de IA com modelos autorizados, cotas por organização e globais, cache de interpretação, histórico de tentativas, teste sintético, circuito temporário e prévia PDF de rascunho. Recálculo administrativo cria registro separado com nova chave aprovada. Testes adicionais incluídos, sem execução independente nesta revisão.

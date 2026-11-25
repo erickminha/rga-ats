@@ -2,10 +2,20 @@ import { createHmac } from 'node:crypto';
 import { db } from '@/lib/db';
 import { authConfig } from '@/lib/auth.config';
 
+function limitKey(scope: string, identity: string[]) {
+  return createHmac('sha256', authConfig.secret).update(JSON.stringify([scope, ...identity])).digest('hex');
+}
+
+export async function requestLimitActive(scope: string, identity: string[]) {
+  const row = await db.passwordResetLimit.findUnique({ where: { key: limitKey(scope, identity) }, select: { expiresAt: true } });
+  return !!row && +row.expiresAt > Date.now();
+}
+
 /** Reuse the persisted counter table. Store neither addresses nor user-supplied IPs. */
 export async function reserveRequest(scope: string, identity: string[], limit: number, windowMs: number) {
+  if (!Number.isSafeInteger(limit) || limit < 1 || !Number.isFinite(windowMs) || windowMs <= 0) return false;
   if ((process.env.NODE_ENV === 'production' || process.env.K_SERVICE) && !process.env.AUTH_SECRET?.trim()) return false;
-  const key = createHmac('sha256', authConfig.secret).update(JSON.stringify([scope, ...identity])).digest('hex');
+  const key = limitKey(scope, identity);
   const now = new Date();
   const expiresAt = new Date(now.getTime() + windowMs);
   const changed = await db.$executeRaw`

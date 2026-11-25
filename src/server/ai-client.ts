@@ -236,3 +236,51 @@ function mockTask<T extends AiTask>(task: T, raw: AiTasks[T]['input']): AiTasks[
   }
   throw new AiUnavailableError('unknown_task');
 }
+
+const discChatHosts: Record<string, string> = {
+  groq: 'https://api.groq.com/openai/v1/chat/completions',
+  deepseek: 'https://api.deepseek.com/chat/completions',
+  openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+  openai: 'https://api.openai.com/v1/chat/completions',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+};
+
+function discChatUrl(provider: string) {
+  if (provider === 'cloudflare') {
+    const account = process.env.RGA_DISC_CLOUDFLARE_ACCOUNT_ID ?? '';
+    return /^[a-f0-9]{32}$/i.test(account) ?
+      'https://api.cloudflare.com/client/v4/accounts/' + account + '/ai/v1/chat/completions' : undefined;
+  }
+  return Object.hasOwn(discChatHosts, provider) ? discChatHosts[provider] : undefined;
+}
+
+export function discAiProviders() {
+  if (process.env.RGA_ALLOW_EXTERNAL_AI !== 'true') return [];
+  return [...new Set((process.env.RGA_DISC_AI_PROVIDERS ?? '').split(',').map(x => x.trim()))]
+    .filter(name => discChatUrl(name) &&
+      process.env['RGA_DISC_' + name.toUpperCase() + '_MODEL'] && process.env['RGA_DISC_' + name.toUpperCase() + '_TOKEN']);
+}
+
+export function discAiModels(provider: string): string[] {
+  if (!discAiProviders().includes(provider)) return [];
+  const prefix = 'RGA_DISC_' + provider.toUpperCase();
+  return [...new Set([process.env[prefix + '_MODEL'] ?? '', ...(process.env[prefix + '_MODELS'] ?? '').split(',')].map(x => x.trim()).filter(x => x && x.length <= 150))];
+}
+
+export async function discChat(provider: string, input: { scores: Record<string, number>; methodology: string; profile: string }, requestedModel?: string) {
+  if (!discAiProviders().includes(provider)) throw new AiUnavailableError('not_configured');
+  const model = requestedModel ?? discAiModels(provider)[0];
+  if (!model || !discAiModels(provider).includes(model)) throw new AiUnavailableError('not_configured');
+  const res = await fetch(discChatUrl(provider)!, {
+    method: 'POST', redirect: 'error', signal: AbortSignal.timeout(8000),
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + process.env['RGA_DISC_' + provider.toUpperCase() + '_TOKEN'] },
+    body: JSON.stringify({ model, max_tokens: 800, response_format: { type: 'json_object' }, messages: [{
+      role: 'system',
+      content: 'Redija em português brasileiro. Use apenas as pontuações informadas e respeite o perfil determinístico, inclusive empates. Descreva tendências autorrelatadas, sem diagnóstico, aptidão, aprovação, experiências inventadas ou fatos de entrevista. Retorne JSON com expected até 400 caracteres, detail, strengths com exatamente três frases, attention, environment e interview.',
+    }, { role: 'user', content: JSON.stringify(input) }] }),
+  });
+  if (!res.ok) throw new AiUnavailableError('http_' + res.status, res.status);
+  const data = await res.json();
+  return { model, value: JSON.parse(data.choices[0].message.content) as unknown,
+    tokens: Number.isSafeInteger(data.usage?.total_tokens) ? Number(data.usage.total_tokens) : null };
+}

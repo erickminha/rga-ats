@@ -221,6 +221,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
       <section className={`${surface} my-5 p-5`} aria-labelledby="pendencias-vaga">
         <h2 className="font-medium" id="pendencias-vaga">Acompanhamento das avaliações</h2>
         <ul className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+          <li><a className="underline" href={"/disc?vaga=" + id}>Acompanhar avaliações DISC</a></li>
           <li><a className="underline" href="/interviews">Entrevistas pendentes</a> · {operational.filter((row) => !row.interviews.length && !readInterview(row.recruitingAssessment?.competencyInterview)?.completed).length}</li>
           <li><a className="underline" href="#roteiro-avaliacao">Competências pendentes</a> · {operational.filter((row) => !readInterview(row.recruitingAssessment?.competencyInterview)?.completed).length}</li>
           <li><a className="underline" href="#finalistas">DISC pendentes</a> · {finalists.filter((row) => (row.recruitingAssessment?.disc as { complete?: boolean } | null)?.complete !== true).length}</li>

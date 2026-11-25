@@ -1,3 +1,4 @@
+import { dimensions, scoreDisc, validatedDiscInterpretation, type ScoringKey } from '@/lib/native-disc';
 import { OpinionEditor } from '@/components/opinion-editor';
 import { opinionTemplates } from '@/lib/professional-opinion';
 import { recommendationLabels, requirementLabels } from '@/lib/competency-assessment';
@@ -228,6 +229,20 @@ export async function CandidateProfile({ id }: { id: string }) {
 
   const discComplete = !!assessment?.disc && typeof assessment.disc === 'object'
     && !Array.isArray(assessment.disc) && assessment.disc.complete === true;
+  // Prefer the latest reviewed native evaluation for a new opinion, without
+  // changing the historical DISC field or any previously issued opinion.
+  const native = !contact.isAnonymized && !contact.retentionHold && !opportunity.confidential ? await db.nativeDisc.findFirst({
+    where: { opportunityId: id, reviewedAt: { not: null }, simulation: ctx.orgId === process.env.RGA_DISC_TEST_ORG_ID, opportunity: { orgId: ctx.orgId } },
+    orderBy: [{ reviewedAt: 'desc' }, { id: 'desc' }], select: { results: true, answers: true, scoringKey: true, simulation: true },
+  }) : null;
+  const nativeResult = native?.results as Record<string, unknown> | null;
+  const nativeAnalysis = validatedDiscInterpretation(nativeResult?.analysis);
+  const nativeScores = native && nativeAnalysis ? scoreDisc(native.answers, native.scoringKey as unknown as ScoringKey) : null;
+  const nativeBehavior = nativeScores && nativeAnalysis ? [
+    dimensions.map(d => d + ' ' + nativeScores[d]).join(' · '),
+    native?.simulation ? 'SIMULAÇÃO — sem validade para seleção real' : 'Tendências autorrelatadas — DISC',
+    nativeAnalysis.expected, nativeAnalysis.detail, nativeAnalysis.attention, nativeAnalysis.environment, nativeAnalysis.interview,
+  ].join('\n') : '';
   const recordedOpinion = textRecord(assessment?.opinion);
   const preferences = readCareerProfile(contact.careerProfile);
   const review = readInterview(assessment?.competencyInterview);
@@ -238,8 +253,9 @@ export async function CandidateProfile({ id }: { id: string }) {
     interview: (review?.completed ? review.answers.map((answer, i) => answer.evidence ? review.questions[i] + '\n' + answer.evidence : '').filter(Boolean).join('\n\n') : '') || visibleFeedback[0]?.summary || '',
     competencies: (review?.answers.flatMap((answer, i) => answer.score === null ? [] : [review.questions[i] + ' — ' + review.scale[answer.score - 1]]).join('\n') || preferences.skills || ''),
     requirements: review?.requirements.filter(({ result }) => result !== 'UNVERIFIED').map(({ label, result }) => label + ' — ' + requirementLabels[result as keyof typeof requirementLabels]).join('\n') || '',
-    behavior: discComplete ? [disc.profile, disc.traits].filter(Boolean).join('\n') : '',
-    strengths: discComplete ? disc.strengths ?? '' : '',
+    behavior: nativeBehavior || (discComplete ? [['D', 'I', 'S', 'C'].filter(d => disc[d]).map(d => d.toUpperCase() + ' ' + disc[d]).join(' · '), disc.profile, disc.traits, disc.development].filter(Boolean).join('\n') : ''),
+    strengths: nativeAnalysis?.strengths.join('\n') || (discComplete ? disc.strengths ?? '' : ''),
+    instruments: [review?.completed ? 'Entrevista por competências' : '', nativeBehavior || discComplete ? 'Inventário comportamental DISC (tendências autorrelatadas)' : ''].filter(Boolean).join('\n'),
     recommendation: review?.recommendation ? [recommendationLabels[review.recommendation as keyof typeof recommendationLabels], review.justification].filter(Boolean).join('\n') : '',
   };
   for (const key of Object.keys(opinionPrefill) as (keyof typeof opinionPrefill)[]) opinionPrefill[key] = opinionPrefill[key].slice(0, 4000);
@@ -597,6 +613,7 @@ export async function CandidateProfile({ id }: { id: string }) {
           {!contact.isAnonymized && <CompetencyInterviewForm key={`competency-${opportunity.id}`} id={opportunity.id}
             plan={readPlan(opportunity.posting?.competencyPlan)} review={readInterview(assessment?.competencyInterview)}
             requirements={postingRequirements(opportunity.posting?.matchCriteria, opportunity.posting?.content)} postingId={opportunity.postingId} />}
+          {!contact.isAnonymized && opportunity.postingId && <Link className="underline" href={`/disc?vaga=${opportunity.postingId}&participacao=${opportunity.id}`}>Solicitar ou acompanhar DISC</Link>}
           {!contact.isAnonymized && <RecruitingAssessmentForm key={opportunity.id}
             id={opportunity.id} screening={textRecord(assessment?.screening)} disc={disc} discComplete={discComplete}
             discFileId={assessment?.discFileId ?? null} previousDiscs={previousDiscs.map((row) => ({

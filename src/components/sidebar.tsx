@@ -4,22 +4,8 @@ import { navigation } from '@/lib/i18n/pt-BR/navigation';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  BarChart3,
-  Briefcase,
-  Building2,
-  CalendarDays,
-  Inbox,
-  Kanban,
-  ListTodo,
-  LogOut,
-  MoreHorizontal,
-  Search,
-  Settings,
-  Home,
-  UserPlus,
-  Users,
-} from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import { RgaDashboard, RgaJobs, RgaPipeline, RgaTalents, RgaClients, RgaInterviews, RgaTasks, RgaReports, RgaReview, RgaReferrals, RgaSettings, RgaSearch, RgaMore, RgaDisc } from '@/components/ui/rga-icons';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/orb';
@@ -32,17 +18,18 @@ const MOBILE_PRIMARY = ['/dashboard', '/postings', '/pipeline', '/contacts'];
 const activeAccent = 'ring-1 ring-inset ring-[#1581c9]';
 
 const menu = [
-  { href: '/dashboard', label: 'Visão geral', short: 'Painel', icon: Home, group: 'OPERAÇÃO' },
-  { href: '/postings', label: 'Vagas', short: 'Vagas', icon: Briefcase, group: 'OPERAÇÃO' },
-  { href: '/pipeline', label: 'Funil de recrutamento', short: 'Funil', icon: Kanban, group: 'OPERAÇÃO' },
-  { href: '/contacts', label: 'Banco de talentos', short: 'Talentos', icon: Users, group: 'OPERAÇÃO' },
-  { href: '/clients', label: 'Empresas clientes', short: 'Empresas', icon: Building2, group: 'OPERAÇÃO' },
-  { href: '/interviews', label: 'Entrevistas', short: 'Agenda', icon: CalendarDays, group: 'ACOMPANHAMENTO' },
-  { href: '/tasks', label: 'Tarefas', short: 'Tarefas', icon: ListTodo, group: 'ACOMPANHAMENTO' },
-  { href: '/reports', label: 'Relatórios', short: 'Relatórios', icon: BarChart3, group: 'ACOMPANHAMENTO' },
-  { href: '/review', label: 'Revisão de candidaturas', short: 'Revisão', icon: Inbox, group: 'FERRAMENTAS' },
-  { href: '/referrals', label: 'Indicações', short: 'Indicações', icon: UserPlus, group: 'FERRAMENTAS' },
-  { href: '/settings', label: 'Configurações', short: 'Config.', icon: Settings, group: 'FERRAMENTAS' },
+  { href: '/dashboard', label: 'Visão geral', short: 'Painel', icon: RgaDashboard, group: 'OPERAÇÃO' },
+  { href: '/postings', label: 'Vagas', short: 'Vagas', icon: RgaJobs, group: 'OPERAÇÃO' },
+  { href: '/pipeline', label: 'Funil de recrutamento', short: 'Funil', icon: RgaPipeline, group: 'OPERAÇÃO' },
+  { href: '/contacts', label: 'Banco de talentos', short: 'Talentos', icon: RgaTalents, group: 'OPERAÇÃO' },
+  { href: '/clients', label: 'Empresas clientes', short: 'Empresas', icon: RgaClients, group: 'OPERAÇÃO' },
+  { href: '/interviews', label: 'Entrevistas', short: 'Agenda', icon: RgaInterviews, group: 'ACOMPANHAMENTO' },
+  { href: '/disc', label: 'Central DISC', short: 'DISC', icon: RgaDisc, group: 'ACOMPANHAMENTO' },
+  { href: '/tasks', label: 'Tarefas', short: 'Tarefas', icon: RgaTasks, group: 'ACOMPANHAMENTO' },
+  { href: '/reports', label: 'Relatórios', short: 'Relatórios', icon: RgaReports, group: 'ACOMPANHAMENTO' },
+  { href: '/review', label: 'Revisão de candidaturas', short: 'Revisão', icon: RgaReview, group: 'FERRAMENTAS' },
+  { href: '/referrals', label: 'Indicações', short: 'Indicações', icon: RgaReferrals, group: 'FERRAMENTAS' },
+  { href: '/settings', label: 'Configurações', short: 'Config.', icon: RgaSettings, group: 'FERRAMENTAS' },
 ];
 
 export function Sidebar({
@@ -126,7 +113,7 @@ export function Sidebar({
           <p className="text-xs text-[#b7c8dc]">Espaço de trabalho</p>
         </div>
         <button type="button" onClick={() => setAskOpen(true)} className="mx-3 mb-3 flex items-center gap-2 rounded-xl border border-[#35445a] px-3 py-2.5 text-left text-sm text-[#dce8f5] hover:bg-[#27384b]">
-          <Search size={17} /> <span className="flex-1">Busca global</span><kbd className="text-[10px] text-[#b7c8dc]">Ctrl K</kbd>
+          <RgaSearch size={20} /> <span className="flex-1">Busca global</span><kbd className="text-[10px] text-[#b7c8dc]">Ctrl K</kbd>
         </button>
         <nav aria-label={navigation.main} className="flex flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
           {['OPERAÇÃO', 'ACOMPANHAMENTO', 'FERRAMENTAS'].map((group) => (
@@ -136,7 +123,7 @@ export function Sidebar({
                 <Link key={href} href={href} onNavigate={() => go(href)} aria-current={isActive(href) ? 'page' : undefined}
                   data-pending={pendingHref === href || undefined}
                   className="flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-[#dae5f2] transition-colors hover:bg-[#27384b]">
-                  <Icon size={18} strokeWidth={1.8} className="shrink-0" />{label}
+                  <Icon size={22} strokeWidth={1.65} className="shrink-0" />{label}
                 </Link>
               ))}
             </div>
@@ -173,7 +160,7 @@ export function Sidebar({
                   active ? ['bg-muted text-ink', activeAccent] : 'text-ink-2',
                 )}
               >
-                <Icon size={18} strokeWidth={1.75} className={cn(pendingHref === href && 'animate-pulse')} />
+                <Icon size={22} strokeWidth={1.65} className={cn(pendingHref === href && 'animate-pulse')} />
                 {short}
               </Link>
             );
@@ -187,7 +174,7 @@ export function Sidebar({
                 overflow.some((n) => isActive(n.href)) ? ['bg-muted text-ink', activeAccent] : 'text-ink-2',
               )}
             >
-              <MoreHorizontal size={18} strokeWidth={1.75} />
+              <RgaMore size={22} strokeWidth={1.75} />
               {navigation.more}
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
@@ -204,7 +191,7 @@ export function Sidebar({
                 }}
                 className="menu-animate z-[350] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[200px] overflow-y-auto rounded-card bg-surface p-1 shadow-float"
               >
-                <DropdownMenu.Item onSelect={() => { searchFromMore.current = true; }} className="flex items-center gap-3 rounded-field px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"><Search size={16} /> Busca global</DropdownMenu.Item>
+                <DropdownMenu.Item onSelect={() => { searchFromMore.current = true; }} className="flex items-center gap-3 rounded-field px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"><RgaSearch size={20} /> Busca global</DropdownMenu.Item>
                 {overflow.map(({ href, label, icon: Icon }) => (
                   <DropdownMenu.Item key={href} asChild>
                     <Link
@@ -218,7 +205,7 @@ export function Sidebar({
                         isActive(href) ? 'bg-muted text-ink' : 'text-ink',
                       )}
                     >
-                      <Icon size={16} strokeWidth={1.75} className="text-ink-2" />
+                      <Icon size={20} strokeWidth={1.65} className="text-ink-2" />
                       {label}
                     </Link>
                   </DropdownMenu.Item>
