@@ -33,14 +33,15 @@ export function DiscInvite({ opportunityId, test }: { opportunityId: string; tes
   </div>;
 }
 
-export function DiscManage({ id, action }: { id: string; action: 'cancel' | 'prepare' | 'review' }) {
+export function DiscManage({ id, action }: { id: string; action: 'cancel' | 'prepare' | 'review' | 'recalculate' }) {
   const [busy, start] = useTransition();
   const [error, setError] = useState('');
   return <div>
     <button className="underline" disabled={busy} onClick={() => start(async () => {
+      if (action === 'recalculate' && !window.confirm('Gerar uma avaliação separada com a nova metodologia aprovada, preservando a anterior?')) return;
       const result = await manageDiscAction(id, action);
       setError(result.error ?? '');
-    })}>{action === 'cancel' ? 'Cancelar link' : action === 'prepare' ? 'Preparar interpretação' : 'Concluir revisão'}</button>
+    })}>{action === 'cancel' ? 'Cancelar link' : action === 'prepare' ? 'Enriquecer interpretação (IA, se habilitada)' : action === 'recalculate' ? 'Recalcular com nova chave aprovada' : 'Concluir revisão'}</button>
     {error && <p role="alert">{error}</p>}
   </div>;
 }

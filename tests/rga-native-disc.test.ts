@@ -40,12 +40,32 @@ describe('Instrumento DISC nativo', () => {
 });
 
 import { vi } from 'vitest';
+import { discAiConfiguration, saveDiscAiConfiguration } from '@/server/disc-ai-settings';
 import { hasDb } from './setup';
 import { candidate, createOrg } from './fixtures';
 import { db } from '@/lib/db';
 import { cancelDisc, candidateDisc, createDiscInvite, editDiscInterpretation, prepareDisc, reviewDisc } from '@/server/native-disc';
 
 describe.skipIf(!hasDb)('Fluxo DISC com PostgreSQL', () => {
+  it('permite configurar IA apenas a administradores e limita modelos autorizados', async () => {
+    const { org, admin } = await createOrg();
+    const ctx = { orgId: org.id, userId: admin.id, accessRole: 'ADMIN' };
+    vi.stubEnv('RGA_ALLOW_EXTERNAL_AI', 'true');
+    vi.stubEnv('RGA_DISC_AI_PROVIDERS', 'groq');
+    vi.stubEnv('RGA_DISC_GROQ_TOKEN', 'ficticio');
+    vi.stubEnv('RGA_DISC_GROQ_MODEL', 'modelo-teste');
+    vi.stubEnv('RGA_DISC_AI_DAILY_LIMIT', '20');
+    vi.stubEnv('RGA_DISC_AI_MONTHLY_LIMIT', '200');
+    const form = new FormData();
+    form.set('daily', '10'); form.set('monthly', '100'); form.set('slot0', 'groq|modelo-teste');
+    try {
+      await expect(saveDiscAiConfiguration({ ...ctx, accessRole: 'TEAM_MEMBER' }, form)).rejects.toThrow();
+      await saveDiscAiConfiguration(ctx, form);
+      expect(await discAiConfiguration(org.id)).toMatchObject({ daily: 10, monthly: 100, providers: [{ provider: 'groq', model: 'modelo-teste' }] });
+      form.set('slot0', 'groq|modelo-nao-autorizado');
+      await expect(saveDiscAiConfiguration(ctx, form)).rejects.toThrow();
+    } finally { vi.unstubAllEnvs(); }
+  });
   it('protege a chave provisória, salva, retoma, conclui uma vez e preserva o histórico', async () => {
     const { org, stages, admin } = await createOrg();
     const { org: other } = await createOrg();

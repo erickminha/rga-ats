@@ -91,6 +91,7 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
           {row.submittedAt && !row.reviewedAt && scores?.analysis && <DiscInterpretationEditor id={row.id} revision={row.revision} analysis={scores.analysis} />}
           {row.submittedAt && !row.reviewedAt && (!scores?.analysis || scores.aiPending) && <DiscManage id={row.id} action="prepare" />}
           {row.submittedAt && !row.reviewedAt && scores?.analysis && <DiscManage id={row.id} action="review" />}
+          {isAdmin(ctx) && row.reviewedAt && !row.simulation && <DiscManage id={row.id} action="recalculate" />}
           {row.reviewedAt && <Link className="underline" href={'/candidates/' + item.id}>Abrir ficha e preparar parecer</Link>}
         </article>;
       })}

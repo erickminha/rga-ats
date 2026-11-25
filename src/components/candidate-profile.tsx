@@ -241,7 +241,7 @@ export async function CandidateProfile({ id }: { id: string }) {
   const nativeBehavior = nativeScores && nativeAnalysis ? [
     dimensions.map(d => d + ' ' + nativeScores[d]).join(' · '),
     native?.simulation ? 'SIMULAÇÃO — sem validade para seleção real' : 'Tendências autorrelatadas — DISC',
-    nativeAnalysis.detail, nativeAnalysis.attention, nativeAnalysis.environment, nativeAnalysis.interview,
+    nativeAnalysis.expected, nativeAnalysis.detail, nativeAnalysis.attention, nativeAnalysis.environment, nativeAnalysis.interview,
   ].join('\n') : '';
   const recordedOpinion = textRecord(assessment?.opinion);
   const preferences = readCareerProfile(contact.careerProfile);

@@ -27,11 +27,13 @@ export async function discAiConfiguration(orgId: string) {
 
 export async function reserveDiscAi(orgId: string, daily: number, monthly: number) {
   const day = new Date().toISOString().slice(0, 10);
-  if (!daily || !monthly) return false;
+  const globalDaily = limit(process.env.RGA_DISC_AI_GLOBAL_DAILY_LIMIT, 20);
+  const globalMonthly = limit(process.env.RGA_DISC_AI_GLOBAL_MONTHLY_LIMIT, 200);
+  if (!daily || !monthly || !globalDaily || !globalMonthly) return false;
   return await reserveRequest('disc-ai-daily', [orgId, day], daily, 86400000) &&
     await reserveRequest('disc-ai-monthly', [orgId, day.slice(0, 7)], monthly, 31 * 86400000) &&
-    await reserveRequest('disc-ai-global-daily', [day], limit(process.env.RGA_DISC_AI_GLOBAL_DAILY_LIMIT, 20), 86400000) &&
-    await reserveRequest('disc-ai-global-monthly', [day.slice(0, 7)], limit(process.env.RGA_DISC_AI_GLOBAL_MONTHLY_LIMIT, 200), 31 * 86400000);
+    await reserveRequest('disc-ai-global-daily', [day], globalDaily, 86400000) &&
+    await reserveRequest('disc-ai-global-monthly', [day.slice(0, 7)], globalMonthly, 31 * 86400000);
 }
 
 export async function saveDiscAiConfiguration(ctx: SessionContext, form: FormData) {

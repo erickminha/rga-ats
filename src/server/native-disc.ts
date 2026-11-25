@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
-import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
+import { isAdmin, requireRecruitingAccess, type SessionContext } from '@/lib/session';
 import { localDiscInterpretation, provisionalKey, questionnaireVersion, scoreDisc, validDraft, validGroup, validatedDiscInterpretation, type Scores, type ScoringKey } from '@/lib/native-disc';
 import { requestLimitActive, reserveRequest } from './request-limit';
 import { discAiConfiguration, reserveDiscAi } from './disc-ai-settings';
@@ -132,7 +132,15 @@ export async function candidateDisc(token: string, change?: { answers: unknown; 
     answers: validDraft(row.answers) ? row.answers : Array.from({ length: 10 }, () => [0, 0, 0, 0]), revision: row.revision };
 }
 
-async function interpret(orgId: string, scores: Scores, methodology: string, simulation: boolean) {
+async function emitAiAttempt(ctx: SessionContext, provider: string, model: string, tokens: number | null, success: boolean) {
+  await db.$transaction(async tx => {
+    await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'disc.ai_attempt', subjectType: 'organization',
+      subjectId: ctx.orgId, payload: { provider, model, tokens, success } });
+  });
+}
+
+async function interpret(ctx: SessionContext, scores: Scores, methodology: string, simulation: boolean) {
+  const orgId = ctx.orgId;
   const local = localDiscInterpretation(scores);
   if (!simulation) {
     const config = await discAiConfiguration(orgId);
@@ -152,8 +160,9 @@ async function interpret(orgId: string, scores: Scores, methodology: string, sim
       try {
         const result = await discChat(provider, { scores, methodology, profile: local.profile }, model);
         const analysis = validatedDiscInterpretation(result.value);
+        await emitAiAttempt(ctx, provider, model, result.tokens, !!analysis);
         if (analysis) return { analysis: { ...analysis, profile: local.profile }, provider, model: result.model, tokens: result.tokens, cacheKey, cached: false };
-      } catch { /* Try only the next authorized provider. */ }
+      } catch { await emitAiAttempt(ctx, provider, model, null, false); }
       await reserveRequest('disc-ai-circuit', [orgId, provider, model], 1, 60000);
     }
   }
@@ -170,7 +179,7 @@ export async function prepareDisc(ctx: SessionContext, id: string) {
   if (!await reserveRequest('disc-interpretation', [id], 1, 60000)) throw new Error('A interpretação já está em processamento.');
   const key = pending.scoringKey as unknown as ScoringKey;
   const scores = scoreDisc(pending.answers, key);
-  const interpretation = await interpret(ctx.orgId, scores, key.version, pending.simulation);
+  const interpretation = await interpret(ctx, scores, key.version, pending.simulation);
   await db.$transaction(async tx => {
     if (!await lockIdentifiableContact(tx, ctx.orgId, pending.opportunity.contactId)) return;
     const changed = await tx.nativeDisc.updateMany({ where: { id, revision: pending.revision, reviewedAt: null, opportunity: { orgId: ctx.orgId, ...available } },
@@ -194,7 +203,8 @@ export async function editDiscInterpretation(ctx: SessionContext, id: string, re
     const scores = scoreDisc(row.answers, row.scoringKey as unknown as ScoringKey);
     const changed = await tx.nativeDisc.updateMany({ where: { id, revision, reviewedAt: null, opportunity: { orgId: ctx.orgId, ...available } },
       data: { revision: { increment: 1 }, results: { ...scores, analysis: { ...analysis, profile: localDiscInterpretation(scores).profile },
-        provider: 'manual', model: 'revisao-humana', tokens: null, aiPending: false } } });
+        provider: 'manual', model: 'revisao-humana', tokens: null, aiPending: false,
+        ...((row.results as Record<string, unknown> | null)?.sourceAssessmentId ? { sourceAssessmentId: String((row.results as Record<string, unknown>).sourceAssessmentId) } : {}) } } });
     if (!changed.count) throw new Error('A avaliação mudou. Atualize a página antes de editar.');
     await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'disc.interpretation_edited', subjectType: 'opportunity',
       subjectId: row.opportunityId, payload: { assessmentId: id, previousRevision: revision } });
@@ -224,5 +234,30 @@ export async function reviewDisc(ctx: SessionContext, id: string) {
     }
     await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'disc.reviewed', subjectType: 'opportunity',
       subjectId: row.opportunityId, payload: { assessmentId: id } });
+  });
+}
+
+/** Recalculate into a separate immutable-source record, only against a newly approved key. */
+export async function recalculateDisc(ctx: SessionContext, id: string) {
+  if (!isAdmin(ctx) || !ctx.userId) throw new Error('Acesso restrito.');
+  const key = scoringKey(false);
+  await db.$transaction(async tx => {
+    const row = await tx.nativeDisc.findFirst({ where: { id, simulation: false, submittedAt: { not: null }, reviewedAt: { not: null },
+      opportunity: { orgId: ctx.orgId, ...available } }, include: { opportunity: { select: { contactId: true } } } });
+    if (!row || !await lockIdentifiableContact(tx, ctx.orgId, row.opportunity.contactId) ||
+        !await tx.opportunity.findFirst({ where: { id: row.opportunityId, orgId: ctx.orgId, ...available }, select: { id: true } })) throw new Error('Avaliação indisponível.');
+    const previousKey = row.scoringKey as unknown as ScoringKey;
+    if (previousKey.version === key.version) throw new Error('Não existe uma nova versão aprovada da metodologia.');
+    const existing = await tx.nativeDisc.findFirst({ where: { opportunityId: row.opportunityId,
+      AND: [{ results: { path: ['sourceAssessmentId'], equals: id } }, { scoringKey: { path: ['version'], equals: key.version } }] }, select: { id: true } });
+    if (existing) throw new Error('A avaliação já foi recalculada nesta versão.');
+    const scores = scoreDisc(row.answers, key);
+    const created = await tx.nativeDisc.create({ data: { opportunityId: row.opportunityId, createdById: ctx.userId!,
+      tokenHash: fingerprint(randomBytes(32).toString('base64url')), expiresAt: new Date(), submittedAt: row.submittedAt,
+      questionnaireVersion: row.questionnaireVersion, scoringKey: key, simulation: false,
+      answers: row.answers as Prisma.InputJsonValue, results: { ...scores, analysis: localDiscInterpretation(scores),
+        provider: 'local', model: 'rga-local-1', tokens: null, aiPending: false, sourceAssessmentId: id } }, select: { id: true } });
+    await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'disc.recalculated', subjectType: 'opportunity',
+      subjectId: row.opportunityId, payload: { assessmentId: created.id, sourceAssessmentId: id, previousVersion: previousKey.version, newVersion: key.version } });
   });
 }

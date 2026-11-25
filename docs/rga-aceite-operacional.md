@@ -42,3 +42,5 @@ A jornada local com PostgreSQL descartável e Chromium confirmou o convite em de
 
 ### Complemento de auditoria
 Interpretação local gerada no envio, revisão textual editável com controle de concorrência, auditoria da interpretação e seleção do DISC nativo revisado para preenchimento do parecer sem sobrescrever o DISC legado. Seções de instrumentos, referências e verificações complementares incluídas. Integração dos SVGs RGA na navegação, incluindo Central DISC. A chave continua provisória, sem liberação real. Validação da versão consolidada permanece pendente.
+
+Administração de IA com modelos autorizados, cotas por organização e globais, cache de interpretação, histórico de tentativas, teste sintético, circuito temporário e prévia PDF de rascunho. Recálculo administrativo cria registro separado com nova chave aprovada. Testes adicionais incluídos, sem execução independente nesta revisão.
