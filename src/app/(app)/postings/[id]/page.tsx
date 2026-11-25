@@ -268,7 +268,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
         ) : null}
       </div>
 
-      {canRecruit && <AdComposer published={posting.state === 'PUBLISHED'} initial={makeAd({
+      {canRecruit && <AdComposer key={posting.updatedAt.toISOString()} published={posting.state === 'PUBLISHED'} initial={makeAd({
         ...posting, brand: posting.org.name, publicCompany: publicClientName(posting),
         publicUrl: posting.state === 'PUBLISHED' ? (await careersOrigin()) + careersPath(posting.org.slug, posting.slug) : null,
       })} title={posting.title} />}

@@ -39,16 +39,18 @@ async function log(ctx: SessionContext, success: boolean, tokens: number | null,
 }
 export async function askProfessionalProfiles(ctx: SessionContext, question: string): Promise<CorpusAnswer> {
   requireRecruitingAccess(ctx);
-  const terms = profileTerms(scrubAssistantText(question));
+  const terms = profileTerms(question.replace(/https?:\/\/\S+|[\w.+-]+@[\w.-]+|[\d(). -]{7,}/gi,' '));
   if (!terms.length) return { answer: 'Informe um cargo, área profissional ou UF para localizar perfis. Ex.: auxiliar administrativo, técnico em eletrônica, Amazonas.', sources: [] };
-  const expression = Prisma.sql`public.rga_fold(concat_ws(' ', c.headline, c."careerProfile"->>'state'))`;
-  const hits = terms.map(term => Prisma.sql`(CASE WHEN ${expression} LIKE public.rga_fold(${likePattern(term)}) ESCAPE '\\' THEN 1 ELSE 0 END)`);
+  const uf = terms.filter(term => statesBR.includes(term.toUpperCase())).map(term => term.toUpperCase());
+  const roles = terms.filter(term => !statesBR.includes(term.toUpperCase()));
+  const hits = roles.length ? roles.map(term => Prisma.sql`(CASE WHEN public.rga_fold(c.headline) LIKE public.rga_fold(${likePattern(term)}) ESCAPE '\\' THEN 1 ELSE 0 END)`) : [Prisma.sql`1`];
   const score = Prisma.join(hits, ' + ');
   const rows = await db.$queryRaw<{ id: string; name: string; headline: string | null; uf: string | null; score: number }[]>`
     SELECT c.id,c.name,left(c.headline,300) AS headline,c."careerProfile"->>'state' AS uf,(${score})::int AS score
     FROM "Contact" c WHERE c."orgId"=${ctx.orgId} AND NOT c."isAnonymized" AND NOT c."retentionHold"
       AND EXISTS (SELECT 1 FROM "ConsentRecord" g WHERE g."orgId"=c."orgId" AND g."contactId"=c.id AND g.purpose='PROFILE_STORAGE' AND g."withdrawnAt" IS NULL)
       AND NOT EXISTS (SELECT 1 FROM "Opportunity" o WHERE o."orgId"=c."orgId" AND o."contactId"=c.id AND o.confidential)
+      ${uf.length ? Prisma.sql`AND c."careerProfile"->>'state' = ANY(${uf}::text[])` : Prisma.empty}
       AND (${score}) > 0
     ORDER BY score DESC,c."createdAt" DESC,c.id DESC LIMIT 12
   `;
@@ -58,8 +60,8 @@ export async function askProfessionalProfiles(ctx: SessionContext, question: str
   const local = (why: string) => ({ answer: why + '\n\nPerfis encontrados por correspondência de termos (até 12):\n' + rows.map((r,i) => '[' + (i+1) + '] ' + professional(r)).join('\n') + '\n\nCargo informado não comprova experiência. Confira os cadastros.', sources });
   if (!await reserve(ctx.orgId)) return local('Limite de consultas de IA atingido. Exibindo busca local.');
   try {
-    const result = await assistantChat(scrubAssistantText(question), rows.map((row,i) => ({
-      n:i+1, professional: scrubAssistantText(professional(row).split(row.name).join('[nome omitido]')),
+    const result = await assistantChat('Resuma os perfis encontrados pelos termos profissionais da busca local. Destaque apenas o que consta no cargo informado e na UF, sem inferir experiência.', rows.map((row,i) => ({
+      n:i+1, professional: scrubAssistantText(professional(row).replaceAll(row.name || '\u0000','[nome omitido]')),
     })));
     await log(ctx,true,result.tokens,rows.length);
     return {answer: 'Busca assistida em até 12 perfis com cargo ou área e UF cadastrados. Não analisa currículos nesta etapa.\n\n' + result.answer, sources};

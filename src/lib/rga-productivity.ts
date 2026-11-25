@@ -4,8 +4,10 @@ export const adFieldLabels = { schedule: 'Horário e escala', benefits: 'Benefí
 export type AdFields = Partial<Record<keyof typeof adFieldLabels, string>>;
 export function readAdFields(content: unknown): AdFields {
   const ad = postingContent(postingContent(content).advertisement);
-  return Object.fromEntries(Object.keys(adFieldLabels).flatMap(key =>
-    typeof ad[key] === 'string' && ad[key].trim() ? [[key, ad[key].trim().slice(0, 1000)]] : []));
+  return Object.fromEntries(Object.keys(adFieldLabels).flatMap(key => {
+    const value = ad[key];
+    return typeof value === 'string' && value.trim() ? [[key, value.trim().slice(0, 1000)]] : [];
+  }));
 }
 export function adFieldsFromForm(form: FormData): AdFields {
   return Object.fromEntries(Object.keys(adFieldLabels).flatMap(key => {
@@ -59,4 +61,11 @@ export function whatsappPhone(value: string) {
   if (/^55\d{10,11}$/.test(digits)) return digits;
   if (/^\d{10,11}$/.test(digits)) return '55' + digits;
   return null;
+}
+
+export function approvedForMessage(status: string, clientId: string | null | undefined, history: unknown) {
+  if (status === 'HIRED') return true;
+  if (status !== 'ACTIVE' || !clientId || !Array.isArray(history)) return false;
+  const latest = history.at(-1);
+  return !!latest && typeof latest === 'object' && !Array.isArray(latest) && latest.status === 'APPROVED' && latest.clientId === clientId;
 }

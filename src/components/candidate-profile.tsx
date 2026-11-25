@@ -34,6 +34,7 @@ import { TaskSection } from '@/components/task-section';
 import { TranscriptSection } from '@/components/transcript-section';
 import { ShareLinkButton } from '@/components/share-link-button';
 import { OfferSection } from '@/components/offer-section';
+import { approvedForMessage } from '@/lib/rga-productivity';
 import { WhatsappComposer } from '@/components/rga-productivity';
 import { EmailSection } from '@/components/email-section';
 import { Field, btnTonal, inputClass, surface, textareaClass, noAutofill } from '@/components/form-controls';
@@ -219,6 +220,7 @@ export async function CandidateProfile({ id }: { id: string }) {
   const resumeText = !resumeFile || resumeFile.id === contact.resumeFileId ? contact.resumeText : null;
   const resume = readResumeView(resumeFile?.parsed);
   const assessment = opportunity.recruitingAssessment;
+  const nextInterview = [...opportunity.interviews].filter(iv => iv.state === 'SCHEDULED' && +iv.startAt >= Date.now()).sort((a,b) => +a.startAt - +b.startAt)[0];
   const disc = textRecord(assessment?.disc);
   const previousDiscs = !contact.isAnonymized && !contact.retentionHold && opportunity.postingId
     ? await db.recruitingAssessment.findMany({
@@ -474,7 +476,8 @@ export async function CandidateProfile({ id }: { id: string }) {
           {!contact.isAnonymized && !contact.retentionHold && !opportunity.confidential && <WhatsappComposer
             opportunityId={opportunity.id} name={contact.name} job={opportunity.posting?.title ?? 'processo seletivo'}
             brand={org?.name ?? 'RGA Consultoria de RH'} phones={[preferences.whatsapp ?? '', ...contact.phones]}
-            status={opportunity.status} />}
+            status={opportunity.status} approved={approvedForMessage(opportunity.status, opportunity.posting?.clientCompanyId, assessment?.clientFeedback)}
+            nextInterview={nextInterview ? { at: nextInterview.startAt.toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'}) + ' (horário de Brasília)', location: nextInterview.location ?? '' } : undefined} />}
           <EmailSection
             opportunityId={opportunity.id}
             toEmail={contact.emails[0] ?? null}

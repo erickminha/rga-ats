@@ -19,6 +19,47 @@ export function AdComposer({ published, initial, title }: { published: boolean; 
   const [confirmed, setConfirmed] = useState(false);
   const [notice, setNotice] = useState('');
   const enabled = published && confirmed && !!draft.trim();
+  function downloadArtwork() {
+    // Vector-like text rendered at 1080px; refuse very long copy rather than silently truncate.
+    if (draft.length > 4500) { setNotice('Reduza o anúncio para até 4.500 caracteres para gerar a arte, ou use o PDF.'); return; }
+    const canvas = document.createElement('canvas'); canvas.width = 1080;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { setNotice('O navegador não conseguiu gerar a arte.'); return; }
+    ctx.font = '30px Arial';
+    const lines: string[] = [];
+    for (const paragraph of draft.split('\n')) {
+      if (!paragraph.trim()) { lines.push(''); continue; }
+      let line = '';
+      for (const word of paragraph.split(/\s+/)) {
+        if (ctx.measureText(word).width > 928) {
+          if (line) { lines.push(line); line = ''; }
+          for (const ch of word) {
+            if (ctx.measureText(line + ch).width > 928) { lines.push(line); line = ''; }
+            line += ch;
+          }
+        } else if (line && ctx.measureText(line + ' ' + word).width > 928) {
+          lines.push(line); line = word;
+        } else line += (line ? ' ' : '') + word;
+      }
+      if (line) lines.push(line);
+    }
+    const height = Math.max(1350, 280 + lines.length * 42);
+    if (height > 4400) { setNotice('O texto ocupa muitas linhas. Reduza o anúncio para a arte ou use o PDF.'); return; }
+    canvas.height = height;
+    ctx.fillStyle = '#F5F5F5'; ctx.fillRect(0,0,1080,height);
+    ctx.fillStyle = '#1581C9'; ctx.fillRect(0,0,1080,170);
+    ctx.fillStyle = '#F9C82B'; ctx.fillRect(0,170,1080,10);
+    ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 44px Arial'; ctx.fillText('RGA | Oportunidade de emprego',76,104);
+    ctx.font = '30px Arial'; ctx.fillStyle = '#161D27';
+    lines.forEach((line,i) => ctx.fillText(line,76,246+i*42));
+    ctx.fillStyle = '#6C336E'; ctx.fillRect(0,height-30,1080,30);
+    canvas.toBlob(blob => {
+      if (!blob) { setNotice('Não foi possível gerar a arte.'); return; }
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='anuncio-rga.png'; a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url),1000);
+      setNotice('Arte gerada. Confira a legibilidade antes de compartilhar.');
+    },'image/png');
+  }
   function printAd() {
     const popup = window.open('', '_blank');
     if (!popup) { setNotice('Permita a abertura de uma nova janela para imprimir.'); return; }
@@ -42,17 +83,18 @@ export function AdComposer({ published, initial, title }: { published: boolean; 
       <button disabled={!enabled} className={buttonClass({ variant: 'primary' })} onClick={async () => setNotice(await copyText(draft))}>Copiar anúncio</button>
       <button disabled={!enabled} className={buttonClass({ variant: 'secondary' })} onClick={() => download(draft, 'anuncio-rga.txt')}>Baixar texto</button>
       <button disabled={!enabled} className={buttonClass({ variant: 'secondary' })} onClick={printAd}>Imprimir / salvar PDF</button>
+      <button disabled={!enabled} className={buttonClass({ variant: 'secondary' })} onClick={downloadArtwork}>Baixar arte PNG</button>
       {enabled && <a className={buttonClass({ variant: 'secondary' })} href={'https://wa.me/?text=' + encodeURIComponent(draft)} target="_blank" rel="noreferrer">Compartilhar no WhatsApp</a>}
     </div>
     <p role="status" className="text-sm">{notice}</p>
   </section>;
 }
 
-export function WhatsappComposer({ opportunityId, name, job, brand, phones, status }: { opportunityId: string; name: string; job: string; brand: string; phones: string[]; status: string }) {
-  const available = (Object.keys(messageKinds) as MessageKind[]).filter(k => k !== 'approved' && k !== 'closed' || k === 'approved' && status === 'HIRED' || k === 'closed' && status === 'ARCHIVED');
+export function WhatsappComposer({ opportunityId, name, job, brand, phones, status, approved, nextInterview }: { opportunityId: string; name: string; job: string; brand: string; phones: string[]; status: string; approved: boolean; nextInterview?: { at: string; location: string } }) {
+  const available = (Object.keys(messageKinds) as MessageKind[]).filter(k => k !== 'approved' && k !== 'closed' || k === 'approved' && approved || k === 'closed' && status === 'ARCHIVED');
   const [kind, setKind] = useState<MessageKind>(status === 'ARCHIVED' ? 'closed' : 'contact');
-  const [appointment, setAppointment] = useState('');
-  const [meeting, setMeeting] = useState('');
+  const [appointment, setAppointment] = useState(nextInterview?.at ?? '');
+  const [meeting, setMeeting] = useState(nextInterview?.location ?? '');
   const [edited, setEdited] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [notice, setNotice] = useState('');

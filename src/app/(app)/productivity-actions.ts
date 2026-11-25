@@ -2,7 +2,7 @@
 import { db } from '@/lib/db';
 import { requireSession, requireRecruitingAccess } from '@/lib/session';
 import { actorOf, emitEvent } from '@/server/events';
-import { messageKinds } from '@/lib/rga-productivity';
+import { approvedForMessage, messageKinds } from '@/lib/rga-productivity';
 import { revalidatePath } from 'next/cache';
 
 export async function confirmWhatsappAction(id: string, kind: string) {
@@ -12,8 +12,8 @@ export async function confirmWhatsappAction(id: string, kind: string) {
   try {
     await db.$transaction(async tx => {
       const row = await tx.opportunity.findFirst({ where: { id, orgId: ctx.orgId, confidential: false,
-        contact: { orgId: ctx.orgId, isAnonymized: false, retentionHold: false } }, select: { id: true, status: true } });
-      if (!row || (kind === 'closed' && row.status !== 'ARCHIVED') || (kind === 'approved' && row.status !== 'HIRED')) throw new Error('Indisponível.');
+        contact: { orgId: ctx.orgId, isAnonymized: false, retentionHold: false } }, select: { id: true, status: true, posting: { select: { orgId: true, clientCompanyId: true } }, recruitingAssessment: { select: { clientFeedback: true } } } });
+      if (!row || (kind === 'closed' && row.status !== 'ARCHIVED') || (kind === 'approved' && !approvedForMessage(row.status, row.posting?.orgId === ctx.orgId ? row.posting.clientCompanyId : null, row.recruitingAssessment?.clientFeedback))) throw new Error('Indisponível.');
       await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'whatsapp.manual_confirmed', subjectType: 'opportunity', subjectId: id,
         payload: { template: kind, confirmation: 'manual' } });
     });

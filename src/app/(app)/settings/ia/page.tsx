@@ -13,7 +13,7 @@ export default async function DiscAiSettingsPage() {
   if (!isAdmin(ctx)) notFound();
   const [config, history] = await Promise.all([
     discAiConfiguration(ctx.orgId),
-    db.event.findMany({ where: { orgId: ctx.orgId, verb: { in: ['disc.interpreted', 'disc.ai_tested', 'disc.ai_attempt'] } }, orderBy: { occurredAt: 'desc' }, take: 50,
+    db.event.findMany({ where: { orgId: ctx.orgId, verb: { in: ['disc.interpreted', 'disc.ai_tested', 'disc.ai_attempt', 'assistant.queried', 'assistant.tested'] } }, orderBy: { occurredAt: 'desc' }, take: 50,
       select: { id: true, verb: true, occurredAt: true, payload: true } }),
   ]);
   return <main className="grid max-w-4xl gap-4 p-5">
@@ -27,7 +27,7 @@ export default async function DiscAiSettingsPage() {
       {!history.length && <p>Nenhuma execução registrada.</p>}
       {history.map(event => {
         const payload = event.payload as Record<string, unknown> | null;
-        return <p key={event.id} className="border-t border-line py-2 text-sm">{event.occurredAt.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} · {event.verb === 'disc.ai_tested' ? 'Teste' : event.verb === 'disc.ai_attempt' ? 'Chamada ao provedor' : 'Interpretação'} · {String(payload?.provider ?? 'local')} · {String(payload?.model ?? '')} · {typeof payload?.tokens === 'number' ? payload.tokens + ' tokens' : 'Consumo não informado'}{payload?.cached === true ? ' · Cache' : ''}{typeof payload?.success === 'boolean' ? payload.success ? ' · Sucesso' : ' · Falha' : ''}</p>;
+        return <p key={event.id} className="border-t border-line py-2 text-sm">{event.occurredAt.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} · {event.verb === 'assistant.queried' ? 'Consulta ao Assistente' : event.verb === 'assistant.tested' ? 'Teste do Assistente' : event.verb === 'disc.ai_tested' ? 'Teste DISC' : event.verb === 'disc.ai_attempt' ? 'Chamada DISC ao provedor' : 'Interpretação DISC'} · {String(payload?.provider ?? 'local')} · {String(payload?.model ?? '')} · {typeof payload?.tokens === 'number' ? payload.tokens + ' tokens' : 'Consumo não informado'}{payload?.cached === true ? ' · Cache' : ''}{typeof payload?.success === 'boolean' ? payload.success ? ' · Sucesso' : ' · Falha' : ''}</p>;
       })}
     </section>
   </main>;
