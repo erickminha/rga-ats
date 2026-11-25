@@ -519,7 +519,7 @@ export function PipelineList({
                 onClick={(e) => nav.go({ stage: s.id }, e)}
                 {...intent(key, false)}
                 aria-current={active ? 'true' : undefined}
-                aria-label={`${s.name}, ${capped && s.id ? 'count unavailable' : text}`}
+                aria-label={`${s.name}, ${capped && s.id ? 'contagem indisponível' : text}`}
                 className={cn(
                   'selectable rounded-card px-4 py-2.5',
                   active ? 'is-selected' : 'bg-surface text-ink hover:bg-muted',
