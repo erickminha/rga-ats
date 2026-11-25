@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/session';
 import { emailPublicOrigin } from '@/lib/base-url';
-import { cancelDisc, createDiscInvite, discMessage, emailDisc, prepareDisc, reviewDisc } from '@/server/native-disc';
+import { cancelDisc, createDiscInvite, discMessage, editDiscInterpretation, emailDisc, prepareDisc, reviewDisc } from '@/server/native-disc';
 
 export async function issueDiscAction(opportunityId: string, days: number, simulation: boolean) {
   const ctx = await requireSession();
@@ -15,7 +15,7 @@ export async function issueDiscAction(opportunityId: string, days: number, simul
     const message = discMessage(name, title, url);
     revalidatePath('/disc');
     return { url, message };
-  } catch (e) { return { error: e instanceof Error && !e.message.includes('\n') && e.message.length < 160 ? e.message : 'Não foi possível gerar o convite.' }; }
+  } catch { return { error: 'Não foi possível gerar o convite. Confira a participação, o prazo e a autorização da metodologia.' }; }
 }
 
 export async function manageDiscAction(id: string, action: 'cancel' | 'prepare' | 'review') {
@@ -39,4 +39,13 @@ export async function emailDiscAction(token: string) {
     revalidatePath('/disc');
     return { message: 'Convite enviado por e-mail.' };
   } catch { return { error: 'Não foi possível enviar o convite. Confira o endereço cadastrado e a integração de e-mail.' }; }
+}
+
+export async function editDiscAction(id: string, revision: number, input: unknown) {
+  const ctx = await requireSession();
+  try {
+    await editDiscInterpretation(ctx, id, revision, input);
+    revalidatePath('/disc');
+    return { message: 'Interpretação salva. Confira antes de concluir a revisão.' };
+  } catch { return { error: 'Não foi possível salvar. Atualize a página e confira os campos.' }; }
 }

@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { canManageRecruiting, requireSession } from '@/lib/session';
 import { notFound } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
-import { DiscInvite, DiscManage } from '@/components/native-disc-controls';
+import { DiscInterpretationEditor, DiscInvite, DiscManage } from '@/components/native-disc-controls';
 import { dimensions, localDiscInterpretation, type Scores } from '@/lib/native-disc';
 
 const colors = { D: '#B42318', I: '#F9C82B', S: '#23734D', C: '#116DA9' };
@@ -32,7 +32,7 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
   const vacancies = await db.posting.findMany({ where: { orgId: ctx.orgId }, select: { id: true, title: true }, orderBy: { title: 'asc' } });
   const staffNames = new Map(staff.map(user => [user.id, user.name]));
   const opportunities = await db.opportunity.findMany({ where: {
-    orgId: ctx.orgId,
+    orgId: ctx.orgId, confidential: false,
     ...(params.situacao === 'novo' ? { nativeDiscs: { none: {} } } :
       Object.keys(filterDiscs).length ? { nativeDiscs: { some: filterDiscs } } : {}),
     ...(params.participacao ? { id: params.participacao } : {}), ...(params.vaga ? { postingId: params.vaga } : {}),
@@ -73,21 +73,24 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
       {item.nativeDiscs.map(row => {
         const label = row.reviewedAt ? 'Concluído' : row.submittedAt ? (row.results && 'analysis' in (row.results as object) ? 'Aguardando revisão' : 'Aguardando processamento') : row.cancelledAt ? 'Cancelado' :
           +row.expiresAt <= Date.now() ? 'Expirado' : row.revision ? 'Em preenchimento' : 'Aguardando resposta';
-        const scores = row.results as (Scores & { analysis?: ReturnType<typeof localDiscInterpretation>; provider?: string; model?: string }) | null;
+        const scores = row.results as (Scores & { analysis?: ReturnType<typeof localDiscInterpretation>; provider?: string; model?: string; aiPending?: boolean }) | null;
         const analysis = scores && (scores.analysis ?? localDiscInterpretation(scores));
         const version = (row.scoringKey as { version?: string } | null)?.version;
         return <article className="grid gap-2 border-t border-line pt-3" key={row.id}>
           <h3 className="font-medium">{label}{row.simulation && ' · Simulação'}</h3>
           <p className="text-sm">{staffNames.get(row.createdById) ?? 'Responsável indisponível'} · Criado em {date(row.createdAt)} · Prazo até {date(row.expiresAt)}{row.emailedAt && ' · Enviado em ' + date(row.emailedAt)}{row.submittedAt && ' · Respondido em ' + date(row.submittedAt)}</p>
           {scores && analysis && <>
-            <p>{analysis.profile} · {version} · {scores.provider && scores.provider !== 'local' ? 'IA · ' + scores.model : 'Modelo local'}</p>
+            <p>{analysis.profile} · {version} · {scores.provider === 'manual' ? 'Revisão humana' : scores.provider && scores.provider !== 'local' ? 'IA · ' + scores.model : 'Modelo local'}</p>
             {dimensions.map(d => <div key={d} className="grid grid-cols-[3rem_1fr] items-center gap-2">
               <span>{d} {scores[d]}</span><div aria-hidden="true" className="h-2 rounded bg-[#F5F5F5]"><div className="h-2 rounded" style={{ backgroundColor: colors[d], width: (scores[d] / 40 * 100) + '%' }} /></div>
             </div>)}
-            <p>{analysis.detail}</p><p>{analysis.strengths.join(' · ')}</p><p>{analysis.attention}</p><p>{analysis.environment}</p><p>{analysis.interview}</p>
+            <p>{analysis.expected}</p><p>{analysis.detail}</p><p>{analysis.strengths.join(' · ')}</p><p>{analysis.attention}</p><p>{analysis.environment}</p><p>{analysis.interview}</p>
           </>}
           {!row.submittedAt && !row.cancelledAt && <DiscManage id={row.id} action="cancel" />}
-          {row.submittedAt && !row.reviewedAt && <DiscManage id={row.id} action={scores?.analysis ? "review" : "prepare"} />}
+          {row.submittedAt && !row.reviewedAt && scores?.analysis && <DiscInterpretationEditor id={row.id} revision={row.revision} analysis={scores.analysis} />}
+          {row.submittedAt && !row.reviewedAt && (!scores?.analysis || scores.aiPending) && <DiscManage id={row.id} action="prepare" />}
+          {row.submittedAt && !row.reviewedAt && scores?.analysis && <DiscManage id={row.id} action="review" />}
+          {row.reviewedAt && <Link className="underline" href={'/candidates/' + item.id}>Abrir ficha e preparar parecer</Link>}
         </article>;
       })}
     </section>)}

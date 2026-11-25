@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { emailDiscAction, issueDiscAction, manageDiscAction } from '@/app/(app)/disc/actions';
+import { editDiscAction, emailDiscAction, issueDiscAction, manageDiscAction } from '@/app/(app)/disc/actions';
+import type { localDiscInterpretation } from '@/lib/native-disc';
 import { buttonClass } from '@/components/ui/button';
 
 export function DiscInvite({ opportunityId, test }: { opportunityId: string; test: boolean }) {
@@ -42,4 +43,32 @@ export function DiscManage({ id, action }: { id: string; action: 'cancel' | 'pre
     })}>{action === 'cancel' ? 'Cancelar link' : action === 'prepare' ? 'Preparar interpretação' : 'Concluir revisão'}</button>
     {error && <p role="alert">{error}</p>}
   </div>;
+}
+
+export function DiscInterpretationEditor({ id, revision, analysis }: { id: string; revision: number; analysis: ReturnType<typeof localDiscInterpretation> }) {
+  const [busy, start] = useTransition();
+  const [message, setMessage] = useState('');
+  const fields = [
+    ['expected', 'Comportamento esperado', 400], ['detail', 'Avaliação detalhada', 2500],
+    ['attention', 'Pontos de atenção', 1200], ['environment', 'Ambiente de trabalho', 1200],
+    ['interview', 'Aspectos a explorar na entrevista', 1200],
+  ] as const;
+  return <details className="rounded-lg border border-line p-3">
+    <summary className="cursor-pointer font-medium">Editar interpretação antes de concluir</summary>
+    <form key={revision} className="mt-3 grid gap-3" action={form => start(async () => {
+      const input = { ...Object.fromEntries(fields.map(([key]) => [key, String(form.get(key) ?? '')])),
+        strengths: [0, 1, 2].map(i => String(form.get('strength' + i) ?? '')) };
+      const result = await editDiscAction(id, revision, input);
+      setMessage(result.message ?? result.error ?? '');
+    })}>
+      {fields.map(([key, label, max]) => <label className="grid gap-1 text-sm" key={key}>{label}
+        <textarea name={key} required maxLength={max} rows={3} defaultValue={analysis[key]} className="rounded-field border border-line p-2" />
+      </label>)}
+      {[0, 1, 2].map(i => <label className="grid gap-1 text-sm" key={i}>Possível força {i + 1}
+        <input name={'strength' + i} required maxLength={250} defaultValue={analysis.strengths[i]} className="rounded-field border border-line p-2" />
+      </label>)}
+      <button className={buttonClass({ variant: 'secondary' })} disabled={busy}>Salvar interpretação</button>
+      <p role="status">{message}</p>
+    </form>
+  </details>;
 }

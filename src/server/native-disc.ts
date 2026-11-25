@@ -10,7 +10,7 @@ import { discAiProviders, discChat } from './ai-client';
 import { actorOf, emitEvent } from './events';
 
 const fingerprint = (token: string) => createHash('sha256').update(token).digest('hex');
-const available = { contact: { isAnonymized: false, retentionHold: false } } satisfies Prisma.OpportunityWhereInput;
+const available = { confidential: false, contact: { isAnonymized: false, retentionHold: false } } satisfies Prisma.OpportunityWhereInput;
 
 function scoringKey(simulation: boolean) {
   if (simulation) return provisionalKey;
@@ -98,12 +98,13 @@ export async function candidateDisc(token: string, change?: { answers: unknown; 
   // Random invalid tokens never create rate-limit rows.
   const row = await db.nativeDisc.findUnique({ where: { tokenHash }, select: {
     id: true, opportunityId: true, scoringKey: true, answers: true, revision: true, submittedAt: true,
-    expiresAt: true, cancelledAt: true, questionnaireVersion: true,
-    opportunity: { select: { orgId: true, contactId: true, contact: { select: { name: true, isAnonymized: true, retentionHold: true } },
+    expiresAt: true, cancelledAt: true, questionnaireVersion: true, simulation: true,
+    opportunity: { select: { orgId: true, contactId: true, confidential: true, contact: { select: { name: true, isAnonymized: true, retentionHold: true, emails: true } },
       posting: { select: { title: true } }, org: { select: { name: true, logoFileId: true } } } },
   } });
   const contact = row?.opportunity.contact;
-  if (!row || !contact || contact.isAnonymized || contact.retentionHold || row.cancelledAt ||
+  if (!row || !contact || row.opportunity.confidential || contact.isAnonymized || contact.retentionHold || row.cancelledAt ||
+      (row.simulation && (row.opportunity.orgId !== process.env.RGA_DISC_TEST_ORG_ID || !contact.emails.length || !contact.emails.every(email => email.toLowerCase().endsWith('.invalid')))) ||
       +row.expiresAt <= Date.now() || row.questionnaireVersion !== questionnaireVersion) return null;
   if (!await reserveRequest('native-disc', [tokenHash], 100, 3600000)) return null;
   if (row.submittedAt) return { done: true as const };
@@ -116,7 +117,7 @@ export async function candidateDisc(token: string, change?: { answers: unknown; 
       if (!await lockIdentifiableContact(tx, orgId, contactId)) return false;
       const update = await tx.nativeDisc.updateMany({
         where: { id: row.id, revision, submittedAt: null, cancelledAt: null, expiresAt: { gt: new Date() }, opportunity: available },
-        data: { answers, revision: { increment: 1 }, ...(results ? { submittedAt: new Date(), results } : {}) },
+        data: { answers, revision: { increment: 1 }, ...(results ? { submittedAt: new Date(), results: { ...results, analysis: localDiscInterpretation(results), provider: 'local', model: 'rga-local-1', tokens: null, aiPending: !row.simulation } } : {}) },
       });
       if (update.count && submit) await emitEvent(tx, { orgId, actorType: 'candidate', actorId: contactId,
         verb: 'disc.submitted', subjectType: 'opportunity', subjectId: row.opportunityId, payload: { assessmentId: row.id } });
@@ -156,15 +157,40 @@ export async function prepareDisc(ctx: SessionContext, id: string) {
   requireRecruitingAccess(ctx);
   const pending = await db.nativeDisc.findFirst({ where: { id, submittedAt: { not: null }, reviewedAt: null, opportunity: { orgId: ctx.orgId, ...available } },
     include: { opportunity: { select: { contactId: true } } } });
-  if (!pending?.results || 'analysis' in (pending.results as Record<string, unknown>)) return;
+  if (!pending?.results) throw new Error('Avaliação indisponível.');
+  const current = pending.results as Record<string, unknown>;
+  if (current.analysis && current.aiPending !== true) return;
   if (!await reserveRequest('disc-interpretation', [id], 1, 60000)) throw new Error('A interpretação já está em processamento.');
   const key = pending.scoringKey as unknown as ScoringKey;
   const scores = scoreDisc(pending.answers, key);
   const interpretation = await interpret(ctx.orgId, scores, key.version, pending.simulation);
   await db.$transaction(async tx => {
     if (!await lockIdentifiableContact(tx, ctx.orgId, pending.opportunity.contactId)) return;
-    await tx.nativeDisc.updateMany({ where: { id, reviewedAt: null, opportunity: { orgId: ctx.orgId, ...available } },
-      data: { results: { ...scores, ...interpretation } } });
+    const changed = await tx.nativeDisc.updateMany({ where: { id, revision: pending.revision, reviewedAt: null, opportunity: { orgId: ctx.orgId, ...available } },
+      data: { results: { ...scores, ...interpretation, aiPending: false }, revision: { increment: 1 } } });
+    if (!changed.count) throw new Error('A avaliação mudou durante a interpretação. Atualize a página.');
+    await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'disc.interpreted', subjectType: 'opportunity',
+      subjectId: pending.opportunityId, payload: { assessmentId: id, provider: interpretation.provider, model: interpretation.model, tokens: interpretation.tokens } });
+  });
+}
+
+/** Edit text only; scores and the profile always come from the stored instrument. */
+export async function editDiscInterpretation(ctx: SessionContext, id: string, revision: number, input: unknown) {
+  requireRecruitingAccess(ctx);
+  if (!ctx.userId || !Number.isSafeInteger(revision)) throw new Error('Revisão inválida.');
+  const analysis = validatedDiscInterpretation(input);
+  if (!analysis) throw new Error('Confira os campos e os limites da interpretação.');
+  await db.$transaction(async tx => {
+    const row = await tx.nativeDisc.findFirst({ where: { id, submittedAt: { not: null }, reviewedAt: null, opportunity: { orgId: ctx.orgId, ...available } },
+      include: { opportunity: { select: { contactId: true } } } });
+    if (!row || !await lockIdentifiableContact(tx, ctx.orgId, row.opportunity.contactId)) throw new Error('Avaliação indisponível.');
+    const scores = scoreDisc(row.answers, row.scoringKey as unknown as ScoringKey);
+    const changed = await tx.nativeDisc.updateMany({ where: { id, revision, reviewedAt: null, opportunity: { orgId: ctx.orgId, ...available } },
+      data: { revision: { increment: 1 }, results: { ...scores, analysis: { ...analysis, profile: localDiscInterpretation(scores).profile },
+        provider: 'manual', model: 'revisao-humana', tokens: null, aiPending: false } } });
+    if (!changed.count) throw new Error('A avaliação mudou. Atualize a página antes de editar.');
+    await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'disc.interpretation_edited', subjectType: 'opportunity',
+      subjectId: row.opportunityId, payload: { assessmentId: id, previousRevision: revision } });
   });
 }
 
@@ -180,14 +206,15 @@ export async function reviewDisc(ctx: SessionContext, id: string) {
     const validated = validatedDiscInterpretation(prepared.analysis);
     if (!validated) throw new Error('Prepare a interpretação antes de concluir a revisão.');
     const analysis = { ...validated, profile: localDiscInterpretation(scores).profile };
+    const changed = await tx.nativeDisc.updateMany({ where: { id, revision: row.revision, reviewedAt: null, opportunity: { orgId: ctx.orgId, ...available } }, data: { reviewedAt: new Date(), revision: { increment: 1 } } });
+    if (!changed.count) throw new Error('A avaliação mudou. Revise novamente.');
     const disc = { D: String(scores.D), I: String(scores.I), S: String(scores.S), C: String(scores.C), scaleMin: '10', scaleMax: '40',
-      instrument: row.simulation ? 'DISC RGA · Simulação' : 'DISC RGA', date: row.submittedAt!.toISOString().slice(0, 10), profile: analysis.profile, traits: analysis.detail,
+      instrument: row.simulation ? 'DISC RGA · Simulação' : 'DISC RGA', date: row.submittedAt!.toISOString().slice(0, 10), profile: analysis.profile, traits: [analysis.expected, analysis.detail].filter(Boolean).join('\n'),
       strengths: analysis.strengths.join('\n'), development: analysis.attention, complete: true };
     {
       const assessment = await tx.recruitingAssessment.findUnique({ where: { opportunityId: row.opportunityId }, select: { disc: true, discFileId: true } });
       if (!assessment?.disc && !assessment?.discFileId) await tx.recruitingAssessment.upsert({ where: { opportunityId: row.opportunityId }, create: { opportunityId: row.opportunityId, disc }, update: { disc } });
     }
-    await tx.nativeDisc.update({ where: { id }, data: { reviewedAt: new Date() } });
     await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'disc.reviewed', subjectType: 'opportunity',
       subjectId: row.opportunityId, payload: { assessmentId: id } });
   });

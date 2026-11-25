@@ -13,7 +13,10 @@ export const opinionFields = {
   requirements: 'Aderência aos requisitos',
   strengths: 'Pontos fortes',
   concerns: 'Pontos de atenção profissionais',
+  instruments: 'Instrumentos de avaliação utilizados',
   behavior: 'Síntese comportamental',
+  references: 'Referências profissionais',
+  complementary: 'Verificações complementares (opcional)',
   recommendation: 'Recomendação profissional',
 } as const;
 

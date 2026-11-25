@@ -43,7 +43,7 @@ import { vi } from 'vitest';
 import { hasDb } from './setup';
 import { candidate, createOrg } from './fixtures';
 import { db } from '@/lib/db';
-import { cancelDisc, candidateDisc, createDiscInvite, prepareDisc, reviewDisc } from '@/server/native-disc';
+import { cancelDisc, candidateDisc, createDiscInvite, editDiscInterpretation, prepareDisc, reviewDisc } from '@/server/native-disc';
 
 describe.skipIf(!hasDb)('Fluxo DISC com PostgreSQL', () => {
   it('protege a chave provisória, salva, retoma, conclui uma vez e preserva o histórico', async () => {
@@ -75,10 +75,14 @@ describe.skipIf(!hasDb)('Fluxo DISC com PostgreSQL', () => {
       expect(await candidateDisc(invite.token, { answers, revision: 1, submit: true })).toEqual({ done: true });
       const row = await db.nativeDisc.findFirstOrThrow({ where: { opportunityId: opportunity.id, submittedAt: { not: null } } });
       await db.recruitingAssessment.create({ data: { opportunityId: opportunity.id, disc: { profile: 'Histórico' } } });
-      await prepareDisc(ctx, row.id);
+      expect(row.results).toMatchObject({ D: 40, provider: 'local', analysis: { profile: 'D/I' } });
+      const edit = { ...localDiscInterpretation({ D: 40, I: 30, S: 20, C: 10 }), detail: 'Texto revisado pela recrutadora.' };
+      await expect(editDiscInterpretation({ ...ctx, orgId: other.id }, row.id, row.revision, edit)).rejects.toThrow();
+      await editDiscInterpretation(ctx, row.id, row.revision, edit);
+      await expect(editDiscInterpretation(ctx, row.id, row.revision, edit)).rejects.toThrow();
       await reviewDisc(ctx, row.id);
       expect((await db.recruitingAssessment.findUniqueOrThrow({ where: { opportunityId: opportunity.id } })).disc).toEqual({ profile: 'Histórico' });
-      expect((await db.nativeDisc.findUniqueOrThrow({ where: { id: row.id } })).results).toMatchObject({ D: 40, provider: 'local' });
+      expect((await db.nativeDisc.findUniqueOrThrow({ where: { id: row.id } })).results).toMatchObject({ D: 40, provider: 'manual', analysis: { detail: 'Texto revisado pela recrutadora.' } });
       expect(await db.event.count({ where: { orgId: org.id, verb: 'disc.submitted' } })).toBe(1);
       const expiring = await createDiscInvite(ctx, opportunity.id, 1, true);
       await db.nativeDisc.updateMany({ where: { opportunityId: opportunity.id, submittedAt: null }, data: { expiresAt: new Date(0) } });

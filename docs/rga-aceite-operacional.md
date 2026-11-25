@@ -39,3 +39,6 @@ A simulação integrada usou uma conta administrativa local, uma fonte de planil
 | Central DISC e preenchimento do parecer | Implementada parcialmente | Pontuações, revisão e emissão reaproveitam a ficha e o editor. Administração de provedores e recálculo auditado permanecem pendentes |
 
 A jornada local com PostgreSQL descartável e Chromium confirmou o convite em desktop, os dez grupos respondidos em tela de 390 × 844, a revisão, o preenchimento do parecer e o download do PDF versionado. [Questionário no celular](evidencias-disc/questionario-mobile.jpg) · [Revisão no desktop](evidencias-disc/revisao-desktop.jpg)
+
+### Complemento de auditoria
+Interpretação local gerada no envio, revisão textual editável com controle de concorrência, auditoria da interpretação e seleção do DISC nativo revisado para preenchimento do parecer sem sobrescrever o DISC legado. Seções de instrumentos, referências e verificações complementares incluídas. Integração dos SVGs RGA na navegação, incluindo Central DISC. A chave continua provisória, sem liberação real. Validação da versão consolidada permanece pendente.
