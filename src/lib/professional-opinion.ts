@@ -10,7 +10,7 @@ export const customerFeedbackLabels = {
 };
 
 export function opinionTemplate(value: unknown) {
-  return Array.isArray(value) ? opinionKeys.filter((field) => field === 'recommendation' || value.includes(field)) : opinionKeys;
+  return Array.isArray(value) ? opinionKeys.filter((field) => field === 'recommendation' || value.includes(field)) : opinionKeys.filter(field => field !== 'complementary');
 }
 
 export type OpinionTemplate = { id: string; name: string; sections: OpinionField[]; inactive: boolean };

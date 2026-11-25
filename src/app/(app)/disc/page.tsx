@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
-import { canManageRecruiting, requireSession } from '@/lib/session';
+import { canManageRecruiting, isAdmin, requireSession } from '@/lib/session';
 import { notFound } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { DiscInterpretationEditor, DiscInvite, DiscManage } from '@/components/native-disc-controls';
@@ -47,6 +47,7 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
   const test = ctx.orgId === process.env.RGA_DISC_TEST_ORG_ID;
   return <main className="grid gap-4 p-5">
     <PageHeader title="Central DISC" subtitle="Convites, acompanhamento e revisão das avaliações por vaga." />
+    {isAdmin(ctx) && <Link className="underline" href="/settings/ia">Configurar inteligência artificial</Link>}
     <form className="flex flex-wrap items-end gap-3">
       <label className="grid text-sm">Candidato <input className="rounded-field border border-line p-2" name="candidato" defaultValue={params.candidato} /></label>
       <label className="grid text-sm">Empresa <input className="rounded-field border border-line p-2" name="empresa" defaultValue={params.empresa} /></label>

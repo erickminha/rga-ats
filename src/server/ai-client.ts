@@ -261,9 +261,16 @@ export function discAiProviders() {
       process.env['RGA_DISC_' + name.toUpperCase() + '_MODEL'] && process.env['RGA_DISC_' + name.toUpperCase() + '_TOKEN']);
 }
 
-export async function discChat(provider: string, input: { scores: Record<string, number>; methodology: string; profile: string }) {
+export function discAiModels(provider: string): string[] {
+  if (!discAiProviders().includes(provider)) return [];
+  const prefix = 'RGA_DISC_' + provider.toUpperCase();
+  return [...new Set([process.env[prefix + '_MODEL'] ?? '', ...(process.env[prefix + '_MODELS'] ?? '').split(',')].map(x => x.trim()).filter(x => x && x.length <= 150))];
+}
+
+export async function discChat(provider: string, input: { scores: Record<string, number>; methodology: string; profile: string }, requestedModel?: string) {
   if (!discAiProviders().includes(provider)) throw new AiUnavailableError('not_configured');
-  const model = process.env['RGA_DISC_' + provider.toUpperCase() + '_MODEL']!;
+  const model = requestedModel ?? discAiModels(provider)[0];
+  if (!model || !discAiModels(provider).includes(model)) throw new AiUnavailableError('not_configured');
   const res = await fetch(discChatUrl(provider)!, {
     method: 'POST', redirect: 'error', signal: AbortSignal.timeout(8000),
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + process.env['RGA_DISC_' + provider.toUpperCase() + '_TOKEN'] },

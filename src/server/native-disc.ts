@@ -3,10 +3,11 @@ import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
 import { localDiscInterpretation, provisionalKey, questionnaireVersion, scoreDisc, validDraft, validGroup, validatedDiscInterpretation, type Scores, type ScoringKey } from '@/lib/native-disc';
-import { reserveRequest } from './request-limit';
+import { requestLimitActive, reserveRequest } from './request-limit';
+import { discAiConfiguration, reserveDiscAi } from './disc-ai-settings';
 import { lockIdentifiableContact } from './contact-lock';
 import { sendPrivateEmail } from './email';
-import { discAiProviders, discChat } from './ai-client';
+import { discChat } from './ai-client';
 import { actorOf, emitEvent } from './events';
 
 const fingerprint = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -134,20 +135,26 @@ export async function candidateDisc(token: string, change?: { answers: unknown; 
 async function interpret(orgId: string, scores: Scores, methodology: string, simulation: boolean) {
   const local = localDiscInterpretation(scores);
   if (!simulation) {
-    const day = new Date().toISOString().slice(0, 10);
-    const monthly = day.slice(0, 7);
-    const dailyLimit = Number(process.env.RGA_DISC_AI_DAILY_LIMIT ?? 20);
-    const monthlyLimit = Number(process.env.RGA_DISC_AI_MONTHLY_LIMIT ?? 200);
-    if (Number.isSafeInteger(dailyLimit) && dailyLimit > 0 && Number.isSafeInteger(monthlyLimit) && monthlyLimit > 0) {
-      for (const provider of discAiProviders().slice(0, 3)) {
-        if (!await reserveRequest('disc-ai-daily', [orgId, day], dailyLimit, 86400000) ||
-            !await reserveRequest('disc-ai-monthly', [orgId, monthly], monthlyLimit, 31 * 86400000)) break;
-        try {
-          const { value, model, tokens } = await discChat(provider, { scores, methodology, profile: local.profile });
-          const analysis = validatedDiscInterpretation(value);
-          if (analysis) return { analysis: { ...analysis, profile: local.profile }, provider, model, tokens };
-        } catch { /* Try the next authorized provider; retain local interpretation on failure. */ }
+    const config = await discAiConfiguration(orgId);
+    for (const { provider, model } of config.providers) {
+      const cacheKey = fingerprint(JSON.stringify(['disc-interpretation-1', methodology, scores, provider, model]));
+      const previous = await db.nativeDisc.findFirst({
+        where: { simulation: false, opportunity: { orgId, ...available }, results: { path: ['cacheKey'], equals: cacheKey } },
+        orderBy: { createdAt: 'desc' }, select: { results: true },
+      });
+      const saved = previous?.results as Record<string, unknown> | null;
+      const cached = validatedDiscInterpretation(saved?.analysis);
+      if (cached && saved?.provider === provider && saved.model === model) {
+        return { analysis: { ...cached, profile: local.profile }, provider, model, tokens: 0, cacheKey, cached: true };
       }
+      if (await requestLimitActive('disc-ai-circuit', [orgId, provider, model])) continue;
+      if (!await reserveDiscAi(orgId, config.daily, config.monthly)) break;
+      try {
+        const result = await discChat(provider, { scores, methodology, profile: local.profile }, model);
+        const analysis = validatedDiscInterpretation(result.value);
+        if (analysis) return { analysis: { ...analysis, profile: local.profile }, provider, model: result.model, tokens: result.tokens, cacheKey, cached: false };
+      } catch { /* Try only the next authorized provider. */ }
+      await reserveRequest('disc-ai-circuit', [orgId, provider, model], 1, 60000);
     }
   }
   return { analysis: local, provider: 'local', model: 'rga-local-1', tokens: null };
@@ -170,7 +177,7 @@ export async function prepareDisc(ctx: SessionContext, id: string) {
       data: { results: { ...scores, ...interpretation, aiPending: false }, revision: { increment: 1 } } });
     if (!changed.count) throw new Error('A avaliação mudou durante a interpretação. Atualize a página.');
     await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'disc.interpreted', subjectType: 'opportunity',
-      subjectId: pending.opportunityId, payload: { assessmentId: id, provider: interpretation.provider, model: interpretation.model, tokens: interpretation.tokens } });
+      subjectId: pending.opportunityId, payload: { assessmentId: id, provider: interpretation.provider, model: interpretation.model, tokens: interpretation.tokens, cached: 'cached' in interpretation && interpretation.cached === true } });
   });
 }
 

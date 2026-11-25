@@ -115,7 +115,7 @@ describe.skipIf(!hasDb)('Fluxo DISC com PostgreSQL', () => {
         await prepareDisc(ctx, row.id);
       await reviewDisc(ctx, row.id);
         const saved = await db.nativeDisc.findUniqueOrThrow({ where: { id: row.id } });
-        expect(saved.results).toMatchObject(i === 0 ? { provider: 'openai', model: 'modelo-fictício', tokens: 200 } : { provider: 'local' });
+        expect(saved.results).toMatchObject(i === 0 ? { provider: 'openai', model: 'modelo-fictício', tokens: 200 } : { provider: 'openai', model: 'modelo-fictício', tokens: 0, cached: true });
       }
       expect(fetcher).toHaveBeenCalledTimes(2);
       expect(fetcher.mock.calls[0][1].body).not.toContain('Nome fictício omitido');

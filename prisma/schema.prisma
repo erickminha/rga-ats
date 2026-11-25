@@ -42,6 +42,7 @@ model Organization {
   hideFeedbackUntilSubmitted Boolean @default(false)
   assessmentTemplates Json?
   opinionTemplate Json?
+  discAiSettings Json?
   // GDPR retention: anonymize archived candidates after N months (null = keep forever)
   retentionMonths Int?
   // Show the voluntary EEO/OFCCP self-ID block on apply forms

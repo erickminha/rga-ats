@@ -7,10 +7,10 @@ import { opinionKeys, type OpinionMetadata } from '@/lib/professional-opinion';
 import { readStoredFile } from '@/server/storage';
 
 export async function makeOpinionPdf({
-  metadata, content, issuedAt, version, color, logo,
+  metadata, content, issuedAt, version, color, logo, draft = false,
 }: {
   metadata: OpinionMetadata; content: Record<string, string>; issuedAt: Date; version: number;
-  color?: string | null; logo?: { bytes: Uint8Array; mime: string };
+  draft?: boolean; color?: string | null; logo?: { bytes: Uint8Array; mime: string };
 }) {
   const pdf = await PDFDocument.create();
   pdf.setTitle('Parecer de Candidato');
@@ -77,12 +77,12 @@ export async function makeOpinionPdf({
   }
 
   paragraph(metadata.organization, bold, 12);
-  paragraph('Parecer de Candidato', bold, 23);
+  paragraph(draft ? 'Parecer de Candidato — RASCUNHO' : 'Parecer de Candidato', bold, 23);
   page.drawRectangle({ x, y, width: available, height: 3, color: accent });
   y -= 23;
   const headers = [
     ['Profissional', metadata.candidate], ['Vaga', metadata.posting], ['Empresa cliente', metadata.client],
-    ['Responsável', metadata.author], ['Emissão', issuedAt.toLocaleDateString(appLocale, { timeZone: 'America/Sao_Paulo' })], ['Versão', String(version)],
+    ['Responsável', metadata.author], ['Emissão', issuedAt.toLocaleDateString(appLocale, { timeZone: 'America/Sao_Paulo' })], ['Versão', draft ? 'Prévia não emitida' : String(version)],
   ];
   for (const [label, value] of headers) if (value) paragraph(label + ': ' + value);
   y -= 12;
@@ -107,7 +107,7 @@ export async function makeOpinionPdf({
   }
   const pages = pdf.getPages();
   pages.forEach((sheet, index) => {
-    const footer = supported(metadata.organization).slice(0, 78);
+    const footer = supported((draft ? 'RASCUNHO · ' : '') + metadata.organization).slice(0, 78);
     sheet.drawText(footer, { x, y: 27, font: normal, size: 8, color: ink });
     sheet.drawText(`${index + 1} / ${pages.length}`, { x: width - 86, y: 27, font: normal, size: 8, color: ink });
   });
