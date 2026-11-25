@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/session';
-import { confirmDriveResume, previewDriveResume } from '@/server/imports/rga-drive';
+import { confirmDriveResume, originalResumeUrl, previewDriveResume } from '@/server/imports/rga-drive';
 
 export async function driveResumeAction(contactId: string, ticket?: string) {
   const ctx = await requireSession();
@@ -23,4 +23,11 @@ export async function driveResumeBatchAction(tickets?: { id: string; ticket: str
     const { driveBatch } = await import('@/server/imports/rga-drive');
     return { result: await driveBatch(ctx, tickets, offset) };
   } catch { return { error: 'Não foi possível conferir o lote. Revise a integração e tente novamente.' }; }
+}
+
+export async function originalResumeAction(contactId: string) {
+  const ctx = await requireSession();
+  if (typeof contactId !== 'string' || !contactId || contactId.length > 180) return { url: null };
+  try { return { url: await originalResumeUrl(ctx, contactId) }; }
+  catch { return { url: null }; }
 }

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
 import { db } from '@/lib/db';
 import { RGA_IMPORT_PROVIDER, TALENT_SOURCE } from '@/lib/rga-import';
-import { confirmDriveResume, driveBatch, driveFileId, linkedResume, previewDriveResume } from '@/server/imports/rga-drive';
+import { confirmDriveResume, driveBatch, driveFileId, linkedResume, originalResumeUrl, previewDriveResume } from '@/server/imports/rga-drive';
 import { readTalentSheet } from '@/server/imports/rga-google-source';
 import { createOrg } from './fixtures';
 import { hasDb } from './setup';
@@ -42,6 +42,12 @@ describe.skipIf(!hasDb)('transferência privada por ID de origem', () => {
     await expect(previewDriveResume(ctx, person.id)).rejects.toThrow('PRIVACY');
     await expect(previewDriveResume({ ...ctx, accessRole: 'TEAM_MEMBER' }, person.id)).rejects.toThrow('FORBIDDEN');
     const consent = await db.consentRecord.create({ data: { orgId: org.id, contactId: person.id, purpose: 'PROFILE_STORAGE' } });
+    vi.stubEnv('RGA_TALENT_SHEET_ID', 'PlanilhaFicticia123');
+    vi.stubEnv('RGA_GOOGLE_SERVICE_ACCOUNT', 'configuração simulada');
+    const recruiter = { ...ctx, accessRole: 'TEAM_MEMBER' };
+    await expect(originalResumeUrl(recruiter, person.id)).resolves.toBe(url);
+    await expect(originalResumeUrl({ ...ctx, accessRole: 'INTERVIEWER' }, person.id)).rejects.toThrow('FORBIDDEN');
+    await expect(originalResumeUrl({ ...ctx, orgId: 'outra-organizacao' }, person.id)).rejects.toThrow('FORBIDDEN');
     const p = await previewDriveResume(ctx, person.id);
     parent = 'PastaDiferente'; await expect(confirmDriveResume(ctx,person.id,p.ticket)).rejects.toThrow('FILE'); parent = folder;
     expect(await confirmDriveResume(ctx, person.id, p.ticket)).toBe(true);
@@ -61,5 +67,6 @@ describe.skipIf(!hasDb)('transferência privada por ID de origem', () => {
     expect(await driveBatch(ctx)).toMatchObject({ pending: 0, tickets: [] });
     await db.consentRecord.update({ where: { id: consent.id }, data: { withdrawnAt: new Date() } });
     await expect(confirmDriveResume(ctx, person.id, updated.ticket)).rejects.toThrow('PRIVACY');
+    await expect(originalResumeUrl(recruiter, person.id)).rejects.toThrow('PRIVACY');
   });
 });
