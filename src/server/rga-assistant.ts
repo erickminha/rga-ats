@@ -39,6 +39,7 @@ async function log(ctx: SessionContext, success: boolean, tokens: number | null,
 }
 export async function askProfessionalProfiles(ctx: SessionContext, question: string): Promise<CorpusAnswer> {
   requireRecruitingAccess(ctx);
+  if (/\b(?:cpf|rg|religiao|religião|etnia|raça|raca|gestante|gravida|grávida|estado civil|filhos|orientacao sexual|orientação sexual|idade)\b/i.test(question)) return { answer: 'Use apenas critérios profissionais pertinentes à vaga, como cargo, área e UF. Não pesquise atributos pessoais ou sensíveis.', sources: [] };
   const terms = profileTerms(question.replace(/https?:\/\/\S+|[\w.+-]+@[\w.-]+|[\d(). -]{7,}/gi,' '));
   if (!terms.length) return { answer: 'Informe um cargo, área profissional ou UF para localizar perfis. Ex.: auxiliar administrativo, técnico em eletrônica, Amazonas.', sources: [] };
   const uf = terms.filter(term => statesBR.includes(term.toUpperCase())).map(term => term.toUpperCase());
@@ -61,7 +62,7 @@ export async function askProfessionalProfiles(ctx: SessionContext, question: str
   if (!await reserve(ctx.orgId)) return local('Limite de consultas de IA atingido. Exibindo busca local.');
   try {
     const result = await assistantChat('Resuma os perfis encontrados pelos termos profissionais da busca local. Destaque apenas o que consta no cargo informado e na UF, sem inferir experiência.', rows.map((row,i) => ({
-      n:i+1, professional: scrubAssistantText(professional(row).replaceAll(row.name || '\u0000','[nome omitido]')),
+      n:i+1, professional: scrubAssistantText(row.name ? professional(row).replaceAll(row.name,'[nome omitido]') : professional(row)),
     })));
     await log(ctx,true,result.tokens,rows.length);
     return {answer: 'Busca assistida em até 12 perfis com cargo ou área e UF cadastrados. Não analisa currículos nesta etapa.\n\n' + result.answer, sources};

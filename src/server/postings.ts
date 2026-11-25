@@ -68,7 +68,7 @@ export async function createPosting(ctx: SessionContext, input: CreatePostingInp
         salaryMin: input.salaryMin ?? null,
         salaryMax: input.salaryMax ?? null,
         salaryCurrency: input.salaryCurrency || null,
-        content: { ...(input.description ? { description: input.description } : {}), ...(input.advertisement ? { advertisement: input.advertisement } : {}), ...(input.requirements ? { requirements: input.requirements } : {}) },
+        content: input.description || input.advertisement || input.requirements ? { ...(input.description ? { description: input.description } : {}), ...(input.advertisement ? { advertisement: input.advertisement } : {}), ...(input.requirements ? { requirements: input.requirements } : {}) } as Prisma.InputJsonObject : undefined,
         // whoever opens the role owns it until someone hands it over
         ownerId: ctx.userId ?? null,
       },

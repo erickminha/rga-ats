@@ -476,7 +476,7 @@ export async function CandidateProfile({ id }: { id: string }) {
           {!contact.isAnonymized && !contact.retentionHold && !opportunity.confidential && <WhatsappComposer
             opportunityId={opportunity.id} name={contact.name} job={opportunity.posting?.title ?? 'processo seletivo'}
             brand={org?.name ?? 'RGA Consultoria de RH'} phones={[preferences.whatsapp ?? '', ...contact.phones]}
-            status={opportunity.status} approved={approvedForMessage(opportunity.status, opportunity.posting?.clientCompanyId, assessment?.clientFeedback)}
+            status={opportunity.status} approved={approvedForMessage(opportunity.status, opportunity.posting?.orgId === ctx.orgId ? opportunity.posting.clientCompanyId : null, assessment?.clientFeedback)}
             nextInterview={nextInterview ? { at: nextInterview.startAt.toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'}) + ' (horário de Brasília)', location: nextInterview.location ?? '' } : undefined} />}
           <EmailSection
             opportunityId={opportunity.id}
