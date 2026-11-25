@@ -38,6 +38,7 @@ const menu = [
   { href: '/contacts', label: 'Banco de talentos', short: 'Talentos', icon: Users, group: 'OPERAÇÃO' },
   { href: '/clients', label: 'Empresas clientes', short: 'Empresas', icon: Building2, group: 'OPERAÇÃO' },
   { href: '/interviews', label: 'Entrevistas', short: 'Agenda', icon: CalendarDays, group: 'ACOMPANHAMENTO' },
+  { href: '/disc', label: 'Central DISC', short: 'DISC', icon: ListTodo, group: 'ACOMPANHAMENTO' },
   { href: '/tasks', label: 'Tarefas', short: 'Tarefas', icon: ListTodo, group: 'ACOMPANHAMENTO' },
   { href: '/reports', label: 'Relatórios', short: 'Relatórios', icon: BarChart3, group: 'ACOMPANHAMENTO' },
   { href: '/review', label: 'Revisão de candidaturas', short: 'Revisão', icon: Inbox, group: 'FERRAMENTAS' },

@@ -16,7 +16,7 @@ export function opinionTemplate(value: unknown) {
 export type OpinionTemplate = { id: string; name: string; sections: OpinionField[]; inactive: boolean };
 
 export function opinionTemplates(value: unknown): OpinionTemplate[] {
-  const defaults = { id: 'rga', name: 'Parecer profissional RGA', sections: opinionTemplate(value), inactive: false };
+  const defaults = { id: 'rga', name: 'Parecer de Candidato — RGA Consultoria de RH', sections: opinionTemplate(value), inactive: false };
   if (!Array.isArray(value) || value.length === 0 || typeof value[0] === 'string') return [defaults];
   return value.flatMap((entry: unknown) => {
     if (!entry || typeof entry !== 'object' || !('id' in entry) || !('name' in entry)

@@ -238,7 +238,7 @@ export async function CandidateProfile({ id }: { id: string }) {
     interview: (review?.completed ? review.answers.map((answer, i) => answer.evidence ? review.questions[i] + '\n' + answer.evidence : '').filter(Boolean).join('\n\n') : '') || visibleFeedback[0]?.summary || '',
     competencies: (review?.answers.flatMap((answer, i) => answer.score === null ? [] : [review.questions[i] + ' — ' + review.scale[answer.score - 1]]).join('\n') || preferences.skills || ''),
     requirements: review?.requirements.filter(({ result }) => result !== 'UNVERIFIED').map(({ label, result }) => label + ' — ' + requirementLabels[result as keyof typeof requirementLabels]).join('\n') || '',
-    behavior: discComplete ? [disc.profile, disc.traits].filter(Boolean).join('\n') : '',
+    behavior: discComplete ? [['D', 'I', 'S', 'C'].filter(d => disc[d]).map(d => d.toUpperCase() + ' ' + disc[d]).join(' · '), disc.profile, disc.traits, disc.development].filter(Boolean).join('\n') : '',
     strengths: discComplete ? disc.strengths ?? '' : '',
     recommendation: review?.recommendation ? [recommendationLabels[review.recommendation as keyof typeof recommendationLabels], review.justification].filter(Boolean).join('\n') : '',
   };
@@ -597,6 +597,7 @@ export async function CandidateProfile({ id }: { id: string }) {
           {!contact.isAnonymized && <CompetencyInterviewForm key={`competency-${opportunity.id}`} id={opportunity.id}
             plan={readPlan(opportunity.posting?.competencyPlan)} review={readInterview(assessment?.competencyInterview)}
             requirements={postingRequirements(opportunity.posting?.matchCriteria, opportunity.posting?.content)} postingId={opportunity.postingId} />}
+          {!contact.isAnonymized && opportunity.postingId && <Link className="underline" href={`/disc?vaga=${opportunity.postingId}&participacao=${opportunity.id}`}>Solicitar ou acompanhar DISC</Link>}
           {!contact.isAnonymized && <RecruitingAssessmentForm key={opportunity.id}
             id={opportunity.id} screening={textRecord(assessment?.screening)} disc={disc} discComplete={discComplete}
             discFileId={assessment?.discFileId ?? null} previousDiscs={previousDiscs.map((row) => ({

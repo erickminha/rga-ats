@@ -31,3 +31,11 @@ Simular com dados fictícios: proposta/aceite → vaga/anúncio → candidatura/
 
 ## Orientação para Codex
 Ler este documento e docs/rga-modulo-5-handoff.md. Primeiro fechar PR #16 e executar 5A. Em seguida entregar 5B/5C, 5D/5E em PRs pequenos por dependência; 5F é aceite final, não apenas código. Não apagar recursos ou dados para simplificar a UI. Não criar nova integração de teste DISC sem instrumento e fluxo confirmados. Não publicar dados pessoais em artefatos, logs ou GitHub. Validar todos os pontos com evidências e declarar pendências reais.
+
+## Aplicação nativa do instrumento DISC
+
+O questionário da RGA tem dez grupos, com quatro respostas distintas por grupo. A versão provisória só pode ser aplicada na organização configurada em `RGA_DISC_TEST_ORG_ID`, para contatos de teste com e-mails no domínio reservado `.invalid`. Para uso real, a RGA deve validar a chave com a documentação do instrumento e configurar `RGA_DISC_APPROVED_KEY` com versão inédita, referência e dez linhas de mapeamento. A aplicação conserva o mapeamento usado em cada convite. Configure `AUTH_URL` com a origem pública de homologação.
+
+A central usa interpretação local quando a IA está desligada ou indisponível. As integrações opcionais de chat aceitam Groq, DeepSeek, OpenRouter, OpenAI, Gemini e Cloudflare Workers AI em endpoints fixos. Cloudflare exige também `RGA_DISC_CLOUDFLARE_ACCOUNT_ID`. A ordem vem de `RGA_DISC_AI_PROVIDERS`. Cada integração exige `RGA_ALLOW_EXTERNAL_AI=true`, o modelo em `RGA_DISC_<PROVEDOR>_MODEL` e a credencial em `RGA_DISC_<PROVEDOR>_TOKEN` via Secret Manager. Os limites por organização são configuráveis em `RGA_DISC_AI_DAILY_LIMIT` e `RGA_DISC_AI_MONTHLY_LIMIT`. As solicitações de interpretação enviam pontuações, versão e perfil calculado.
+
+Para testar, abra a vaga e acesse **Acompanhar avaliações DISC**, ou use o atalho da participação. Gere um convite fictício, abra o link no celular e complete o questionário. Na central, confira as pontuações e conclua a revisão. Na ficha, abra **Parecer**, preencha os campos vazios com os dados da participação, revise a conclusão e emita o PDF. A ficha preserva um resultado DISC preexistente e mantém as avaliações nativas na central.

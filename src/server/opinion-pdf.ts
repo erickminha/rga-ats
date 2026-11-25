@@ -13,7 +13,7 @@ export async function makeOpinionPdf({
   color?: string | null; logo?: { bytes: Uint8Array; mime: string };
 }) {
   const pdf = await PDFDocument.create();
-  pdf.setTitle('Parecer profissional');
+  pdf.setTitle('Parecer de Candidato');
   const normal = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const charset = new Set(normal.getCharacterSet());
@@ -77,7 +77,7 @@ export async function makeOpinionPdf({
   }
 
   paragraph(metadata.organization, bold, 12);
-  paragraph('Parecer profissional', bold, 23);
+  paragraph('Parecer de Candidato', bold, 23);
   page.drawRectangle({ x, y, width: available, height: 3, color: accent });
   y -= 23;
   const headers = [
@@ -90,7 +90,19 @@ export async function makeOpinionPdf({
     if (!content[key]) continue;
     if (y < 95) nextPage();
     paragraph(opinionFields[key], bold, 12);
-    paragraph(content[key]);
+    const [firstLine, ...remaining] = content[key].split('\n');
+    const ranks = key === 'behavior' && /^D (\d+) · I (\d+) · S (\d+) · C (\d+)$/.exec(firstLine);
+    const values = ranks ? ranks.slice(1).map(Number) : [];
+    if (values.length === 4 && values.every(value => value >= 10 && value <= 40) &&
+      values.reduce((sum, value) => sum + value, 0) === 100) {
+      if (y < 145) nextPage();
+      const colors = [rgb(.71,.14,.09), rgb(.98,.78,.17), rgb(.14,.45,.30), rgb(.07,.43,.66)];
+      values.forEach((value, index) => {
+        page.drawRectangle({ x: x + 60, y: y + 1, width: value / 40 * (available - 60), height: 8, color: colors[index] });
+        line('DISC'[index] + ' ' + value, bold, 10);
+      });
+      if (remaining.length) paragraph(remaining.join('\n'));
+    } else paragraph(content[key]);
     y -= 9;
   }
   const pages = pdf.getPages();
