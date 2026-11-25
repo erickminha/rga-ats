@@ -1,5 +1,6 @@
 import { lockPostingForEdit, mayEditPostingDetails } from '@/server/posting-policy';
 import { PostingState, type Commitment, type Prisma, type WorkplaceType } from '@prisma/client';
+import type { AdFields } from '@/lib/rga-productivity';
 import { postingContent } from '@/lib/public-careers';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
@@ -28,6 +29,8 @@ export type CreatePostingInput = {
   salaryMax?: number;
   salaryCurrency?: string;
   description?: string;
+  advertisement?: AdFields;
+  requirements?: string[];
 };
 
 export async function createPosting(ctx: SessionContext, input: CreatePostingInput) {
@@ -65,7 +68,7 @@ export async function createPosting(ctx: SessionContext, input: CreatePostingInp
         salaryMin: input.salaryMin ?? null,
         salaryMax: input.salaryMax ?? null,
         salaryCurrency: input.salaryCurrency || null,
-        content: input.description ? { description: input.description } : undefined,
+        content: { ...(input.description ? { description: input.description } : {}), ...(input.advertisement ? { advertisement: input.advertisement } : {}), ...(input.requirements ? { requirements: input.requirements } : {}) },
         // whoever opens the role owns it until someone hands it over
         ownerId: ctx.userId ?? null,
       },
@@ -112,10 +115,10 @@ export async function updatePostingDetails(
     const description = input.description ?? '';
     const content = postingContent(current.content);
     if (Object.keys(data).every((key) => data[key as keyof typeof data] === current[key as keyof typeof data])
-      && description === (content.description ?? '')) return current;
+      && description === (content.description ?? '') && (input.advertisement === undefined || JSON.stringify(input.advertisement) === JSON.stringify(content.advertisement ?? {})) && (input.requirements === undefined || JSON.stringify(input.requirements) === JSON.stringify(content.requirements ?? []))) return current;
     const updated = await tx.posting.update({
       where: { id: postingId, orgId: ctx.orgId },
-      data: { ...data, content: { ...content, description } as Prisma.InputJsonObject },
+      data: { ...data, content: { ...content, description, ...(input.advertisement !== undefined ? { advertisement: input.advertisement } : {}), ...(input.requirements !== undefined ? { requirements: input.requirements } : {}) } as Prisma.InputJsonObject },
       include: { org: { select: { slug: true, requirePostingApproval: true } } },
     });
     await emitEvent(tx, {

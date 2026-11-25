@@ -5,6 +5,10 @@ import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { FinalistsForm } from '@/components/finalists-form';
 import { finalistStageNames, safeOpinion, shortlistReviewFingerprint } from '@/server/share-links';
 import { outcomeCategory, outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
+import { AdComposer } from '@/components/rga-productivity';
+import { makeAd, readAdFields } from '@/lib/rga-productivity';
+import { careersOrigin } from '@/server/public-careers';
+import { careersPath } from '@/lib/public-careers';
 import { NewPostingForm } from '@/components/new-posting-form';
 import { publicClientName, publicPostingText } from '@/lib/public-careers';
 import { organization } from '@/lib/i18n/pt-BR/organization';
@@ -47,7 +51,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
       department: true,
       clientCompany: { select: { id: true, name: true, active: true, orgId: true } },
       requisition: true,
-      org: { select: { requirePostingApproval: true } },
+      org: { select: { requirePostingApproval: true, name: true, slug: true } },
       planSteps: { orderBy: { order: 'asc' } },
       _count: { select: { opportunities: true } },
     },
@@ -264,6 +268,10 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
         ) : null}
       </div>
 
+      {canRecruit && <AdComposer published={posting.state === 'PUBLISHED'} initial={makeAd({
+        ...posting, brand: posting.org.name, publicCompany: publicClientName(posting),
+        publicUrl: posting.state === 'PUBLISHED' ? (await careersOrigin()) + careersPath(posting.org.slug, posting.slug) : null,
+      })} title={posting.title} />}
       {canEditDetails ? (
         <details className={`${surface} mt-6 p-5`}>
           <summary className="cursor-pointer text-sm font-medium">Editar dados da vaga</summary>
@@ -278,6 +286,8 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
               salaryMax: posting.salaryMax,
               salaryCurrency: posting.salaryCurrency,
               description: publicPostingText(posting.content).description,
+              requirements: publicPostingText(posting.content).requirements,
+              advertisement: readAdFields(posting.content),
             }} />
           </div>
         </details>

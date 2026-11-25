@@ -1,5 +1,6 @@
 'use client';
 
+import { adFieldLabels, type AdFields } from '@/lib/rga-productivity';
 import { organization } from '@/lib/i18n/pt-BR/organization';
 import { useActionState } from 'react';
 import type { Posting } from '@prisma/client';
@@ -23,7 +24,7 @@ export function NewPostingForm({
   isAgency?: boolean;
   initialClientId?: string;
   groups?: { id: string; name: string }[];
-  initialPosting?: Pick<Posting, 'id' | 'title' | 'location' | 'workplaceType' | 'commitment' | 'salaryMin' | 'salaryMax' | 'salaryCurrency'> & { description: string };
+  initialPosting?: Pick<Posting, 'id' | 'title' | 'location' | 'workplaceType' | 'commitment' | 'salaryMin' | 'salaryMax' | 'salaryCurrency'> & { description: string; advertisement?: AdFields; requirements?: string[] };
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     initialPosting ? updatePostingDetailsAction.bind(null, initialPosting.id) : createPostingAction,
@@ -77,13 +78,13 @@ export function NewPostingForm({
 
       <div className="grid grid-cols-3 gap-4">
         <Field label="Salário mínimo">
-          <input {...noAutofill} name="salaryMin" defaultValue={initialPosting?.salaryMin ?? ''} type="number" min="0" placeholder="120000" className={inputClass} />
+          <input {...noAutofill} name="salaryMin" defaultValue={initialPosting?.salaryMin ?? ''} type="number" min="0" placeholder="1518" className={inputClass} />
         </Field>
         <Field label="Salário máximo">
-          <input {...noAutofill} name="salaryMax" defaultValue={initialPosting?.salaryMax ?? ''} type="number" min="0" placeholder="160000" className={inputClass} />
+          <input {...noAutofill} name="salaryMax" defaultValue={initialPosting?.salaryMax ?? ''} type="number" min="0" placeholder="2200" className={inputClass} />
         </Field>
         <Field label="Moeda">
-          <input {...noAutofill} name="salaryCurrency" defaultValue={initialPosting?.salaryCurrency ?? ''} placeholder="BRL" className={inputClass} />
+          <input {...noAutofill} name="salaryCurrency" defaultValue={initialPosting?.salaryCurrency ?? 'BRL'} placeholder="BRL" className={inputClass} />
         </Field>
       </div>
 
@@ -97,6 +98,15 @@ export function NewPostingForm({
         />
       </Field>
 
+      <Field label="Requisitos (um por linha)">
+        <textarea name="requirements" rows={4} defaultValue={initialPosting?.requirements?.join('\n')} className={textareaClass} />
+      </Field>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {Object.entries(adFieldLabels).map(([key,label]) => <Field key={key} label={label}>
+          <textarea name={'ad_' + key} rows={key === 'benefits' ? 3 : 1} maxLength={1000} defaultValue={initialPosting?.advertisement?.[key as keyof AdFields]} className={textareaClass} />
+        </Field>)}
+      </div>
+      <p className="text-xs text-ink-2">Os dados de divulgação devem conter apenas informações que podem ser publicadas.</p>
       {state?.error ? (
         <p className="rounded-field bg-critical/10 px-3 py-2 text-sm text-critical">{state.error}</p>
       ) : null}

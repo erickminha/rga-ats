@@ -34,6 +34,7 @@ import { TaskSection } from '@/components/task-section';
 import { TranscriptSection } from '@/components/transcript-section';
 import { ShareLinkButton } from '@/components/share-link-button';
 import { OfferSection } from '@/components/offer-section';
+import { WhatsappComposer } from '@/components/rga-productivity';
 import { EmailSection } from '@/components/email-section';
 import { Field, btnTonal, inputClass, surface, textareaClass, noAutofill } from '@/components/form-controls';
 import { buttonClass } from '@/components/ui/button';
@@ -470,6 +471,10 @@ export async function CandidateProfile({ id }: { id: string }) {
             }))}
           />
 
+          {!contact.isAnonymized && !contact.retentionHold && !opportunity.confidential && <WhatsappComposer
+            opportunityId={opportunity.id} name={contact.name} job={opportunity.posting?.title ?? 'processo seletivo'}
+            brand={org?.name ?? 'RGA Consultoria de RH'} phones={[preferences.whatsapp ?? '', ...contact.phones]}
+            status={opportunity.status} />}
           <EmailSection
             opportunityId={opportunity.id}
             toEmail={contact.emails[0] ?? null}
