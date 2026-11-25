@@ -20,7 +20,7 @@ const STATE_TONES: Record<string, Tone> = {
 };
 
 const STATE_LABELS: Record<string, string> = {
-  OPEN: "Abrir",
+  OPEN: "Aberta",
   ON_HOLD: 'Em espera',
   CLOSED: 'Encerrada',
 };
@@ -104,7 +104,7 @@ export function RequisitionsManager({ requisitions }: { requisitions: Requisitio
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <Badge tone={STATE_TONES[r.state] ?? 'neutral'}>
-                  {STATE_LABELS[r.state] ?? r.state.toLowerCase().replace('_', ' ')}
+                  {STATE_LABELS[r.state] ?? 'Situação não informada'}
                 </Badge>
                 {r.state !== 'CLOSED' ? (
                   <button

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { POSTING_STATE_BADGES } from '@/lib/posting-states';
 import { CandidateLink } from '@/components/candidate-link';
 import { Search } from 'lucide-react';
 import type { loadSearchPage } from '@/app/(app)/page-loaders';
@@ -57,7 +58,7 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
           <EmptyState
             icon={Search}
             title="Nenhum resultado"
-            description={`Nothing found for “${data.q}” across contacts, resumes, notes, or postings.`}
+            description={`Nenhum resultado para “${data.q}” em contatos, currículos, anotações ou vagas.`}
           />
         ) : null}
 
@@ -76,7 +77,7 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
               {data.results.contacts.map((c) => (
                 <Link
                   key={c.id}
-                  href={c.opportunityId ? `/candidates/${c.opportunityId}` : '/contacts'}
+                  href={c.opportunityId ? `/candidates/${c.opportunityId}` : `/contacts/${c.id}`}
                   className="flex items-center gap-3 px-4 py-3 transition-colors duration-[120ms] hover:bg-muted/60"
                 >
                   <Avatar name={c.name} seed={c.id} size={32} />
@@ -86,7 +87,7 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
                       {[c.headline, c.email].filter(Boolean).join(' · ') || '—'}
                     </p>
                   </div>
-                  <span className={badge}>{c.match === 'resume' ? 'resume match' : 'profile'}</span>
+                  <span className={badge}>{c.match === 'resume' ? 'Currículo' : 'Perfil'}</span>
                 </Link>
               ))}
             </div>
@@ -96,7 +97,7 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
         {data.results.transcripts.length ? (
           <section className="mb-8">
             <h2 className={`${sectionLabel} mb-3`}>
-              Transcrições{data.results.more.transcripts ? ` · ${data.results.transcripts.length} most recent matches` : ''}
+              Transcrições{data.results.more.transcripts ? ` · ${data.results.transcripts.length} resultados mais recentes` : ''}
             </h2>
             <div className={`${surface} divide-y divide-line`}>
               {data.results.transcripts.map((t, i) => (
@@ -118,7 +119,7 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
         {data.results.notes.length ? (
           <section className="mb-8">
             <h2 className={`${sectionLabel} mb-3`}>
-              Anotações{data.results.more.notes ? ` · ${data.results.notes.length} most recent matches` : ''}
+              Anotações{data.results.more.notes ? ` · ${data.results.notes.length} resultados mais recentes` : ''}
             </h2>
             <div className={`${surface} divide-y divide-line`}>
               {data.results.notes.map((n, i) => (
@@ -138,7 +139,7 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
         {data.results.postings.length ? (
           <section className="mb-8">
             <h2 className={`${sectionLabel} mb-3`}>
-              Vagas{data.results.more.postings ? ` · first ${data.results.postings.length}, by title` : ''}
+              Vagas{data.results.more.postings ? ` · primeiras ${data.results.postings.length}, por título` : ''}
             </h2>
             <div className={`${surface} divide-y divide-line`}>
               {data.results.postings.map((p) => (
@@ -148,7 +149,7 @@ export function SearchScreen({ data }: { data: Awaited<ReturnType<typeof loadSea
                   className="flex items-center justify-between px-4 py-3 transition-colors duration-[120ms] hover:bg-muted/60"
                 >
                   <p className="text-sm font-medium">{p.title}</p>
-                  <span className={badge}>{p.state.toLowerCase()}</span>
+                  <span className={badge}>{POSTING_STATE_BADGES[p.state]?.label ?? 'Situação não informada'}</span>
                 </Link>
               ))}
             </div>

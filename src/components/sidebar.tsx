@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogOut } from 'lucide-react';
-import { RgaDashboard, RgaJobs, RgaPipeline, RgaTalents, RgaClients, RgaInterviews, RgaTasks, RgaReports, RgaReview, RgaReferrals, RgaSettings, RgaSearch, RgaMore, RgaDisc } from '@/components/ui/rga-icons';
+import { RgaDashboard, RgaJobs, RgaPipeline, RgaTalents, RgaClients, RgaInterviews, RgaTasks, RgaReports, RgaReview, RgaReferrals, RgaSettings, RgaSearch, RgaMore, RgaDisc, RgaAi } from '@/components/ui/rga-icons';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/orb';
@@ -115,6 +115,10 @@ export function Sidebar({
         <button type="button" onClick={() => setAskOpen(true)} className="mx-3 mb-3 flex items-center gap-2 rounded-xl border border-[#35445a] px-3 py-2.5 text-left text-sm text-[#dce8f5] hover:bg-[#27384b]">
           <RgaSearch size={20} /> <span className="flex-1">Busca global</span><kbd className="text-[10px] text-[#b7c8dc]">Ctrl K</kbd>
         </button>
+        <button type="button" onClick={() => setAskOpen(true)} className="mx-3 mb-3 flex items-center gap-2.5 rounded-xl bg-[#6C336E] px-3 py-3 text-left text-white hover:bg-[#7b407d] focus-visible:ring-2 focus-visible:ring-[#F9C82B]">
+          <RgaAi size={26} className="shrink-0" />
+          <span className="min-w-0 flex-1"><span className="block text-sm font-bold">Assistente IA</span><span className="block text-xs text-white/85">{aiEnabled ? 'Consultar registros' : 'Busca disponível · IA não configurada'}</span></span>
+        </button>
         <nav aria-label={navigation.main} className="flex flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
           {['OPERAÇÃO', 'ACOMPANHAMENTO', 'FERRAMENTAS'].map((group) => (
             <div key={group} className="grid gap-1">
@@ -145,7 +149,7 @@ export function Sidebar({
 
       {/* Mobile: floating white pill nav — icon over an 11px label */}
       <nav aria-label={navigation.main} className="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 md:hidden">
-        <div className="grid w-full max-w-sm grid-cols-5 items-center gap-0.5 rounded-2xl border border-line bg-surface p-1.5 shadow-float">
+        <div className="grid w-full max-w-sm grid-cols-6 items-center gap-0.5 rounded-2xl border border-line bg-surface p-1.5 shadow-float">
           {primary.map(({ href, short, icon: Icon }) => {
             const active = isActive(href);
             return (
@@ -165,6 +169,9 @@ export function Sidebar({
               </Link>
             );
           })}
+          <button type="button" onClick={() => setAskOpen(true)} aria-label={aiEnabled ? 'Assistente IA' : 'Assistente IA — busca sem IA'} className="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl bg-[#6C336E] px-0.5 text-2xs font-bold text-white">
+            <RgaAi size={22} /> IA
+          </button>
           <DropdownMenu.Root open={moreOpen} onOpenChange={setMoreOpen}>
             <DropdownMenu.Trigger
               ref={moreTrigger}

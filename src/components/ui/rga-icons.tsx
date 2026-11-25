@@ -112,3 +112,13 @@ export const RgaDisc = pictogram(<>
   <path d="M12 12v9a9 9 0 0 1-9-9Z" fill={yellow} stroke="none" />
   <path d="M12 3v18M3 12h18" />
 </>);
+
+export const RgaAi = pictogram(<>
+  <rect x="3" y="7" width="18" height="13" rx="4" fill={blue} />
+  <path d="M12 7V4M5 11H2M22 11h-3" />
+  <circle cx="12" cy="3.5" r="1.5" fill={yellow} stroke="none" />
+  <circle cx="8" cy="12.5" r="1.6" fill={yellow} stroke="none" />
+  <circle cx="16" cy="12.5" r="1.6" fill={yellow} stroke="none" />
+  <path d="M9 16h6" stroke="#fff" />
+  <path d="m19 2 1 2.5L22.5 5 20 6l-1 2-1-2.5L15.5 5 18 4Z" fill={yellow} stroke="none" />
+</>);
