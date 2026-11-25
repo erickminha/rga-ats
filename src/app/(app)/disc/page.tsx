@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { canManageRecruiting, requireSession } from '@/lib/session';
 import { notFound } from 'next/navigation';
@@ -15,10 +16,11 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
   const params = await searchParams;
   const since = params.desde && /^\d{4}-\d{2}-\d{2}$/.test(params.desde) ? new Date(params.desde + 'T00:00:00-03:00') : null;
   const deadline = new Date();
-  const cases = {
+  const cases: Record<string, Prisma.NativeDiscWhereInput> = {
     aguardando: { submittedAt: null, cancelledAt: null, expiresAt: { gt: deadline }, revision: 0 },
     preenchendo: { submittedAt: null, cancelledAt: null, expiresAt: { gt: deadline }, revision: { gt: 0 } },
-    revisao: { submittedAt: { not: null }, reviewedAt: null },
+    processamento: { submittedAt: { not: null }, reviewedAt: null, results: { path: ['analysis'], equals: Prisma.AnyNull } },
+    revisao: { submittedAt: { not: null }, reviewedAt: null, NOT: { results: { path: ['analysis'], equals: Prisma.AnyNull } } },
     concluido: { reviewedAt: { not: null } },
     expirado: { expiresAt: { lte: deadline }, submittedAt: null, cancelledAt: null },
     cancelado: { cancelledAt: { not: null } },
@@ -57,7 +59,7 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
       </select></label>
       <label className="grid text-sm">Situação <select name="situacao" defaultValue={params.situacao} className="rounded-field border border-line p-2">
         {Object.entries({ '': 'Todas', novo: 'Não solicitado', aguardando: 'Aguardando resposta', preenchendo: 'Em preenchimento',
-          revisao: 'Aguardando revisão', concluido: 'Concluído', expirado: 'Expirado', cancelado: 'Cancelado' }).map(([value,label]) =>
+          processamento: 'Aguardando processamento', revisao: 'Aguardando revisão', concluido: 'Concluído', expirado: 'Expirado', cancelado: 'Cancelado' }).map(([value,label]) =>
           <option key={value} value={value}>{label}</option>)}
       </select></label>
       <button className="underline">Filtrar</button>
@@ -69,7 +71,7 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
       <DiscInvite opportunityId={item.id} test={test} />
       {item.nativeDiscs.length === 0 && <p>Não solicitado</p>}
       {item.nativeDiscs.map(row => {
-        const label = row.reviewedAt ? 'Concluído' : row.submittedAt ? 'Aguardando revisão' : row.cancelledAt ? 'Cancelado' :
+        const label = row.reviewedAt ? 'Concluído' : row.submittedAt ? (row.results && 'analysis' in (row.results as object) ? 'Aguardando revisão' : 'Aguardando processamento') : row.cancelledAt ? 'Cancelado' :
           +row.expiresAt <= Date.now() ? 'Expirado' : row.revision ? 'Em preenchimento' : 'Aguardando resposta';
         const scores = row.results as (Scores & { analysis?: ReturnType<typeof localDiscInterpretation>; provider?: string; model?: string }) | null;
         const analysis = scores && (scores.analysis ?? localDiscInterpretation(scores));
@@ -85,7 +87,7 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
             <p>{analysis.detail}</p><p>{analysis.strengths.join(' · ')}</p><p>{analysis.attention}</p><p>{analysis.environment}</p><p>{analysis.interview}</p>
           </>}
           {!row.submittedAt && !row.cancelledAt && <DiscManage id={row.id} action="cancel" />}
-          {row.submittedAt && !row.reviewedAt && <DiscManage id={row.id} action="review" />}
+          {row.submittedAt && !row.reviewedAt && <DiscManage id={row.id} action={scores?.analysis ? "review" : "prepare"} />}
         </article>;
       })}
     </section>)}

@@ -32,14 +32,14 @@ export function DiscInvite({ opportunityId, test }: { opportunityId: string; tes
   </div>;
 }
 
-export function DiscManage({ id, action }: { id: string; action: 'cancel' | 'review' }) {
+export function DiscManage({ id, action }: { id: string; action: 'cancel' | 'prepare' | 'review' }) {
   const [busy, start] = useTransition();
   const [error, setError] = useState('');
   return <div>
     <button className="underline" disabled={busy} onClick={() => start(async () => {
       const result = await manageDiscAction(id, action);
       setError(result.error ?? '');
-    })}>{action === 'cancel' ? 'Cancelar link' : 'Concluir revisão'}</button>
+    })}>{action === 'cancel' ? 'Cancelar link' : action === 'prepare' ? 'Preparar interpretação' : 'Concluir revisão'}</button>
     {error && <p role="alert">{error}</p>}
   </div>;
 }

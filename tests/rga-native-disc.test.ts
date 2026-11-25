@@ -43,7 +43,7 @@ import { vi } from 'vitest';
 import { hasDb } from './setup';
 import { candidate, createOrg } from './fixtures';
 import { db } from '@/lib/db';
-import { cancelDisc, candidateDisc, createDiscInvite, reviewDisc } from '@/server/native-disc';
+import { cancelDisc, candidateDisc, createDiscInvite, prepareDisc, reviewDisc } from '@/server/native-disc';
 
 describe.skipIf(!hasDb)('Fluxo DISC com PostgreSQL', () => {
   it('protege a chave provisória, salva, retoma, conclui uma vez e preserva o histórico', async () => {
@@ -75,6 +75,7 @@ describe.skipIf(!hasDb)('Fluxo DISC com PostgreSQL', () => {
       expect(await candidateDisc(invite.token, { answers, revision: 1, submit: true })).toEqual({ done: true });
       const row = await db.nativeDisc.findFirstOrThrow({ where: { opportunityId: opportunity.id, submittedAt: { not: null } } });
       await db.recruitingAssessment.create({ data: { opportunityId: opportunity.id, disc: { profile: 'Histórico' } } });
+      await prepareDisc(ctx, row.id);
       await reviewDisc(ctx, row.id);
       expect((await db.recruitingAssessment.findUniqueOrThrow({ where: { opportunityId: opportunity.id } })).disc).toEqual({ profile: 'Histórico' });
       expect((await db.nativeDisc.findUniqueOrThrow({ where: { id: row.id } })).results).toMatchObject({ D: 40, provider: 'local' });
@@ -107,7 +108,8 @@ describe.skipIf(!hasDb)('Fluxo DISC com PostgreSQL', () => {
         const { token } = await createDiscInvite(ctx, opportunity.id, 7, false);
         await candidateDisc(token, { answers, revision: 0, submit: true });
         const row = await db.nativeDisc.findFirstOrThrow({ where: { opportunityId: opportunity.id, reviewedAt: null } });
-        await reviewDisc(ctx, row.id);
+        await prepareDisc(ctx, row.id);
+      await reviewDisc(ctx, row.id);
         const saved = await db.nativeDisc.findUniqueOrThrow({ where: { id: row.id } });
         expect(saved.results).toMatchObject(i === 0 ? { provider: 'openai', model: 'modelo-fictício', tokens: 200 } : { provider: 'local' });
       }

@@ -152,19 +152,34 @@ async function interpret(orgId: string, scores: Scores, methodology: string, sim
   return { analysis: local, provider: 'local', model: 'rga-local-1', tokens: null };
 }
 
+export async function prepareDisc(ctx: SessionContext, id: string) {
+  requireRecruitingAccess(ctx);
+  const pending = await db.nativeDisc.findFirst({ where: { id, submittedAt: { not: null }, reviewedAt: null, opportunity: { orgId: ctx.orgId, ...available } },
+    include: { opportunity: { select: { contactId: true } } } });
+  if (!pending?.results || 'analysis' in (pending.results as Record<string, unknown>)) return;
+  if (!await reserveRequest('disc-interpretation', [id], 1, 60000)) throw new Error('A interpretação já está em processamento.');
+  const key = pending.scoringKey as unknown as ScoringKey;
+  const scores = scoreDisc(pending.answers, key);
+  const interpretation = await interpret(ctx.orgId, scores, key.version, pending.simulation);
+  await db.$transaction(async tx => {
+    if (!await lockIdentifiableContact(tx, ctx.orgId, pending.opportunity.contactId)) return;
+    await tx.nativeDisc.updateMany({ where: { id, reviewedAt: null, opportunity: { orgId: ctx.orgId, ...available } },
+      data: { results: { ...scores, ...interpretation } } });
+  });
+}
+
 export async function reviewDisc(ctx: SessionContext, id: string) {
   requireRecruitingAccess(ctx);
-  const pending = await db.nativeDisc.findFirst({ where: { id, submittedAt: { not: null }, reviewedAt: null, opportunity: { orgId: ctx.orgId, ...available } } });
-  if (!pending?.results) return;
-  const key = pending.scoringKey as unknown as ScoringKey;
-  const interpretation = await interpret(ctx.orgId, scoreDisc(pending.answers, key), key.version, pending.simulation);
   await db.$transaction(async tx => {
     const row = await tx.nativeDisc.findFirst({ where: { id, submittedAt: { not: null }, opportunity: { orgId: ctx.orgId, ...available } },
       include: { opportunity: { select: { contactId: true } } } });
     if (!row?.results || row.reviewedAt || !await lockIdentifiableContact(tx, ctx.orgId, row.opportunity.contactId) ||
       !await tx.opportunity.findFirst({ where: { id: row.opportunityId, orgId: ctx.orgId, ...available }, select: { id: true } })) return;
     const scores = scoreDisc(row.answers, row.scoringKey as unknown as ScoringKey);
-    const { analysis } = interpretation;
+    const prepared = row.results as Record<string, unknown>;
+    const validated = validatedDiscInterpretation(prepared.analysis);
+    if (!validated) throw new Error('Prepare a interpretação antes de concluir a revisão.');
+    const analysis = { ...validated, profile: localDiscInterpretation(scores).profile };
     const disc = { D: String(scores.D), I: String(scores.I), S: String(scores.S), C: String(scores.C), scaleMin: '10', scaleMax: '40',
       instrument: row.simulation ? 'DISC RGA · Simulação' : 'DISC RGA', date: row.submittedAt!.toISOString().slice(0, 10), profile: analysis.profile, traits: analysis.detail,
       strengths: analysis.strengths.join('\n'), development: analysis.attention, complete: true };
@@ -172,7 +187,7 @@ export async function reviewDisc(ctx: SessionContext, id: string) {
       const assessment = await tx.recruitingAssessment.findUnique({ where: { opportunityId: row.opportunityId }, select: { disc: true, discFileId: true } });
       if (!assessment?.disc && !assessment?.discFileId) await tx.recruitingAssessment.upsert({ where: { opportunityId: row.opportunityId }, create: { opportunityId: row.opportunityId, disc }, update: { disc } });
     }
-    await tx.nativeDisc.update({ where: { id }, data: { reviewedAt: new Date(), results: { ...scores, ...interpretation } } });
+    await tx.nativeDisc.update({ where: { id }, data: { reviewedAt: new Date() } });
     await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'disc.reviewed', subjectType: 'opportunity',
       subjectId: row.opportunityId, payload: { assessmentId: id } });
   });

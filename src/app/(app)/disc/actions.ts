@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/session';
 import { emailPublicOrigin } from '@/lib/base-url';
-import { cancelDisc, createDiscInvite, discMessage, emailDisc, reviewDisc } from '@/server/native-disc';
+import { cancelDisc, createDiscInvite, discMessage, emailDisc, prepareDisc, reviewDisc } from '@/server/native-disc';
 
 export async function issueDiscAction(opportunityId: string, days: number, simulation: boolean) {
   const ctx = await requireSession();
@@ -18,10 +18,11 @@ export async function issueDiscAction(opportunityId: string, days: number, simul
   } catch (e) { return { error: e instanceof Error && !e.message.includes('\n') && e.message.length < 160 ? e.message : 'Não foi possível gerar o convite.' }; }
 }
 
-export async function manageDiscAction(id: string, action: 'cancel' | 'review') {
+export async function manageDiscAction(id: string, action: 'cancel' | 'prepare' | 'review') {
   const ctx = await requireSession();
   try {
     if (action === 'cancel') await cancelDisc(ctx, id);
+    else if (action === 'prepare') await prepareDisc(ctx, id);
     else if (action === 'review') await reviewDisc(ctx, id);
     else return { error: 'Operação inválida.' };
     revalidatePath('/disc');
