@@ -28,6 +28,55 @@ describe.skipIf(!hasDb)('RGA spreadsheet import', () => {
   beforeEach(() => vi.stubEnv('AUTH_SECRET', 'rga-spreadsheet-local-test'));
   afterEach(() => vi.unstubAllEnvs());
 
+  it('reconciles explicit and documented storage grants by source ID and preserves withdrawals', async () => {
+    const { org, ctx } = await agency();
+    const talent = buildFile('talent', 'nome;id\nPessoa Um;a\nPessoa Dois;b\nPessoa Três;c', { name: '0', externalId: '1' });
+    await confirmRgaImport(ctx, talent, (await previewRgaImport(ctx, talent)).ticket);
+    const third = await db.contact.findFirstOrThrow({ where: { orgId: org.id, name: 'Pessoa Três' } });
+    await db.consentRecord.create({ data: { orgId: org.id, contactId: third.id, purpose: 'PROFILE_STORAGE', withdrawnAt: new Date() } });
+    const term = [
+      'Ao enviar este formulário, autorizo a RGA Consultoria de RH a coletar, armazenar e usar meus dados para participação em processos seletivos e inclusão no Banco de Talentos.',
+      'Se necessário, meus dados poderão ser compartilhados com empresas contratantes exclusivamente para fins de recrutamento.',
+      'Estou ciente de que posso solicitar acesso, correção ou exclusão dos meus dados a qualquer momento pelo e-mail: oportunidades@consultoriarga.com.br.',
+      'Declaro que li e concordo com este termo.',
+    ].join(' ');
+    const file = buildFile('consent', ['ID Origem;"' + term + '"', 'a;Li as informações acima e concordo.', 'b;', 'c;', 'sem-vinculo;'].join('\n'), { externalId: '0', acceptance: '1' });
+    expect((await previewRgaImport(ctx, file)).report).toMatchObject({ updated: 1, duplicates: 1, errors: 2 });
+    file.attestation = 'DOC-FICTICIO-01';
+    const preview = await previewRgaImport(ctx, file);
+    expect(preview.report).toMatchObject({ updated: 2, duplicates: 1, errors: 1 });
+    expect(await db.consentRecord.count({ where: { orgId: org.id, withdrawnAt: null } })).toBe(0);
+    await expect(confirmRgaImport(ctx, { ...file, attestation: 'OUTRO-DOC' }, preview.ticket)).rejects.toThrow(/nova prévia/);
+    await confirmRgaImport(ctx, file, preview.ticket);
+    expect((await previewRgaImport(ctx, file)).report).toMatchObject({ updated: 0, duplicates: 3 });
+    expect(await db.consentRecord.count({ where: { orgId: org.id, withdrawnAt: null, purpose: 'PROFILE_STORAGE' } })).toBe(2);
+    const audit = await db.event.findMany({ where: { orgId: org.id, verb: 'consent.reconciled' } });
+    expect(audit.map(e => (e.payload as {evidence: string}).evidence).sort()).toEqual(['ADMIN_ATTESTATION', 'SHEET_ACCEPTANCE']);
+  });
+
+  it('links historical clients only with verified job IDs, titles and unique clients', async () => {
+    const { org, ctx } = await agency();
+    const client = await db.clientCompany.create({ data: { orgId: org.id, name: 'Empresa Fictícia' } });
+    const other = await db.clientCompany.create({ data: { orgId: org.id, name: 'Outro Cliente Fictício' } });
+    const posting = await db.posting.create({ data: { orgId: org.id, slug: 'vaga-ficticia', title: 'Técnico', state: 'PUBLISHED' } });
+    await db.importRef.create({ data: { orgId: org.id, provider: RGA_IMPORT_PROVIDER, kind: 'posting', externalId: WORK_SOURCE + ':X', internalId: posting.id } });
+    const file = (lines: string[]) => buildFile('postingClient', ['Gerar ID;Cliente;Cargo', ...lines].join('\n'),
+      mappingSuggestion('postingClient', ['Gerar ID','Cliente','Cargo']));
+    const row = 'X;Empresa Fictícia;TECNICO';
+    expect((await previewRgaImport(ctx, file([row, row]))).report.errors).toBe(2);
+    expect((await previewRgaImport(ctx, file(['X;Empresa Fictícia;Outro Cargo']))).report.errors).toBe(1);
+    const source = file([row, 'Z;Empresa Fictícia;Técnico']);
+    const preview = await previewRgaImport(ctx, source);
+    expect(preview.report).toMatchObject({ updated: 1, errors: 1 });
+    expect((await db.posting.findUniqueOrThrow({ where: { id: posting.id } })).clientCompanyId).toBeNull();
+    await confirmRgaImport(ctx, source, preview.ticket);
+    expect(await db.posting.findUniqueOrThrow({ where: { id: posting.id } })).toMatchObject({ clientCompanyId: client.id, state: 'PUBLISHED' });
+    expect((await previewRgaImport(ctx, source)).report.duplicates).toBe(1);
+    const conflict = file(['X;' + other.name + ';Técnico']);
+    expect((await previewRgaImport(ctx, conflict)).report.errors).toBe(1);
+    expect(await db.event.count({ where: { orgId: org.id, subjectId: posting.id, verb: 'posting.client_linked' } })).toBe(1);
+  });
+
   it('previews and records companies, vacancies and applicants without publishing, messaging or granting consent', async () => {
     const { org, ctx } = await agency();
     const companies = buildFile('company', [

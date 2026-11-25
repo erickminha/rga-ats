@@ -19,7 +19,7 @@ export async function runSpreadsheetAction(step: 'inspect' | 'preview' | 'confir
     if (step === 'inspect') return { ok: true as const, step, ...inspectRgaSpreadsheet(ctx, file, headerRow) };
     const kind = String(form.get('kind')) as RgaImportKind;
     const mapping = Object.fromEntries([...form.entries()].filter(([key]) => key.startsWith('map:')).map(([key, value]) => [key.slice(4), value]));
-    const input = { ...file, kind, headerRow, mapping };
+    const input = { ...file, kind, headerRow, mapping, attestation: String(form.get('attestation') ?? '').trim() };
     if (step === 'preview') return { ok: true as const, step, ...await previewRgaImport(ctx, input) };
     if (step !== 'confirm' || form.get('confirmed') !== 'yes') throw new RgaImportError('Confirme explicitamente a importação.');
     const result = await confirmRgaImport(ctx, input, String(form.get('ticket') ?? ''));

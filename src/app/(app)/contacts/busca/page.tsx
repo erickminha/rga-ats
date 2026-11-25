@@ -1,3 +1,4 @@
+import { ResumePreview } from '@/components/resume-preview';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/session';
@@ -79,6 +80,7 @@ export default async function TalentSearchPage({ searchParams }: { searchParams:
         <p className="text-sm">{[row.headline, row.location, profile.state, row.salaryExpectation !== null ? formatSalary(row.salaryExpectation) : null].filter(Boolean).join(' · ') || 'Perfil profissional não informado'}</p>
         {profile.skills && <p className="break-words text-sm">Competências: {profile.skills}</p>}
         <p className="text-xs text-ink-2">{row.hasResume ? 'Com currículo' : 'Sem currículo'} · Atualizado em {dateBR(row.updatedAt)}</p>
+        {row.hasResume && row.resumeFileId && <ResumePreview fileId={row.resumeFileId} />}
         {row.tags.length > 0 && <p className="break-words text-sm">{row.tags.join(' · ')}</p>}
         {postingId && linked.has(row.id) && <p className="text-sm">Já vinculado a esta vaga. Consulte o histórico na ficha.</p>}
         {postingId && !linked.has(row.id) && !row.eligible && <p className="text-sm">Sem autorização vigente ou com restrição para reaproveitamento.</p>}

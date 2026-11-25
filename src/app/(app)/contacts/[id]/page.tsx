@@ -1,3 +1,4 @@
+import { ResumePreview } from '@/components/resume-preview';
 import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { updateTalentMembershipAction } from '@/app/(app)/talent-search-actions';
 import { btnTonal, inputClass } from '@/components/form-controls';
@@ -13,6 +14,8 @@ import { TagEditor } from '@/components/tag-editor';
 import { DuplicatesBanner } from '@/components/duplicates-banner';
 import { PrivacyControls } from '@/components/privacy-controls';
 import { findDuplicates } from '@/server/contacts';
+
+import { RgaDriveResume } from '@/components/imports/rga-drive-resume';
 
 export default async function TalentProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requireSession();
@@ -65,11 +68,13 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
     </section>
     <section id="curriculos" className="mb-4 rounded-card bg-surface p-4">
       <h2 className="mb-3 font-semibold">Currículos e documentos</h2>
+      {isAdmin(ctx) && ctx.orgId === process.env.RGA_TALENT_SYNC_ORG_ID && process.env.RGA_RESUME_FOLDER_ID && <RgaDriveResume contactId={id} />}
       {files.length === 0 && <p className="mb-3 text-sm">Nenhum documento anexado.</p>}
       <ul className="mb-4 grid gap-2">
         {files.map((file) => <li key={file.id} className="rounded-field border border-line p-3 text-sm">
           <a href={`/api/files/${file.id}`} className="break-all underline" target="_blank" rel="noreferrer">{file.filename}</a>
           {file.id === person.resumeFileId ? ' · Principal' : file.resumeVersion ? ' · Outra versão' : ' · Anexo'}
+          {(file.resumeVersion || file.id === person.resumeFileId) && <div><ResumePreview fileId={file.id} /></div>}
           <p>{dateBR(file.createdAt)}{file.uploadedById && authors.get(file.uploadedById) ? ` · ${authors.get(file.uploadedById)}` : ''}</p>
           {(file.resumeVersion || file.id === person.resumeFileId) && <p>{
             file.resumeContent || (file.id === person.resumeFileId && person.resumeText) ? 'Texto disponível para busca'
