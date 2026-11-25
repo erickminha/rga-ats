@@ -48,7 +48,7 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
       const posting = await tx.posting.findFirst({
         where: { id: input.postingId, orgId: ctx.orgId },
       });
-      if (!posting) throw new Error('Posting not found');
+      if (!posting) throw new Error('Vaga não encontrada.');
     }
 
     if (email) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`apply:${ctx.orgId}:${email}`}))`;
@@ -156,7 +156,7 @@ export async function moveStage(
     });
     if (!opportunity) throw new Error('Opportunity not found');
     const toStage = await tx.stage.findFirst({ where: { id: toStageId, orgId: ctx.orgId } });
-    if (!toStage) throw new Error('Stage not found');
+    if (!toStage) throw new Error('Etapa não encontrada.');
     if (opportunity.stageId === toStage.id) return { updated: opportunity, toStage: null as { name: string; type: StageType } | null };
 
     if (!await lockIdentifiableContact(tx, ctx.orgId, opportunity.contactId)) throw new Error('Cadastro anonimizado.');

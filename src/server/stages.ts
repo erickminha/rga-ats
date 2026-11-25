@@ -21,11 +21,11 @@ function requireStageAdmin(ctx: SessionContext) {
 export async function createStage(ctx: SessionContext, name: string, type: StageType) {
   requireStageAdmin(ctx);
   const trimmed = name.trim();
-  if (!trimmed) throw new Error('Stage name is required');
+  if (!trimmed) throw new Error('Informe o nome da etapa.');
   const result = await db.$transaction(async (tx) => {
     const current = await lockStages(tx, ctx.orgId);
     if (current.some((s) => nameKey(s.name) === nameKey(trimmed))) {
-      throw new Error(`There’s already a stage called “${trimmed}”`);
+      throw new Error(`Já existe uma etapa chamada “${trimmed}”`);
     }
     const group = stageGroup(type);
     let at = current.length;
@@ -69,10 +69,10 @@ async function lockStages(tx: Prisma.TransactionClient, orgId: string) {
 export async function renameStage(ctx: SessionContext, stageId: string, name: string) {
   requireStageAdmin(ctx);
   const trimmed = name.trim();
-  if (!trimmed) throw new Error('Stage name is required');
+  if (!trimmed) throw new Error('Informe o nome da etapa.');
   const result = await db.$transaction(async (tx) => {
     const stage = (await lockStages(tx, ctx.orgId)).find((row) => row.id === stageId);
-    if (!stage) throw new Error('Stage not found');
+    if (!stage) throw new Error('Etapa não encontrada.');
     if (stage.name === trimmed) return stage;
     const updated = await tx.stage.update({ where: { id: stage.id }, data: { name: trimmed } });
     await emitEvent(tx, {
@@ -100,7 +100,7 @@ export async function setStageOrder(ctx: SessionContext, ids: string[]) {
     const stages = await lockStages(tx, ctx.orgId);
     const byId = new Map(stages.map((s) => [s.id, s]));
     if (ids.length !== stages.length || new Set(ids).size !== ids.length || ids.some((id) => !byId.has(id))) {
-      throw new Error('The stages changed while you were editing. Reload and try again.');
+      throw new Error('As etapas mudaram durante a edição. Atualize a página e tente novamente.');
     }
     const ordered = ids
       .map((id, i) => ({ stage: byId.get(id)!, i }))
@@ -123,18 +123,18 @@ export async function deleteStage(ctx: SessionContext, stageId: string) {
   requireStageAdmin(ctx);
   const result = await db.$transaction(async (tx) => {
     const stage = (await lockStages(tx, ctx.orgId)).find((row) => row.id === stageId);
-    if (!stage) throw new Error('Stage not found');
+    if (!stage) throw new Error('Etapa não encontrada.');
 
     const stageCount = await tx.stage.count({ where: { orgId: ctx.orgId } });
-    if (stageCount <= 1) throw new Error('At least one stage is required');
+    if (stageCount <= 1) throw new Error('Mantenha ao menos uma etapa.');
 
     const inUse = await tx.opportunity.count({ where: { stageId: stage.id } });
-    if (inUse > 0) throw new Error(`Move the ${inUse} candidate(s) out of this stage first`);
+    if (inUse > 0) throw new Error(`Mova os ${inUse} candidato(s) desta etapa antes de excluí-la.`);
 
     const history = await tx.stageTransition.count({
       where: { OR: [{ toStageId: stage.id }, { fromStageId: stage.id }] },
     });
-    if (history > 0) throw new Error('This stage has candidate history and can only be renamed');
+    if (history > 0) throw new Error('Esta etapa possui histórico de candidatos e só pode ser renomeada.');
 
     await tx.stage.delete({ where: { id: stage.id } });
     await emitEvent(tx, {
@@ -160,10 +160,10 @@ export async function reconcileRgaStages(ctx: SessionContext) {
     const org = await tx.organization.findUnique({ where: { id: ctx.orgId }, select: { kind: true } });
     if (org?.kind !== 'AGENCY') throw new Error('Selecione o cadastro existente da agência RGA.');
 
-    const official = RGA_STAGES.map(({ name, type, defaultName }) => {
+    const official = RGA_STAGES.map(({ name, type, defaultName, translatedDefaultName }) => {
       const matches = current.filter((stage) => looseKey(stage.name) === looseKey(name));
-      if (!matches.length && defaultName) {
-        matches.push(...current.filter((stage) => stage.type === type && nameKey(stage.name) === nameKey(defaultName)));
+      if (!matches.length && (defaultName || translatedDefaultName)) {
+        matches.push(...current.filter((stage) => stage.type === type && [defaultName, translatedDefaultName].some(alias => alias && nameKey(stage.name) === nameKey(alias))));
       }
       if (matches.length > 1 || matches.some((stage) => stage.type !== type)) {
         throw new Error(`Confira as etapas existentes antes de reconciliar “${name}”. Há nomes duplicados ou um tipo incompatível.`);

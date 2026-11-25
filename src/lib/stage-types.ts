@@ -49,7 +49,12 @@ export const TYPE_RANK: Record<StageType, number> = {
  * "Hiring Manager Screen" is SCREEN — "hiring" is not "hired".
  */
 export function inferStageType(name: string): StageType {
-  const n = name.toLowerCase();
+  const n = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (/\b(contratad[oa]s?|contratacao|admissao|admitid[oa]s?)\b/.test(n)) return 'HIRED';
+  if (/\b(proposta|oferta)\b/.test(n)) return 'OFFER';
+  if (/\b(entrevista|finalistas?|avaliacao disc|parecer|apresentacao ao cliente)\b/.test(n)) return 'ONSITE';
+  if (/\b(prospeccao|novo talento|contato realizado|respondeu|abordagem)\b/.test(n)) return 'LEAD';
+  if (/\b(candidatura|inscricao|novo candidato)\b/.test(n)) return 'APPLICANT';
   if (/\bhired?\b|\bplaced\b|\bstarted\b|\bonboard/.test(n)) return 'HIRED';
   if (/\boffer\b|\breference/.test(n)) return 'OFFER';
   if (/on-?site|face[ -]to[ -]face|\bfinal\b|\bpanel\b|\bloop\b|\bsuper ?day\b|in[ -]person/.test(n)) return 'ONSITE';

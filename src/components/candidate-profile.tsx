@@ -806,9 +806,9 @@ function ApplicationList({
                   {app.status === 'HIRED' ? <StatusDot tone="positive" /> : null}
                   <span className="truncate">
                     {app.status === 'HIRED'
-                      ? "Contratados"
+                      ? "Contratado"
                       : app.status === 'ARCHIVED'
-                        ? `Archived${app.archiveReason ? ` · ${app.archiveReason.name}` : ''}`
+                        ? `Encerrado${app.archiveReason ? ` · ${app.archiveReason.name}` : ''}`
                         : app.stage.name}
                     <span className="text-ink-3"> · {added}</span>
                   </span>
@@ -816,7 +816,7 @@ function ApplicationList({
               </span>
             </span>
           );
-          const title = `${app.origin === 'APPLIED' ? "Candidatura" : 'Added'} ${added}`;
+          const title = `${app.origin === 'APPLIED' ? "Candidatura" : 'Incluído'} ${added}`;
 
           if (app.id !== currentId) {
             return (
@@ -873,7 +873,7 @@ function StageProgress({
   return (
     <div
       role="img"
-      aria-label={`Stage ${at + 1} of ${stages.length}: ${stages[at].name}`}
+      aria-label={`Etapa ${at + 1} de ${stages.length}: ${stages[at].name}`}
       className="mt-2.5 ml-9 flex gap-1"
     >
       {stages.map((s, i) => (

@@ -1,3 +1,4 @@
+import { inferStageType } from '@/lib/stage-types';
 import { describe, expect, it } from 'vitest';
 import { hasDb } from './setup';
 import { createOrg } from './fixtures';
@@ -63,7 +64,7 @@ describe.skipIf(!hasDb)('stages', () => {
       'Hired',
       'Started',
     ]);
-    await expect(createStage(ctx, 'phone Screen', 'SCREEN')).rejects.toThrow(/already a stage/);
+    await expect(createStage(ctx, 'phone Screen', 'SCREEN')).rejects.toThrow(/Já existe uma etapa/);
   });
 
   it('saves a dragged order, keeping leads before applicants before the interview process', async () => {
@@ -75,7 +76,19 @@ describe.skipIf(!hasDb)('stages', () => {
     await setStageOrder(ctx, ['New applicant', 'Offer', 'Phone screen', 'New lead', 'Hired'].map(id));
     expect(await names(orgId)).toEqual(['New lead', 'New applicant', 'Offer', 'Phone screen', 'Hired']);
 
-    await expect(setStageOrder(ctx, ['New lead', 'Hired'].map(id))).rejects.toThrow(/changed while you were editing/);
+    await expect(setStageOrder(ctx, ['New lead', 'Hired'].map(id))).rejects.toThrow(/mudaram durante a edição/);
     await expect(setStageOrder(ctx, ['New lead', 'New lead', 'Offer', 'Phone screen', 'Hired'].map(id))).rejects.toThrow();
+  });
+});
+
+
+describe('Etapas em português brasileiro', () => {
+  it.each([
+    ['Novo talento', 'LEAD'], ['Contato realizado', 'LEAD'], ['Respondeu', 'LEAD'],
+    ['Nova candidatura', 'APPLICANT'], ['Triagem por telefone', 'SCREEN'],
+    ['Entrevista presencial', 'ONSITE'], ['Avaliação DISC', 'ONSITE'],
+    ['Proposta', 'OFFER'], ['Contratado', 'HIRED'],
+  ])('infere %s sem alterar o tipo de negócio', (name, type) => {
+    expect(inferStageType(name)).toBe(type);
   });
 });
