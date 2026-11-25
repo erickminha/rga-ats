@@ -1,3 +1,5 @@
+import { OriginalResume } from '@/components/original-resume';
+import { originalResumeEnabled } from '@/server/imports/rga-drive';
 import { dimensions, scoreDisc, validatedDiscInterpretation, type ScoringKey } from '@/lib/native-disc';
 import { OpinionEditor } from '@/components/opinion-editor';
 import { opinionTemplates } from '@/lib/professional-opinion';
@@ -16,7 +18,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { db } from '@/lib/db';
 import { PrivacyControls } from '@/components/privacy-controls';
-import { isAdmin, requireSession } from '@/lib/session';
+import { canManageRecruiting, isAdmin, requireSession } from '@/lib/session';
 import { addNoteAction, saveCustomFieldsAction } from '@/app/(app)/actions';
 import { CandidateStatusControls } from '@/components/archive-controls';
 import { ActivityFeed } from '@/components/activity-feed';
@@ -586,6 +588,7 @@ export async function CandidateProfile({ id }: { id: string }) {
             />
           </div>
 
+          {!resumeFile && !contact.isAnonymized && !contact.retentionHold && originalResumeEnabled(ctx.orgId) && canManageRecruiting(ctx) && <OriginalResume key={contact.id} contactId={contact.id} />}
           <ContactCard
             opportunityId={opportunity.id}
             contactId={contact.id}

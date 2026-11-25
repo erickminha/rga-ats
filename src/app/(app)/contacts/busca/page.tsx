@@ -1,7 +1,9 @@
+import { OriginalResume } from '@/components/original-resume';
+import { originalResumeEnabled } from '@/server/imports/rga-drive';
 import { ResumePreview } from '@/components/resume-preview';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { requireSession } from '@/lib/session';
+import { canManageRecruiting, requireSession } from '@/lib/session';
 import { db } from '@/lib/db';
 import { firstParams, type SearchParams } from '@/lib/utils';
 import { publicPostingText } from '@/lib/public-careers';
@@ -79,7 +81,8 @@ export default async function TalentSearchPage({ searchParams }: { searchParams:
         </div>
         <p className="text-sm">{[row.headline, row.location, profile.state, row.salaryExpectation !== null ? formatSalary(row.salaryExpectation) : null].filter(Boolean).join(' · ') || 'Perfil profissional não informado'}</p>
         {profile.skills && <p className="break-words text-sm">Competências: {profile.skills}</p>}
-        <p className="text-xs text-ink-2">{row.hasResume ? 'Com currículo' : 'Sem currículo'} · Atualizado em {dateBR(row.updatedAt)}</p>
+        <p className="text-xs text-ink-2">{row.hasResume ? 'Com currículo anexado' : 'Sem currículo anexado'} · Atualizado em {dateBR(row.updatedAt)}</p>
+        {!row.hasResume && originalResumeEnabled(ctx.orgId) && canManageRecruiting(ctx) && <OriginalResume contactId={row.id} />}
         {row.hasResume && row.resumeFileId && <ResumePreview fileId={row.resumeFileId} />}
         {row.tags.length > 0 && <p className="break-words text-sm">{row.tags.join(' · ')}</p>}
         {postingId && linked.has(row.id) && <p className="text-sm">Já vinculado a esta vaga. Consulte o histórico na ficha.</p>}

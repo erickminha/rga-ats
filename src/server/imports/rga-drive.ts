@@ -1,6 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { db } from '@/lib/db';
-import { isAdmin, type SessionContext } from '@/lib/session';
+import { canManageRecruiting, isAdmin, type SessionContext } from '@/lib/session';
 import { RGA_IMPORT_PROVIDER, TALENT_SOURCE } from '@/lib/rga-import';
 import { MAX_RESUME_BYTES } from '@/server/resume';
 import { storeExtractedResume } from '@/server/resume-upload';
@@ -37,19 +37,35 @@ export function linkedResume(rows: string[][], origin: string) {
 const eligible = (orgId: string, id: string) => ({ orgId, id, isAnonymized: false, retentionHold: false,
   consents: { some: { orgId, purpose: 'PROFILE_STORAGE' as const, withdrawnAt: null } } });
 
+async function importedResumeId(orgId: string, contactId: string, rows?: string[][]) {
+  const contact = await db.contact.findFirst({ where: eligible(orgId, contactId), select: { id: true } });
+  if (!contact) throw new Error('PRIVACY');
+  const prefix = TALENT_SOURCE + ':id:';
+  const refs = await db.importRef.findMany({ where: { orgId, provider: RGA_IMPORT_PROVIDER, kind: 'contact',
+    internalId: contactId, externalId: { startsWith: prefix } }, take: 2, select: { externalId: true } });
+  if (refs.length !== 1) throw new Error('IDENTITY');
+  const driveId = linkedResume(rows ?? await readTalentSheet(), refs[0].externalId.slice(prefix.length));
+  if (!driveId) throw new Error('IDENTITY');
+  return driveId;
+}
+
+export async function originalResumeUrl(ctx: SessionContext, contactId: string) {
+  if (!ctx.userId || !canManageRecruiting(ctx) || !originalResumeEnabled(ctx.orgId)) throw new Error('FORBIDDEN');
+  const id = await importedResumeId(ctx.orgId, contactId);
+  return 'https://drive.google.com/open?id=' + encodeURIComponent(id);
+}
+
+export function originalResumeEnabled(orgId: string) {
+  return orgId === process.env.RGA_TALENT_SYNC_ORG_ID &&
+    Boolean(process.env.RGA_TALENT_SHEET_ID && process.env.RGA_GOOGLE_SERVICE_ACCOUNT);
+}
+
 type Metadata = { size: number; md5: string; version: string };
 async function source(ctx: SessionContext, contactId: string, rows?: string[][]) {
   if (!ctx.userId || !isAdmin(ctx) || ctx.orgId !== process.env.RGA_TALENT_SYNC_ORG_ID) throw new Error('FORBIDDEN');
   const folder = process.env.RGA_RESUME_FOLDER_ID;
   if (!folder || !idPattern.test(folder)) throw new Error('CONFIG');
-  const contact = await db.contact.findFirst({ where: eligible(ctx.orgId, contactId), select: { id: true } });
-  if (!contact) throw new Error('PRIVACY');
-  const prefix = TALENT_SOURCE + ':id:';
-  const refs = await db.importRef.findMany({ where: { orgId: ctx.orgId, provider: RGA_IMPORT_PROVIDER, kind: 'contact',
-    internalId: contactId, externalId: { startsWith: prefix } }, take: 2, select: { externalId: true } });
-  if (refs.length !== 1) throw new Error('IDENTITY');
-  const driveId = linkedResume(rows ?? await readTalentSheet(), refs[0].externalId.slice(prefix.length));
-  if (!driveId) throw new Error('IDENTITY');
+  const driveId = await importedResumeId(ctx.orgId, contactId, rows);
   const token = await readGoogleToken('https://www.googleapis.com/auth/drive.readonly');
   const endpoint = 'https://www.googleapis.com/drive/v3/files/' + driveId;
   const headers = { authorization: 'Bearer ' + token };

@@ -1,3 +1,5 @@
+import { OriginalResume } from '@/components/original-resume';
+import { originalResumeEnabled } from '@/server/imports/rga-drive';
 import { talentSourceFields } from '@/server/talent-source-fields';
 import { ResumePreview } from '@/components/resume-preview';
 import { textRecord } from '@/lib/i18n/pt-BR/assessment';
@@ -6,7 +8,7 @@ import { btnTonal, inputClass } from '@/components/form-controls';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
-import { isAdmin, requireSession } from '@/lib/session';
+import { canManageRecruiting, isAdmin, requireSession } from '@/lib/session';
 import { TalentPreferenceForm, TalentProfileForm, TalentResumeControls } from '@/components/talent-profile-form';
 import { readCareerProfile } from '@/lib/talent-profile';
 import { dateBR, outcomeCategory, outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
@@ -82,6 +84,7 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
     <section id="curriculos" className="mb-4 rounded-card bg-surface p-4">
       <h2 className="mb-3 font-semibold">Currículos e documentos</h2>
       {isAdmin(ctx) && ctx.orgId === process.env.RGA_TALENT_SYNC_ORG_ID && process.env.RGA_RESUME_FOLDER_ID && <RgaDriveResume contactId={id} />}
+      {!person.resumeFileId && originalResumeEnabled(ctx.orgId) && canManageRecruiting(ctx) && <OriginalResume contactId={id} />}
       {files.length === 0 && <p className="mb-3 text-sm">Nenhum documento anexado.</p>}
       <ul className="mb-4 grid gap-2">
         {files.map((file) => <li key={file.id} className="rounded-field border border-line p-3 text-sm">
