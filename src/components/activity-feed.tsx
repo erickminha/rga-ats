@@ -74,8 +74,16 @@ function describe(event: FeedEvent): string {
       return `Etiquetas atualizadas: ${Array.isArray(p.tags) ? (p.tags as string[]).join(', ') : ''}`;
     case 'opportunity.imported':
       return `Importado de ${p.source ?? 'outro ATS'}`;
+    case 'disc.invited': return 'Convite DISC gerado';
+    case 'disc.submitted': return 'Questionário DISC respondido';
+    case 'disc.emailed': return 'Convite DISC enviado por e-mail';
+    case 'disc.cancelled': return 'Convite DISC cancelado';
+    case 'disc.interpreted': return 'Interpretação DISC preparada';
+    case 'disc.interpretation_edited': return 'Interpretação DISC revisada';
+    case 'disc.reviewed': return 'Revisão DISC concluída';
+    case 'disc.recalculated': return 'DISC recalculado em nova versão';
     default:
-      return `Atividade registrada (${event.verb})`;
+      return 'Atividade registrada';
   }
 }
 

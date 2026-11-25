@@ -534,3 +534,21 @@ describe.skipIf(!hasDb)('contacts keyset pages', () => {
     expect(await walkContacts(orgId, { q: 'other org' })).toEqual([]);
   });
 });
+
+
+describe.skipIf(!hasDb)('Banco de talentos RGA — campos operacionais', () => {
+  it('preserva a ordem de cadastro e projeta observação sem expor snapshots', async () => {
+    const { org } = await createOrg();
+    const older = await db.contact.create({ data: { orgId: org.id, name: 'Pessoa fictícia anterior', headline: 'Auxiliar', createdAt: new Date('2026-01-01T12:00:00Z'), emails: [], phones: [], links: [], tags: [] } });
+    const newer = await db.contact.create({ data: { orgId: org.id, name: 'Pessoa fictícia recente', headline: 'Analista', createdAt: new Date('2026-02-01T12:00:00Z'), emails: [], phones: [], links: [], tags: [] } });
+    await db.importRef.create({ data: { orgId: org.id, provider: 'planilha-rga', kind: 'contact', externalId: 'rga-banco-de-talentos:id:ficticio', internalId: newer.id,
+      snapshot: { origemPlanilha: { cargo: 'Analista', observacao: 'Observação fictícia', idOrigem: 'interno' } } } });
+    const result = await contactsPage(org.id, {}, { limit: 2 });
+    expect(result.rows.map(row => row.id)).toEqual([newer.id, older.id]);
+    expect(result.rows[0]).toMatchObject({ desiredRole: 'Analista', observation: 'Observação fictícia', registeredAt: '2026-02-01T12:00:00.000Z' });
+    expect(result.rows[1].observation).toBeNull();
+    expect(result.rows[0]).not.toHaveProperty('snapshot');
+    await db.contact.update({ where: { id: newer.id }, data: { retentionHold: true } });
+    expect((await contactsPage(org.id, {}, { limit: 2 })).rows[0].observation).toBeNull();
+  });
+});

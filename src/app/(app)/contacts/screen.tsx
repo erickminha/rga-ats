@@ -45,6 +45,16 @@ export function ContactsScreen({ data }: { data: Awaited<ReturnType<typeof loadC
           <div className="flex min-h-0 min-w-0 flex-1 flex-col pt-2">
             <Link href="/contacts/busca" className={buttonClass({ variant: 'secondary', size: 'sm', className: 'mb-3 self-start' })}><SlidersHorizontal /> Filtros avançados e busca por perfil</Link>
             <ContactsSearch />
+            {data.talentTags.length > 0 && <form action="/contacts" className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+              {data.q && <input type="hidden" name="q" value={data.q} />}
+              {data.poolId && <input type="hidden" name="pool" value={data.poolId} />}
+              <label className="flex items-center gap-2">Etiqueta <select name="tag" defaultValue={data.tag} className={inputClass}>
+                <option value="">Todas</option>
+                {data.tag && !data.talentTags.includes(data.tag) && <option value={data.tag}>{data.tag}</option>}
+                {data.talentTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+              </select></label>
+              <button className={buttonClass({ variant: 'secondary', size: 'sm' })}>Filtrar</button>
+            </form>}
             <ContactsTable
               page={data.page}
               after={data.after}

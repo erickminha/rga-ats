@@ -24,18 +24,7 @@ import { TextSwap } from '@/components/ui/motion';
 import { CopyButton } from '@/components/ui/copy-button';
 import { LocalTime } from '@/components/local-time';
 
-const DEFAULT_LETTER = `Dear {{candidate_name}},
-
-We are delighted to offer you the position of {{job_title}} at {{company_name}}.
-
-Your compensation will be {{salary}}{{equity_clause}}. Your anticipated start date is {{start_date}}.
-
-This offer{{expiry_clause}} is contingent on any background or reference checks we have discussed, and this letter does not constitute a contract of employment for any specific period.
-
-We would be thrilled to have you on the team. To accept, review this letter and sign below.
-
-Warmly,
-{{company_name}}`;
+import { DEFAULT_OFFER_LETTER as DEFAULT_LETTER } from '@/lib/i18n/pt-BR/offer';
 
 const STATUS_TONES: Record<string, Tone> = {
   DRAFT: 'neutral',
@@ -171,7 +160,7 @@ export function OfferSection({
             <div key={o.id} className="px-5 py-4">
               <div className="flex items-center justify-between gap-2">
                 <Badge tone={STATUS_TONES[o.status]}>
-                  {STATUS_LABELS[o.status] ?? o.status.toLowerCase()}
+                  {STATUS_LABELS[o.status] ?? 'Situação não informada'}
                 </Badge>
                 <span className="text-xs text-ink-2">
                   <LocalTime date={o.createdAt} options={{ year: 'numeric', month: 'numeric', day: 'numeric' }} />

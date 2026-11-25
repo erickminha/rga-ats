@@ -15,18 +15,8 @@ import { requireRecruitingAccess, isAdmin, type SessionContext } from '@/lib/ses
  * page where the candidate signs by typed name (intent + timestamp kept).
  */
 
-export const DEFAULT_OFFER_LETTER = `Dear {{candidate_name}},
-
-We are delighted to offer you the position of {{job_title}} at {{company_name}}.
-
-Your compensation will be {{salary}}{{equity_clause}}. Your anticipated start date is {{start_date}}.
-
-This offer{{expiry_clause}} is contingent on any background or reference checks we have discussed, and this letter does not constitute a contract of employment for any specific period.
-
-We would be thrilled to have you on the team. To accept, review this letter and sign below.
-
-Warmly,
-{{company_name}}`;
+import { DEFAULT_OFFER_LETTER } from '@/lib/i18n/pt-BR/offer';
+export { DEFAULT_OFFER_LETTER };
 
 const OFFER_TRANSITIONS: Record<OfferStatus, OfferStatus[]> = {
   DRAFT: ['SENT', 'PENDING_APPROVAL', 'WITHDRAWN'],
@@ -65,18 +55,21 @@ export function renderOfferLetter(
   contactName: string,
   orgName: string,
 ): string {
+  // Preserve formatting for the original English template already issued.
+  const legacy = !!offer.letterBody?.startsWith('Dear {{candidate_name}},');
+  const locale = legacy ? 'en-US' : 'pt-BR';
   const fmtDate = (d: Date | null) =>
-    d ? d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'to be agreed';
+    d ? d.toLocaleDateString(locale, { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : legacy ? 'to be agreed' : 'a combinar';
   return renderTemplate(offer.letterBody ?? DEFAULT_OFFER_LETTER, {
     candidate_name: contactName,
     job_title: offer.jobTitle,
     company_name: orgName,
     salary: offer.salaryAmount
-      ? `${offer.salaryCurrency} ${offer.salaryAmount.toLocaleString('en-US')} per year`
-      : 'as discussed',
-    equity_clause: offer.equity ? `, plus ${offer.equity} equity` : '',
+      ? `${offer.salaryCurrency} ${offer.salaryAmount.toLocaleString(locale)} ${legacy ? 'per year' : 'por ano'}`
+      : legacy ? 'as discussed' : 'conforme combinado',
+    equity_clause: offer.equity ? legacy ? `, plus ${offer.equity} equity` : `, mais ${offer.equity} de participação societária` : '',
     start_date: fmtDate(offer.startDate),
-    expiry_clause: offer.expiresAt ? ` (valid until ${fmtDate(offer.expiresAt)})` : '',
+    expiry_clause: offer.expiresAt ? ` (${legacy ? 'valid until' : 'válida até'} ${fmtDate(offer.expiresAt)})` : '',
   });
 }
 

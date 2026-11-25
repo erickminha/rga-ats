@@ -35,12 +35,12 @@ export function RoleOwner({
     <Dropdown
       compact
       onSurface
-      label={current ? "Alterar" : 'Assign'}
+      label={current ? "Alterar" : 'Atribuir'}
       showSelectedInTrigger={false}
       value={current?.id ?? ''}
       options={[
         ...teammates.map((t) => ({ value: t.id, label: t.name })),
-        ...(current ? [{ value: NOBODY, label: 'No recruiter' }] : []),
+        ...(current ? [{ value: NOBODY, label: 'Sem responsável' }] : []),
       ]}
       onSelect={(value) => {
         const next = value === NOBODY ? null : (teammates.find((t) => t.id === value) ?? null);
@@ -49,7 +49,7 @@ export function RoleOwner({
           startTransition,
           () => setCurrent(next),
           () => setPostingOwnerAction(postingId, next?.id ?? null),
-          'Changing the recruiter',
+          'Alterando o responsável',
         );
       }}
     />

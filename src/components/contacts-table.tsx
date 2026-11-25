@@ -234,7 +234,7 @@ export function ContactsTable({
       {ids.length ? (
         <div className={`${surface} flex flex-wrap items-center gap-3 px-4 py-2.5`}>
           <span className="text-xs font-medium tabular-nums text-ink-2">
-            {fmt(ids.length)} selecionados{shownTotal ? ` of ${fmt(shownTotal.count)}${shownTotal.capped ? '+' : ''}` : ''}
+            {fmt(ids.length)} selecionados{shownTotal ? ` de ${fmt(shownTotal.count)}${shownTotal.capped ? '+' : ''}` : ''}
           </span>
           {staticPools.length ? (
             <span className="flex items-center gap-2">
@@ -419,7 +419,7 @@ function ContactRowCells({ row: c, index, selected, onToggle }: RowProps) {
       </td>
       <td className={`${cell} text-ink-2`} title={c.desiredRole ?? c.headline ?? undefined}>{c.desiredRole ?? c.headline ?? '—'}</td>
       <td className={cell}>
-        {c.observation ? <span className="block truncate text-ink-2" title={c.observation}>{c.observation}</span> : <span className="text-ink-3">—</span>}
+        {c.observation ? <Link href={`/contacts/${c.id}#observacao`} className="line-clamp-2 whitespace-normal break-words text-xs leading-4 text-ink-2 hover:underline" title={c.observation}>{c.observation}</Link> : <span className="text-ink-3">—</span>}
       </td>
       <td className={`${cell} tabular-nums text-ink-2`}>{c.registeredAt ? new Date(c.registeredAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'}</td>
       <td className={cell}>

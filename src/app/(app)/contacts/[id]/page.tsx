@@ -1,3 +1,4 @@
+import { talentSourceFields } from '@/server/talent-source-fields';
 import { ResumePreview } from '@/components/resume-preview';
 import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { updateTalentMembershipAction } from '@/app/(app)/talent-search-actions';
@@ -47,6 +48,12 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
     select: { id: true, name: true },
   })).map((user) => [user.id, user.name]));
   const professional = readCareerProfile(person.careerProfile);
+  const source = !person.retentionHold ? (await talentSourceFields(ctx.orgId, [id])).get(id) : undefined;
+  const recentNote = !person.retentionHold && !source?.observation?.trim() ? await db.note.findFirst({
+    where: { orgId: ctx.orgId, opportunity: { orgId: ctx.orgId, contactId: id, confidential: false } },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { body: true },
+  }) : null;
+  const observation = source?.observation?.trim() || recentNote?.body.trim() || '';
   const storage = person.consents.some((grant) => !grant.withdrawnAt) ? 'Autorizado'
     : person.consents.length ? 'Sem autorização vigente' : 'Não informado';
   const resumeFiles = files.filter((file) => file.resumeVersion || file.id === person.resumeFileId);
@@ -65,6 +72,12 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
         headline: person.headline ?? '', location: person.location ?? '',
         salary: person.salaryExpectation === null ? '' : (person.salaryExpectation / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
       }} />
+    </section>
+    <section id="observacao" className="mb-4 rounded-card bg-surface p-4">
+      <h2 className="mb-2 font-semibold">Observação do banco de talentos</h2>
+      <p className="mb-2 text-sm text-ink-2">Cadastro em {dateBR(person.createdAt)}</p>
+      <p className="whitespace-pre-wrap break-words text-sm">{observation || 'Nenhuma observação registrada.'}</p>
+      {observation && <p className="mt-2 text-xs text-ink-2">{source?.observation?.trim() ? 'Observação importada da planilha de origem.' : 'Anotação de participação mais recente.'}</p>}
     </section>
     <section id="curriculos" className="mb-4 rounded-card bg-surface p-4">
       <h2 className="mb-3 font-semibold">Currículos e documentos</h2>

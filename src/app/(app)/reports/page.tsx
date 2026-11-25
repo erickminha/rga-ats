@@ -399,7 +399,7 @@ export default async function ReportsPage({
                 {schedules.map((s) => (
                   <div key={s.id} className="flex items-center justify-between gap-3 py-2.5 text-sm first:pt-0">
                     <span className="min-w-0 truncate">
-                      <span className="text-xs text-ink-2 capitalize">{s.cadence.toLowerCase()}</span>{' '}
+                      <span className="text-xs text-ink-2 capitalize">{s.cadence === 'DAILY' ? 'Diário' : s.cadence === 'WEEKLY' ? 'Semanal' : 'Não informado'}</span>{' '}
                       → {s.recipients.join(', ')}
                     </span>
                     <form action={deleteReportScheduleAction.bind(null, s.id)}>

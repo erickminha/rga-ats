@@ -138,7 +138,7 @@ export function FeedbackSection({
 
       {hiddenCount > 0 ? (
         <p className="mb-3 rounded-card bg-surface px-4 py-3 text-sm text-ink-2">
-          {hiddenCount} avaliação{hiddenCount === 1 ? ' is' : 's are'} ficam ocultas até você enviar sua avaliação. A organização usa avaliações independentes.
+          {hiddenCount} {hiddenCount === 1 ? 'avaliação fica oculta' : 'avaliações ficam ocultas'} até você enviar sua avaliação. A organização usa avaliações independentes.
         </p>
       ) : null}
 

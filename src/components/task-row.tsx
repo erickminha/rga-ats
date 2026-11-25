@@ -53,7 +53,7 @@ export function TaskRow({
         {task.assigneeName ? `${task.assigneeName} · ` : ''}
         {task.dueAt
           ? <LocalTime date={task.dueAt} options={{ month: 'short', day: 'numeric' }} />
-          : 'no due date'}
+          : 'sem prazo'}
       </span>
     </div>
   );
