@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { requireSession, isAdmin } from '@/lib/session';
 import { db } from '@/lib/db';
 import { discAiConfiguration } from '@/server/disc-ai-settings';
+import { assistantStatus } from '@/server/assistant-provider';
+import { AssistantStatusCard } from '@/components/assistant-status-card';
 import { DiscAiSettingsForm } from '@/components/disc-ai-settings-form';
 import { PageHeader } from '@/components/page-header';
 
@@ -16,7 +18,9 @@ export default async function DiscAiSettingsPage() {
   ]);
   return <main className="grid max-w-4xl gap-4 p-5">
     <Link className="underline" href="/disc">Voltar à Central DISC</Link>
-    <PageHeader title="Inteligência artificial · DISC" subtitle="Ordem de provedores autorizados, limites e diagnóstico." />
+    <PageHeader title="Inteligência artificial" subtitle="Assistente geral e interpretação DISC: configurações independentes." />
+    <AssistantStatusCard config={assistantStatus()} />
+    <h2 className="font-semibold">Interpretação DISC</h2>
     <DiscAiSettingsForm config={config} />
     <section className="rga-card grid gap-2 p-4">
       <h2 className="font-semibold">Últimas interpretações e testes</h2>

@@ -70,6 +70,7 @@ export function WhatsappComposer({ opportunityId, name, job, brand, phones, stat
         <label className="grid text-sm">Local ou link da entrevista<input className={inputClass} value={meeting} onChange={e => { setMeeting(e.target.value); setEdited(null); setConfirmed(false); }} /></label>
       </div>}
       <textarea aria-label="Prévia da mensagem" className={textareaClass} rows={8} maxLength={3000} value={draft} onChange={e => { setEdited(e.target.value); setConfirmed(false); }} />
+      <p className="text-sm">Destinatário: {phone ? '+' + phone : 'Sem telefone válido'}</p>
       <label className="text-sm"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} /> Revisei o texto e o destinatário.</label>
       <div className="flex flex-wrap gap-2">
         <button disabled={!confirmed || !draft.trim()} className={buttonClass({ variant: 'secondary' })} onClick={async () => setNotice(await copyText(draft))}>Copiar mensagem</button>

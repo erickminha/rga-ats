@@ -130,7 +130,7 @@ export async function CandidateProfile({ id }: { id: string }) {
     }),
     db.organization.findUnique({
       where: { id: ctx.orgId },
-      select: { hideFeedbackUntilSubmitted: true, requireOfferApproval: true, opinionTemplate: true },
+      select: { name: true, hideFeedbackUntilSubmitted: true, requireOfferApproval: true, opinionTemplate: true },
     }),
     db.stage.findMany({ where: { orgId: ctx.orgId }, orderBy: { order: 'asc' } }),
     db.archiveReason.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: 'asc' } }),

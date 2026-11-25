@@ -111,7 +111,7 @@ export type AiTasks = {
   answer: {
     input: {
       question: string;
-      excerpts: { n: number; contactName: string; kind: 'transcript' | 'resume' | 'note'; title: string; text: string }[];
+      excerpts: { n: number; contactName: string; kind: 'transcript' | 'resume' | 'note' | 'profile'; title: string; text: string }[];
     };
     output: { model: string; answer: string };
   };

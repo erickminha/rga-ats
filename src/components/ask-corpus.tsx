@@ -2,6 +2,7 @@
 
 import { appLocale } from '@/lib/i18n';
 import { askError, searchBox } from '@/lib/i18n/pt-BR/navigation';
+import Link from 'next/link';
 import { CandidateLink } from '@/components/candidate-link';
 import { useState, useTransition } from 'react';
 import { askCorpusAction } from '@/app/(app)/actions';
@@ -93,6 +94,8 @@ export function CorpusAnswerView({ result, onOpenSource }: { result: CorpusAnswe
                         >
                           {s.contactName}
                         </CandidateLink>
+                      ) : s.contactId ? (
+                        <Link href={'/contacts/' + s.contactId} onClick={onOpenSource} className="font-medium text-ink hover:underline">{s.contactName}</Link>
                       ) : (
                         <span className="font-medium text-ink">{s.contactName}</span>
                       )}{' '}

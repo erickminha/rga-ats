@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { adFieldLabels, readAdFields, type AdFields } from '@/lib/rga-productivity';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { ApplyForm } from '@/components/apply-form';
@@ -42,6 +43,7 @@ export default async function PostingPage({ params, searchParams }: { params: Pa
   if (!org || !posting) notFound();
 
   const { description, requirements } = publicPostingText(posting.content);
+  const advertisement = readAdFields(posting.content);
   const salary = formatPublicSalary(posting.salaryMin, posting.salaryMax, posting.salaryCurrency);
   const client = publicClientName(posting);
   const logo = publicPostingLogo(posting, org.kind === 'AGENCY');
@@ -81,6 +83,7 @@ export default async function PostingPage({ params, searchParams }: { params: Pa
             ['Modalidade', jobBoard.workplace[posting.workplaceType]],
             ['Contratação', jobBoard.commitment[posting.commitment]],
             ['Remuneração', salary],
+            ...Object.entries(adFieldLabels).map(([key,label]) => [label, advertisement[key as keyof AdFields] ?? null]),
           ].map(([label, value]) => value ? <div key={label} className="min-w-0 break-words">
             <dt className="text-xs text-ink-2">{label}</dt><dd className="mt-1 font-medium">{value}</dd>
           </div> : null)}
