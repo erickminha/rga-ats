@@ -1,4 +1,4 @@
-import { isArchiveCategory, outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
+import { displayArchiveReason, displayStageName, isArchiveCategory, outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
 type FeedEvent = {
   id: string;
   verb: string;
@@ -11,13 +11,13 @@ function describe(event: FeedEvent): string {
   const p = event.payload ?? {};
   switch (event.verb) {
     case 'opportunity.created':
-      return `Adicionado ao funil na etapa ${p.stageName ?? 'não informada'}`;
+      return `Adicionado ao funil na etapa ${displayStageName(p.stageName)}`;
     case 'opportunity.stage_changed':
-      return `Da etapa ${p.from} para ${p.to}${p.note ? ` · ${p.note}` : ''}`;
+      return `Da etapa ${displayStageName(p.from)} para ${displayStageName(p.to)}${p.note ? ` · ${p.note}` : ''}`;
     case 'opportunity.hired':
       return `Contratação registrada${typeof p.hiredAt === 'string' ? ` em ${p.hiredAt.split('-').reverse().join('/')}` : ''}`;
     case 'opportunity.archived':
-      return `${typeof p.category === 'string' && isArchiveCategory(p.category) ? outcomeNames[p.category] : 'Participação encerrada'} · ${p.reason ?? 'Sem informação'}${p.stage ? ` · Etapa: ${p.stage}` : ''}${p.note ? ` · ${p.note}` : ''}`;
+      return `${typeof p.category === 'string' && isArchiveCategory(p.category) ? outcomeNames[p.category] : 'Participação encerrada'} · ${displayArchiveReason(p.reason)}${p.stage ? ` · Etapa: ${displayStageName(p.stage)}` : ''}${p.note ? ` · ${p.note}` : ''}`;
     case 'opportunity.unarchived':
       return 'Participação reaberta';
     case 'note.added':

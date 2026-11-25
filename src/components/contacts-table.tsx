@@ -187,7 +187,7 @@ export function ContactsTable({
     const added = store.pages > seenPages.current;
     seenPages.current = store.pages;
     if (!added) return;
-    const of = count ? ` of ${fmt(count.count)}${count.capped ? '+' : ''}` : '';
+    const of = count ? ` de ${fmt(count.count)}${count.capped ? '+' : ''}` : '';
     setAnnouncement(`Loaded more contacts. Showing ${fmt(store.rows.length)}${of}.`);
     const want = focusAfterLoad.current;
     focusAfterLoad.current = null;

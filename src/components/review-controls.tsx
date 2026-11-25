@@ -82,7 +82,7 @@ export function ReviewRowActions({
         <button
           onClick={() => act(() => moveStageAction(opportunityId, nextStageId), "Avançando a candidatura", advanceLeavesQueue)}
           className={buttonClass({ variant: 'tonal', size: 'xs' })}
-          title={nextStageName ? `Move to ${nextStageName}` : undefined}
+          title={nextStageName ? `Mover para ${nextStageName}` : undefined}
         >
           Avançar
         </button>
