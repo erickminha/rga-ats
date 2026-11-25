@@ -10,7 +10,7 @@ import { Toaster } from '@/components/toaster';
 import { PersistOrgNav } from '@/components/persist-org-nav';
 import { DrawerHost } from '@/components/drawer-host';
 import { canViewClientCompanies } from '@/server/client-companies';
-import { aiConfigured } from '@/server/ai-client';
+import { assistantConfigured } from '@/server/assistant-provider';
 
 export default async function AppLayout({
   children,
@@ -69,7 +69,7 @@ export default async function AppLayout({
         user={{ name: session.user.name ?? '', email: session.user.email ?? '' }}
         org={{ name: org?.name ?? navigation.workspace, logoFileId: org?.logoFileId ?? null }}
         signOutAction={handleSignOut}
-        aiEnabled={aiConfigured()}
+        aiEnabled={assistantConfigured()}
         showClients={showClients}
       />
       {fetched ? (

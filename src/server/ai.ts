@@ -1,3 +1,5 @@
+import { assistantProvider } from '@/server/assistant-provider';
+import { askProfessionalProfiles } from '@/server/rga-assistant';
 import { lockIdentifiableContact } from '@/server/contact-lock';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
@@ -84,8 +86,9 @@ function scoreCriteria(criteria: MatchCriterion[], answers: EvaluationResult['cr
 // ---------- AI corpus search (transcripts + resumes + notes) ----------
 
 export type CorpusSource = {
-  kind: 'transcript' | 'resume' | 'note';
+  kind: 'transcript' | 'resume' | 'note' | 'profile';
   contactName: string;
+  contactId?: string;
   opportunityId: string | null;
   title: string;
   snippet: string;
@@ -125,9 +128,10 @@ function chunkAround(text: string, terms: string[], radius = 400): string {
  */
 export async function askCorpus(ctx: SessionContext, question: string): Promise<CorpusAnswer> {
   requireRecruitingAccess(ctx);
+  if (assistantProvider()) return askProfessionalProfiles(ctx, question);
   if (!aiConfigured()) throw new AiUnavailableError('not_configured');
   const terms = keywords(question);
-  if (!terms.length) return { answer: 'Ask a more specific question.', sources: [] };
+  if (!terms.length) return { answer: 'Faça uma pergunta mais específica.', sources: [] };
 
   const termFilter = (field: 'content' | 'resumeText' | 'body') =>
     terms.map((t) => ({ [field]: { contains: t, mode: 'insensitive' as const } }));
@@ -162,20 +166,20 @@ export async function askCorpus(ctx: SessionContext, question: string): Promise<
       kind: 'resume' as const,
       contactName: c.name,
       opportunityId: c.opportunities[0]?.id ?? null,
-      title: 'Resume',
+      title: 'Currículo',
       snippet: chunkAround(c.resumeText ?? '', terms),
     })),
     ...notes.map((n) => ({
       kind: 'note' as const,
       contactName: n.opportunity.contact.name,
       opportunityId: n.opportunityId,
-      title: 'Note',
+      title: 'Anotação',
       snippet: chunkAround(n.body, terms),
     })),
   ].slice(0, 10);
 
   if (!sources.length) {
-    return { answer: 'Nothing in your transcripts, resumes, or notes matches that question.', sources: [] };
+    return { answer: 'Nenhuma transcrição, currículo ou anotação corresponde à pergunta.', sources: [] };
   }
 
   const { answer } = await runAiTask('answer', {

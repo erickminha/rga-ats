@@ -32,6 +32,8 @@ function describe(event: FeedEvent): string {
       return `Entrevista cancelada: ${p.title}`;
     case 'feedback.submitted':
       return `Avaliação enviada — ${p.rating}`;
+    case 'whatsapp.manual_confirmed':
+      return 'Envio por WhatsApp informado pela equipe';
     case 'email.sent':
       return `E-mail enviado: ${p.subject}`;
     case 'email.scheduled':

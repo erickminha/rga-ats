@@ -1,5 +1,7 @@
 'use server';
 
+import { adFieldsFromForm } from '@/lib/rga-productivity';
+
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type {
@@ -108,6 +110,8 @@ async function savePostingForm(postingId: string | null, formData: FormData): Pr
     salaryMax: parseIntOrUndefined(formData.get('salaryMax')),
     salaryCurrency: String(formData.get('salaryCurrency') ?? '').trim() || undefined,
     description: String(formData.get('description') ?? '').trim() || undefined,
+    advertisement: Array.from(formData.keys()).some(key => key.startsWith('ad_')) ? adFieldsFromForm(formData) : undefined,
+    requirements: formData.has('requirements') ? String(formData.get('requirements') ?? '').split(/\r?\n/).map(x => x.trim()).filter(Boolean).slice(0, 40).map(x => x.slice(0, 500)) : undefined,
   };
   try {
     if (postingId !== null) {

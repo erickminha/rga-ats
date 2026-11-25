@@ -13,6 +13,7 @@ import { decodeCursor } from '@/lib/list-cursor';
 import { canManageRecruiting, requireAuthenticatedSession, getAuthSession, isAdmin, requireSession } from '@/lib/session';
 import { readOrgNavCookie } from '@/lib/org-nav-cookie';
 import { aiConfigured } from '@/server/ai';
+import { assistantConfigured } from '@/server/assistant-provider';
 import { searchAll } from '@/server/contacts';
 import { listPostings } from '@/server/postings';
 import { listReferrals } from '@/server/referrals';
@@ -345,7 +346,7 @@ export async function loadTasksPage() {
 export async function loadSearchPage(q: string) {
   const ctx = await requireSession();
   const results = await searchAll(ctx.orgId, q);
-  return { q, aiEnabled: aiConfigured(), results };
+  return { q, aiEnabled: assistantConfigured(), results };
 }
 
 export async function loadReviewPage(postingFilter: string) {

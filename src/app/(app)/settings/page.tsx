@@ -390,6 +390,7 @@ export default async function SettingsPage({
         {section === 'hiring' ? (
         <Group title={settings.controls.scorecard}>
           <Row><a className="underline" href="/settings/modelos-avaliacao">Modelos de avaliação por competências</a></Row>
+          <Row><a className="underline" href="/settings/ia">Configurar inteligência artificial</a></Row>
           <Row>
             <p className="text-sm text-ink-2">
               {settings.controls.scorecardDescription}
