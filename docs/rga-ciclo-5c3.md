@@ -34,6 +34,7 @@ Submeter as duas entregas à auditoria antes de integrar em `homolog` e aprovar 
 ## Validação local
 
 - `prisma validate`, `npm run typecheck` e `npm run build` concluídos com sucesso após a atualização para a base integrada.
+- A suíte completa com PostgreSQL 17 local passou em 101 arquivos e 1.084 testes.
 - Cinco suítes focadas passaram com 18 testes em PostgreSQL 17 local. O recorte inclui disponibilidade e reordenação de etapas, histórico, preservação de avaliações, correção de contratação, indicadores, referências, questionário, pareceres, acesso e regressão dos fluxos do 5C.2.
 - Chromium em desktop e mobile com dados fictícios. Validados o arraste no Kanban, a mudança pela lista, o filtro de referências, a edição de status no celular e a ausência de rolagem horizontal na tela operacional e na ficha.
 
