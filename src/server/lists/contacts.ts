@@ -89,6 +89,8 @@ export async function contactsPage(
       emails: true,
       tags: true,
       createdAt: true,
+      talentSummary: { select: { headline: true, reviewedText: true } },
+      consents: { where: { orgId, purpose: 'PROFILE_STORAGE', withdrawnAt: null }, take: 1, select: { id: true } },
       retentionHold: true,
       opportunities: {
         where: { orgId, confidential: false },
@@ -122,6 +124,7 @@ export async function contactsPage(
         id: c.id,
         name: c.name,
         headline: c.headline,
+        summaryPreview: !c.retentionHold && c.consents.length ? (c.talentSummary?.reviewedText ?? c.talentSummary?.headline)?.slice(0, 160) : null,
         desiredRole: c.headline?.trim() || source?.interest?.trim() || null,
         observation: c.retentionHold ? null : source?.observation?.trim() || latest?.notes[0]?.body.slice(0, 1000).trim() || null,
         registeredAt: c.createdAt.toISOString(),

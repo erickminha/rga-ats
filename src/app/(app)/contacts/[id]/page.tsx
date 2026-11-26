@@ -1,3 +1,5 @@
+import { TalentSummaryCard } from '@/components/talent-summary-card';
+import { getTalentSummary } from '@/server/talent-summary';
 import { OriginalResume } from '@/components/original-resume';
 import { talentSourceFields } from '@/server/talent-source-fields';
 import { ResumePreview } from '@/components/resume-preview';
@@ -58,6 +60,8 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
   const storage = person.consents.some((grant) => !grant.withdrawnAt) ? 'Autorizado'
     : person.consents.length ? 'Sem autorização vigente' : 'Não informado';
   const resumeFiles = files.filter((file) => file.resumeVersion || file.id === person.resumeFileId);
+  const allowed = canManageRecruiting(ctx) && !person.retentionHold && storage === 'Autorizado';
+  const summary = allowed ? await getTalentSummary(ctx, id) : null;
 
   return <div className="mx-auto max-w-4xl px-4 pb-12 md:px-6">
     <PageHeader title={person.name} subtitle={`Cadastro atualizado em ${dateBR(person.updatedAt)}`} />
@@ -69,6 +73,7 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
       <Link className="underline" href="/contacts">Voltar ao banco de talentos</Link>
       {person.opportunities[0] && <Link className="underline" href={`/candidates/${person.opportunities[0].id}`}>Abrir participação mais recente</Link>}
     </nav>
+    {canManageRecruiting(ctx) && <TalentSummaryCard id={id} saved={summary} allowed={allowed} hasResume={resumeFiles.length > 0} />}
     <DuplicatesBanner contactId={id} duplicates={duplicates.map((duplicate) => ({ id: duplicate.id, name: duplicate.name, email: duplicate.emails[0] ?? null }))} />
     <section className="mb-4 rounded-card bg-surface p-4">
       <h2 className="mb-3 font-semibold">Dados cadastrais e perfil profissional</h2>

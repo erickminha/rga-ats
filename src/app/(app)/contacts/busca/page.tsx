@@ -79,6 +79,7 @@ export default async function TalentSearchPage({ searchParams }: { searchParams:
           {selected && <label className="text-sm"><input type="checkbox" name="person" value={row.id} /> Selecionar para a vaga</label>}
         </div>
         <p className="text-sm">{[row.headline, row.location, profile.state, row.salaryExpectation !== null ? formatSalary(row.salaryExpectation) : null].filter(Boolean).join(' · ') || 'Perfil profissional não informado'}</p>
+        {row.summaryPreview && <p className="line-clamp-2 text-sm">{row.summaryPreview}</p>}
         {profile.skills && <p className="break-words text-sm">Competências: {profile.skills}</p>}
         <p className="text-xs text-ink-2">{row.hasResume ? 'Com currículo anexado' : 'Sem currículo anexado'} · Atualizado em {dateBR(row.updatedAt)}</p>
         {!row.hasResume && canManageRecruiting(ctx) && <OriginalResume contactId={row.id} />}

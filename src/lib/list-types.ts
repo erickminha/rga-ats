@@ -32,6 +32,7 @@ export type PipelineRow = {
 export type StageCounts = { counts: Record<string, number>; total: number; capped: boolean };
 
 export type ContactRow = {
+  summaryPreview?: string | null;
   id: string;
   name: string;
   headline: string | null;

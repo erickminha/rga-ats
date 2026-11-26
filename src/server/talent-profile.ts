@@ -1,3 +1,4 @@
+import { queueTalentSummary } from './talent-summary';
 import { db } from '@/lib/db';
 import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
 import { availabilityLabels, careerFields, parseSalary, phoneDigits, statesBR } from '@/lib/talent-profile';
@@ -58,6 +59,7 @@ export async function saveTalentProfile(ctx: SessionContext, id: string | null, 
       orgId: ctx.orgId, ...actorOf(ctx), verb: id ? 'contact.updated' : 'contact.created',
       subjectType: 'contact', subjectId: contact.id,
     });
+    if (process.env.RGA_SUMMARY_AUTO === 'true') await queueTalentSummary(tx, ctx.orgId, contact.id, 20);
     return contact;
   });
   invalidateContactCounts(ctx.orgId);
@@ -85,6 +87,7 @@ export async function attachTalentResume(ctx: SessionContext, contactId: string,
         orgId: ctx.orgId, ...actorOf(ctx), verb: 'contact.resume_attached', subjectType: 'contact',
         subjectId: contactId, payload: { fileId: file.id },
       });
+      if (process.env.RGA_SUMMARY_AUTO === 'true') await queueTalentSummary(tx, ctx.orgId, contactId, 50);
     });
   } catch (error) {
     await discardUnlinkedFile(ctx.orgId, file.id).catch(() => undefined);
@@ -118,6 +121,7 @@ export async function selectTalentResume(ctx: SessionContext, contactId: string,
         });
       }
       await tx.contact.update({ where: { id: contactId }, data: { resumeFileId: file.id, resumeText: file.resumeContent } });
+      if (process.env.RGA_SUMMARY_AUTO === 'true') await queueTalentSummary(tx, ctx.orgId, contactId, 50);
     }
     await emitEvent(tx, {
       orgId: ctx.orgId, ...actorOf(ctx), verb: 'contact.resume_selected', subjectType: 'contact',
@@ -137,6 +141,8 @@ export async function recordTalentPreference(ctx: SessionContext, id: string, gr
     const now = new Date();
     await tx.consentRecord.updateMany({ where: { ...scope, withdrawnAt: null }, data: { withdrawnAt: now } });
     await tx.consentRecord.create({ data: { ...scope, withdrawnAt: granted ? null : now } });
+    if (!granted) await tx.talentSummary.deleteMany({ where: { orgId: ctx.orgId, contactId: id } });
+    else if (process.env.RGA_SUMMARY_AUTO === 'true') await queueTalentSummary(tx, ctx.orgId, id, 20);
     await emitEvent(tx, {
       orgId: ctx.orgId, ...actorOf(ctx), verb: granted ? 'consent.granted' : 'consent.withdrawn',
       subjectType: 'contact', subjectId: id, payload: { purpose: 'PROFILE_STORAGE', source: 'verified_by_staff' },

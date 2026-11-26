@@ -30,8 +30,15 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
 
   const [jobs, org] = await Promise.all([
     listImportJobs(ctx),
-    db.organization.findUnique({ where: { id: ctx.orgId }, select: { retentionMonths: true } }),
+    db.organization.findUnique({ where: { id: ctx.orgId }, select: { retentionMonths: true, kind: true } }),
   ]);
+  const syncTarget = process.env.RGA_TALENT_SYNC_ORG_ID;
+  const syncConfigured = ctx.orgId === syncTarget &&
+    /^[a-zA-Z0-9_-]{10,180}$/.test(process.env.RGA_TALENT_SHEET_ID ?? '') &&
+    Boolean(process.env.RGA_GOOGLE_SERVICE_ACCOUNT?.trim());
+  const showSync = syncTarget ? ctx.orgId === syncTarget : org?.kind === 'AGENCY';
+  const dailyEnabled = syncConfigured && process.env.RGA_TALENT_SYNC_DAILY === 'true' &&
+    Boolean(process.env.RGA_TALENT_SYNC_ADMIN_ID && (process.env.CRON_SECRET || process.env.RGA_TALENT_SCHEDULER_EMAIL));
   const open = jobs.find((j) => isOpen(j.status));
   const past = jobs.filter((j) => j !== open);
 
@@ -51,7 +58,7 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
       />
 
       <div className="mx-6 mt-4 flex max-w-3xl flex-col gap-8 pb-8">
-        {ctx.orgId === process.env.RGA_TALENT_SYNC_ORG_ID && <RgaSync />}
+        {showSync && <RgaSync configured={syncConfigured} dailyEnabled={dailyEnabled} />}
         {ctx.orgId === process.env.RGA_TALENT_SYNC_ORG_ID && process.env.RGA_RESUME_FOLDER_ID && <RgaDriveBatch />}
         {open && open.status in OPEN_COPY ? (
           <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">

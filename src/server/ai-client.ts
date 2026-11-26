@@ -1,3 +1,4 @@
+import { reserveGroq } from './groq-budget';
 import { qaFromDialogue } from '@/lib/interview-insights';
 
 /**
@@ -271,13 +272,15 @@ export async function discChat(provider: string, input: { scores: Record<string,
   if (!discAiProviders().includes(provider)) throw new AiUnavailableError('not_configured');
   const model = requestedModel ?? discAiModels(provider)[0];
   if (!model || !discAiModels(provider).includes(model)) throw new AiUnavailableError('not_configured');
+  const body = JSON.stringify({ model, max_tokens: 800, response_format: { type: 'json_object' }, messages: [{
+      role: 'system',
+      content: 'Redija em português brasileiro. Use apenas as pontuações informadas e respeite o perfil determinístico, inclusive empates. Descreva tendências autorrelatadas, sem diagnóstico, aptidão, aprovação, experiências inventadas ou fatos de entrevista. Retorne JSON com expected até 400 caracteres, detail, strengths com exatamente três frases, attention, environment e interview.',
+    }, { role: 'user', content: JSON.stringify(input) }] });
+  if (provider === 'groq' && !await reserveGroq(body, 800)) throw new AiUnavailableError('limit');
   const res = await fetch(discChatUrl(provider)!, {
     method: 'POST', redirect: 'error', signal: AbortSignal.timeout(8000),
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + process.env['RGA_DISC_' + provider.toUpperCase() + '_TOKEN'] },
-    body: JSON.stringify({ model, max_tokens: 800, response_format: { type: 'json_object' }, messages: [{
-      role: 'system',
-      content: 'Redija em português brasileiro. Use apenas as pontuações informadas e respeite o perfil determinístico, inclusive empates. Descreva tendências autorrelatadas, sem diagnóstico, aptidão, aprovação, experiências inventadas ou fatos de entrevista. Retorne JSON com expected até 400 caracteres, detail, strengths com exatamente três frases, attention, environment e interview.',
-    }, { role: 'user', content: JSON.stringify(input) }] }),
+    body,
   });
   if (!res.ok) throw new AiUnavailableError('http_' + res.status, res.status);
   const data = await res.json();

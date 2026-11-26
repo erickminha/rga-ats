@@ -1,3 +1,4 @@
+import { queueTalentSummary } from '@/server/talent-summary';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { db } from '@/lib/db';
 import { canManageRecruiting, isAdmin, type SessionContext } from '@/lib/session';
@@ -144,6 +145,7 @@ export async function confirmDriveResume(ctx: SessionContext, contactId: string,
         contactId, resumeVersion: true, uploadedById: ctx.userId, resumeContent: extracted.text, deletePendingAt: null, ...textFields(extracted, new Date()),
       } });
       await tx.contact.updateMany({ where: { orgId: ctx.orgId, id: contactId, resumeFileId: null }, data: { resumeFileId: file.id, resumeText: extracted.text } });
+      if (process.env.RGA_SUMMARY_AUTO === 'true') await queueTalentSummary(tx, ctx.orgId, contactId, 50);
       await tx.importRef.create({ data: { ...key, internalId: file.id, fingerprint: checksum, snapshot: { driveId, version: meta.version } } });
       await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'contact.resume_attached', subjectType: 'contact', subjectId: contactId,
         payload: { fileId: file.id, source: provider, version: meta.version } });

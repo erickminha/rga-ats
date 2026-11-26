@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { buttonClass } from '@/components/ui/button';
 import { navigation } from '@/lib/i18n/pt-BR/navigation';
 import { Suspense } from 'react';
 import { loadContactsPage } from '@/app/(app)/page-loaders';
@@ -15,6 +17,9 @@ async function ContactsContent({ searchParams }: { searchParams: SearchParams })
 export default function ContactsPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <Suspense fallback={<PageSkeleton title={navigation.contacts} subtitle={navigation.loadingSubtitles.contacts} />}>
+      <div className="px-4 pt-3"><Link href="/contacts/sincronizar" className={buttonClass({ variant: 'secondary', size: 'sm' })}>
+        Sincronizar banco de talentos
+      </Link></div>
       <ContactsContent searchParams={searchParams} />
     </Suspense>
   );

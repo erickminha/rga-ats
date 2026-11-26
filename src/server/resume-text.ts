@@ -1,3 +1,4 @@
+import { queueExtractedTalentSummaries } from '@/server/talent-summary';
 import type { Prisma, TextStatus } from '@prisma/client';
 import { db } from '@/lib/db';
 import { takeCronLease } from '@/server/cron';
@@ -169,6 +170,7 @@ export async function processResumeText(
         where: { orgId: file.orgId, resumeFileId: id, resumeText: null, isAnonymized: false },
         data: { resumeText: outcome.text },
       });
+      await queueExtractedTalentSummaries(tx, file.orgId, id);
       run.written += wrote.count;
     });
   }
