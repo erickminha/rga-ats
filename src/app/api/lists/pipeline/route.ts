@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import { PIPELINE_KEYS } from '@/lib/list-client/list-key';
 import { decodeCursor } from '@/lib/list-cursor';
 import { canManageRecruiting, getSessionContext } from '@/lib/session';
 import { cachedPipelineCounts, getListMeta } from '@/server/lists/cache';
@@ -7,8 +8,6 @@ import { limitParam, listJson, listParams } from '@/app/api/lists/params';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const KEYS = ['posting', 'client', 'stage', 'q', 'status', 'sort', 'reason'] as const;
 
 /**
  * One page of the pipeline: the same filters as /pipeline's URL, plus
@@ -20,7 +19,7 @@ export async function GET(request: NextRequest) {
   if (!ctx) return listJson({ error: 'unauthorized' }, 401);
   if (!canManageRecruiting(ctx)) return listJson({ error: 'forbidden' }, 403);
   const params = request.nextUrl.searchParams;
-  const input = listParams(params, KEYS);
+  const input = listParams(params, PIPELINE_KEYS);
   const sort = input.sort === 'name' ? 'name' : 'time';
   const rawAfter = params.get('after');
   const after = rawAfter ? decodeCursor(rawAfter, sort) : null;

@@ -160,7 +160,7 @@ export async function loadPipelinePage(input: PipelineInput) {
   const f = pipelineFilterFor(ctx.orgId, input, input.client ? await metaP : null);
   const after = decodeCursor(input.after, sort);
 
-  const [meta, counts, page, hasAny, recruitingPostings] = await Promise.all([
+  const [meta, counts, page, hasAny, recruitingPostings, owners] = await Promise.all([
     metaP,
     cachedPipelineCounts(f),
     pipelinePage(f, sort, { after }),
@@ -171,6 +171,7 @@ export async function loadPipelinePage(input: PipelineInput) {
       orderBy: { title: 'asc' },
       select: { id: true, title: true, clientCompany: { select: { name: true } } },
     }) : Promise.resolve([]),
+    db.user.findMany({ where: { orgId: ctx.orgId }, orderBy: [{ name: 'asc' }, { id: 'asc' }], select: { id: true, name: true } }),
   ]);
 
   const board = input.view === 'kanban' && !archived ? await Promise.all(meta.stages.map(async (stage) => {
@@ -185,9 +186,11 @@ export async function loadPipelinePage(input: PipelineInput) {
     stageFilter: board ? '' : input.stage ?? '',
     postingFilter: input.posting ?? '',
     clientFilter: input.client ?? '',
+    ownerFilter: f.ownerId ?? '',
+    owners,
     /** The cursor this page was rendered after ('' for the first page). */
     after: after ? (input.after ?? '') : '',
-    fallbackGroupLabel: meta.kind === 'AGENCY' ? organization.client.other : 'Roles',
+    fallbackGroupLabel: meta.kind === 'AGENCY' ? organization.client.other : 'Vagas',
     stages: meta.stages,
     counts,
     page,

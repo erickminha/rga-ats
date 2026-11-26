@@ -59,9 +59,9 @@ export const getListMeta = cache(
  */
 export function cachedPipelineCounts(f: PipelineFilter): Promise<StageCounts> {
   const q = f.q?.trim().toLowerCase() ?? '';
-  const scope = { view: f.view, postingIds: f.postingIds ?? null, reasonId: f.reasonId ?? null, q };
+  const scope = { view: f.view, postingIds: f.postingIds ?? null, reasonId: f.reasonId ?? null, ownerId: f.ownerId ?? null, q };
   return unstable_cache(
-    () => pipelineCounts({ orgId: f.orgId, view: f.view, postingIds: f.postingIds ?? null, reasonId: f.reasonId, q: q || undefined }),
+    () => pipelineCounts({ orgId: f.orgId, view: f.view, postingIds: f.postingIds ?? null, reasonId: f.reasonId, ownerId: f.ownerId, q: q || undefined }),
     ['pipeline-counts', f.orgId, JSON.stringify(scope)],
     { revalidate: 20, tags: [pipelineCountsTag(f.orgId)] },
   )();

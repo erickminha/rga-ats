@@ -8,13 +8,13 @@ Base de integração `homolog`, commit `c4bb6d6739dc394dddf8c52a6a2e73142fb95b75
 | --- | --- | --- |
 | Empresas, vaga vinculada e publicação | Validada localmente | Cadastro e publicação no fluxo da recrutadora. A empresa ficou oculta na prévia e no portal sem autorização de divulgação. |
 | Anúncio e origem | Validada localmente | Prévia editável, PNG, impressão em PDF, portal e candidatura móvel. Distribuição lê a fonte gravada, traduz o canal do portal e conta separadamente registros sem fonte. O PNG conserva seus limites de tamanho e avisa quando a versão deve usar PDF. |
-| Funil, etapas e participações | Validada localmente | Lista, Kanban, movimentação individual e coletiva, justificativa e histórico. Finalistas continuam elegíveis após renomear a etapa quando seu papel operacional foi preservado. |
+| Funil, etapas e participações | Validada localmente | Lista, Kanban, filtros por empresa, vaga e responsável, movimentação individual e coletiva, justificativa e histórico. Finalistas continuam elegíveis após renomear a etapa quando seu papel operacional foi preservado. |
 | Acompanhamento da vaga, agenda e tarefas | Validada localmente | A central existente reúne entrevistas de hoje e futuras, tarefas com prazo, prazos de candidatura, inatividade, referências, DISC, parecer, envio, retorno e aprovação. Contadores de participações usam a mesma condição dos respectivos filtros. |
 | Ficha provisória e entrevista | Validada localmente | Dados profissionais existentes aparecem na ficha da participação. Triagem, roteiro, evidências e recomendação continuam vinculados à participação. Agendamento manual e mensagens automáticas de confirmação usam o horário de Brasília. |
 | Ficha oficial da RGA | Implementada sem validação | Existe a estrutura provisória. A paridade depende do formulário vigente e dos critérios abaixo. |
 | DISC provisório | Validada localmente | Convite individual, expiração, rascunho, envio único, cálculo conhecido, interpretação local, revisão humana e síntese no parecer interno. A simulação fica restrita à organização de teste e e-mails `.invalid`. Testes da IA usam respostas simuladas. |
 | DISC nativo para uso real | Implementada sem validação | A liberação depende da chave e da autorização formais. O instrumento permanece restrito à simulação enquanto não houver chave aprovada. |
-| Reaproveitamento de DISC | Validada localmente | O reaproveitamento manual exige autorização, finalidade e validade. O registro de origem e o PDF existente permanecem na participação original. A simulação é excluída da seleção. |
+| Reaproveitamento de DISC | Validada localmente | O reaproveitamento manual usa o resultado registrado na ficha, inclusive a cópia da revisão nativa real quando disponível. Exige autorização, finalidade e validade. O registro e o PDF existentes permanecem na participação original. |
 | PDF avulso do DISC nativo | Não implementada | O resultado nativo pode ser consultado na Central DISC e a síntese revisada pode compor o parecer interno. Relatórios em PDF de instrumentos externos continuam no fluxo de anexos existente. |
 | Referências profissionais | Validada localmente | Autorização, contato, questionário, fonte, revisão, histórico, revogação e isolamento. Dados e seção de referências ficam fora da projeção pública do parecer. |
 | Verificações complementares | Validada localmente | A seção opcional do parecer aceita registro manual com finalidade profissional, referência da autorização e fundamento. O PDF compartilhado exclui essa seção. O fundamento e os casos de uso dependem da administração. |
@@ -34,6 +34,7 @@ Base de integração `homolog`, commit `c4bb6d6739dc394dddf8c52a6a2e73142fb95b75
 - A comparação não limitava a seleção. A interface permite escolher até três finalistas.
 - Renomear **Finalistas** podia retirar a pessoa da apresentação e impedir o registro do retorno. Apresentação, feedback e vaga passaram a usar o papel operacional da etapa.
 - O formulário de entrevista interpretava a data conforme o servidor e o autoagendamento sugeria Nova York. A entrada manual indica Brasília, o seletor oferece Brasília como padrão e a confirmação formata o horário em português brasileiro.
+- O filtro por responsável existia apenas na central. A lista e o Kanban passaram a usar a mesma regra de responsabilidade da central, com prioridade para a participação e uso do responsável da vaga quando a participação estiver sem responsável. O filtro é preservado ao alternar entre as vistas.
 - O lote não oferecia campo para justificativa. A observação do lote agora acompanha cada movimento efetivo e fica no histórico.
 - A ficha dispersava formação, experiência, disponibilidade e pretensão entre cadastro e parecer. A seção de dados profissionais reaproveita o que foi registrado, inclusive a formação e a trajetória do currículo quando usadas na ficha.
 - Os modelos de mensagem eram fixos e o DISC tinha uma prévia separada sem edição nem registro de WhatsApp. A configuração agora é por organização. A emissão do DISC preserva seu link individual e continua separada dos demais modelos.
@@ -48,11 +49,12 @@ Base de integração `homolog`, commit `c4bb6d6739dc394dddf8c52a6a2e73142fb95b75
 | Dependências | `npm ci` com cache gravável no workspace. |
 | PostgreSQL 16 | Migrações aplicadas em bases descartáveis, uma para o navegador e outra para a suíte. |
 | Prisma e TypeScript | `npx prisma validate` e `npm run typecheck` concluídos. |
-| Suíte completa | Primeira execução com 1.097 testes aprovados. Na repetição, 1.096 passaram e o caso de reconstrução de índice inválido em `tests/indexes.test.ts` falhou uma vez após reparar o índice. O caso passou na reexecução com outra base descartável. |
-| Reexecução dirigida | 42 testes aprovados em oito suítes, cobrindo índices, permissões, DISC, referências, pareceres, comunicação e recuperação de senha. |
-| Build | Resultado final registrado no PR. |
+| Suíte completa | Duas execuções completas com 1.097 testes aprovados em 103 suítes, antes do ajuste final do filtro por responsável. Em uma execução intermediária, 1.096 passaram e o caso de reconstrução de índice inválido em `tests/indexes.test.ts` falhou uma vez após reparar o índice. O caso passou na reexecução dirigida e na execução completa seguinte com outra base descartável. |
+| Reexecuções dirigidas | 42 testes aprovados em oito suítes de operação e índices. Após o ajuste do filtro por responsável, 44 testes adicionais em três suítes de lista, paginação, contagem e navegação. |
+| Build | `npm run build` concluído na revisão entregue. |
 | Desktop | Chromium 156 em 1440 × 900. [Acompanhamento operacional](evidencias-fechamento-5b-5c/operacao-desktop.jpg), [versões do parecer](evidencias-fechamento-5b-5c/parecer-versoes-desktop.jpg) e [comparação das três finalistas](evidencias-fechamento-5b-5c/finalistas-comparacao-desktop.jpg). |
 | Celular | Chromium 156 em 390 × 844. [Acompanhamento operacional](evidencias-fechamento-5b-5c/operacao-mobile.jpg), [Kanban](evidencias-fechamento-5b-5c/kanban-mobile.jpg), [DISC fictício](evidencias-fechamento-5b-5c/disc-candidato-mobile.jpg), [referências](evidencias-fechamento-5b-5c/referencias-mobile.jpg) e [apresentação ao cliente](evidencias-fechamento-5b-5c/apresentacao-cliente-mobile.jpg). |
+| Encerramento da jornada | Três finalistas com parecer em PDF. O acesso ao PDF do cliente foi bloqueado sem link e após revogação. O histórico confirmou aprovação, correção administrativa da contratação e reabertura com avaliações preservadas. |
 | Anúncio longo | Prévia editada com 2.639 caracteres. Download de PNG, geração em PDF pelo navegador e conferência da última linha no documento de impressão. |
 | Permissões | Cenários de administração, recrutamento, entrevistador atribuído, candidatura pública, cliente com link e segunda organização. Testes de isolamento e acesso às mutações no PostgreSQL. |
 
@@ -83,7 +85,9 @@ Identificar o material aprovado de interpretação, os limites de finalidade, os
 ## Integração e riscos residuais
 
 - `prisma/schema.prisma` recebeu somente `Organization.whatsappTemplates` e `ShareLink.sentAt`, ambos opcionais. A migração `20261126180000_rga_operational_close` é incremental. Integrar estes dois campos com as migrações do trabalho paralelo, preservando os demais trechos.
-- `src/app/(app)/actions.ts` altera somente agendamento manual e mudança em lote. `src/app/(app)/settings/page.tsx` acrescenta a edição na seção de e-mail. A ficha compartilhada da participação recebe a projeção dos dados profissionais e os modelos. O acesso global e `src/server/applications.ts` mantêm a implementação da base.
+- `src/app/(app)/actions.ts` altera agendamento manual, mudança em lote e invalidação do funil ao atribuir uma vaga. O carregador de páginas, a API e o cache do funil passam a considerar o responsável. `src/app/(app)/settings/page.tsx` acrescenta a edição na seção de e-mail. A ficha compartilhada da participação recebe a projeção dos dados profissionais e os modelos. O acesso global e `src/server/applications.ts` mantêm a implementação da base.
 - Links antigos sem confirmação permanecem com o histórico de emissão. A data de envio exige confirmação e não foi retropreenchida. O retorno pendente na central continua condicionado a uma apresentação vigente. A nova versão do parecer precisa de nova revisão de compartilhamento. O retorno do cliente é informado pela recrutadora na vaga.
 - O painel reconhece datas de candidatura completas no formato brasileiro ou ISO. Prazos internos sem data registrada, rotinas que exigem retorno direto ao candidato e outras pendências manuais podem ser registradas nas tarefas existentes.
 - O recorte do navegador cobre a jornada de seleção com dados fictícios. Homologação na revisão publicada, entrega real por WhatsApp/Resend, validação institucional do formulário e permissão para aplicar o DISC em processos reais permanecem pendentes.
+
+A trilha de decisão da vaga e a data de contratação por participação ficam disponíveis para o planejamento do ciclo 5D. A situação comercial e financeira deve ser definida no escopo desse ciclo.

@@ -103,6 +103,7 @@ export function PipelineList({
   after,
   postingGroups,
   clients = [],
+  owners = [],
   archiveReasons,
   fallbackGroupLabel,
 }: {
@@ -119,6 +120,7 @@ export function PipelineList({
   }[];
   /** Client names, for the active-filter chips. */
   clients?: { id: string; name: string }[];
+  owners?: { id: string; name: string }[];
   archiveReasons: { id: string; name: string }[];
   /** Eyebrow for postings without a client/department (org-kind aware). */
   fallbackGroupLabel: string;
@@ -444,6 +446,10 @@ export function PipelineList({
   if (nav.input.posting) {
     filters.push({ key: 'posting', label: "Vaga", value: postingTitle(nav.input.posting), clear: { posting: '', stage: '' } });
   }
+  if (nav.input.owner) {
+    const name = owners.find(owner => owner.id === nav.input.owner)?.name ?? 'Responsável indisponível';
+    filters.push({ key: 'owner', label: 'Responsável', value: name, clear: { owner: '' } });
+  }
   if (nav.input.stage) {
     const name = stages.find((st) => st.id === nav.input.stage)?.name ?? "Etapa";
     filters.push({ key: 'stage', label: "Etapa", value: name, clear: { stage: '' } });
@@ -461,7 +467,7 @@ export function PipelineList({
     setQDraft({ from: committedQ, value: '' });
     setQHint(false);
     setSentQ('');
-    nav.go({ q: '', client: '', posting: '', stage: '', status: '' });
+    nav.go({ q: '', client: '', posting: '', owner: '', stage: '', status: '' });
   }
 
   return (
@@ -560,6 +566,7 @@ export function PipelineList({
           >
             {nav.input.posting ? <input type="hidden" name="posting" value={nav.input.posting} /> : null}
             {nav.input.client ? <input type="hidden" name="client" value={nav.input.client} /> : null}
+            {nav.input.owner ? <input type="hidden" name="owner" value={nav.input.owner} /> : null}
             {nav.input.stage ? <input type="hidden" name="stage" value={nav.input.stage} /> : null}
             {nav.input.status ? <input type="hidden" name="status" value={nav.input.status} /> : null}
             {nav.input.sort ? <input type="hidden" name="sort" value={nav.input.sort} /> : null}

@@ -148,6 +148,8 @@ export async function setPostingStateAction(postingId: string, state: PostingSta
 export async function setPostingOwnerAction(postingId: string, ownerId: string | null) {
   const ctx = await requireSession();
   await setPostingOwner(ctx, postingId, ownerId);
+  revalidatePath('/pipeline');
+  revalidatePath('/pipeline/operacao');
   revalidatePath(`/postings/${postingId}`);
   // every candidate page for this role shows it
   revalidatePath('/candidates/[id]', 'page');

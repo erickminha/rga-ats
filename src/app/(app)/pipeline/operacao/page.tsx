@@ -95,7 +95,7 @@ export default async function OperationalPipelinePage({ searchParams }: { search
     query: { ...Object.fromEntries(Object.entries(input).filter(([key]) => ['posting', 'client', 'owner', 'stage', 'from', 'to', 'pending', 'page'].includes(key))), ...change },
   });
   return <main className="mx-auto grid max-w-6xl gap-4 p-4 sm:p-6">
-    <Link className="underline" href={{ pathname: '/pipeline', query: { posting: input.posting, client: input.client } }}>Voltar ao funil</Link>
+    <Link className="underline" href={{ pathname: '/pipeline', query: { posting: input.posting, client: input.client, owner: input.owner } }}>Voltar ao funil</Link>
     <h1 className="text-xl font-semibold">Acompanhamento operacional</h1>
     <form className={surface + ' grid gap-3 p-4 sm:grid-cols-3'}>
       {filters.map(([key, label, options]) => <label className="grid min-w-0 gap-1 text-sm" key={key}>{label}

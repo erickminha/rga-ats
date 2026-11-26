@@ -1,6 +1,6 @@
 # Matriz de aceite operacional da RGA
 
-Atualização de 24/11/2026. A situação se refere ao fluxo completo descrito no plano revisado. Os testes locais usam registros fictícios. Para elevar uma linha a **Validada em homologação**, registrar a revisão do Cloud Run, o perfil utilizado, a operação executada e o resultado observado. **Aprovada para produção** exige aceite expresso da RGA.
+A matriz reúne a revisão original de 24/11/2026 e a atualização dos ciclos 5B e 5C de 26/11/2026. A situação se refere ao fluxo completo descrito no plano revisado. Os testes locais usam registros fictícios. Para elevar uma linha a **Validada em homologação**, registrar a revisão do Cloud Run, o perfil utilizado, a operação executada e o resultado observado. **Aprovada para produção** exige aceite expresso da RGA.
 
 | Entrega | Funcionalidade | Situação | Evidência disponível ou verificação pendente |
 | --- | --- | --- | --- |
@@ -13,12 +13,15 @@ Atualização de 24/11/2026. A situação se refere ao fluxo completo descrito n
 | 5A | Sincronização do Banco de Talentos | Implementada parcialmente | PR #19. Botão e processamento incremental testados. Faltam configuração do agendamento e validação com a identidade do serviço |
 | 5A | Recuperação privada dos documentos do Drive | Implementada parcialmente | PR #20. Confirmação individual e em lote com fontes simuladas. Faltam transferência aprovada e conferência no R2 real |
 | 5A | Conciliação de vagas, empresas e histórico de seleção | Implementada parcialmente | PR #21. Conciliação por ID da vaga, cargo e empresa testada. Reconstrução das seleções aguarda correspondências comprovadas |
-| 5B | Ficha de seleção e entrevista por competências | Implementada parcialmente | Roteiro existente. Falta validar uso dentro da central da vaga |
-| 5B | Aplicação e acompanhamento do DISC | Implementada parcialmente | Registro de resultado e PDF por participação. Identificar instrumento licenciado e validar envio, prazo e retorno |
-| 5B | Parecer profissional, comparação e apresentação de finalistas | Implementada parcialmente | Edição, PDF e compartilhamento existentes. Simular três finalistas e retorno do cliente |
-| 5B | Controle de referências profissionais | Não implementada | Validar autorização, finalidade e acesso ao registro |
-| 5C | Anúncios, WhatsApp e solicitação de documentos | Implementada parcialmente | Portal e comunicação por e-mail existentes. Validar modelos e operação diária |
-| 5C | Agenda de entrevistas | Implementada, mas não testada | Agendar e conferir na central da vaga com o perfil de recrutadora |
+| 5B | Ficha provisória e entrevista por competências | Validada localmente | Três entrevistas fictícias. A ficha oficial aguarda conferência com o modelo vigente da RGA. |
+| 5B | DISC provisório e acompanhamento | Validada localmente | Convite, cálculo, revisão e parecer interno com dados fictícios. |
+| 5B | DISC nativo para uso real | Implementada sem validação | A liberação depende da chave, metodologia e licença aprovadas pela administração. |
+| 5B | Parecer, comparação, apresentação e retorno | Validada localmente | Três finalistas, pareceres em PDF, envio registrado, retorno e aprovação separados da contratação. |
+| 5B | Referências profissionais | Validada localmente | Autorização, tentativas, questionário, conclusão, revogação e isolamento. |
+| 5C | Funil e acompanhamento operacional | Validada localmente | Lista, Kanban, filtros por empresa, vaga e responsável, movimentação em lote, histórico e indicadores. |
+| 5C | Vagas, anúncios e fontes registradas | Validada localmente | Empresa vinculada, publicação, candidatura em celular, PNG e impressão PDF. |
+| 5C | Modelos WhatsApp e orientações sobre documentos | Validada localmente | Modelos por organização, prévia e registro manual. O canal de recebimento de documentos depende da administração. |
+| 5C | Agenda de entrevistas e tarefas | Validada localmente | Agendamento com hora de Brasília e pendências na central existente. |
 | 5D | Propostas, contratos e precificação | Não implementada | Validar proposta com parâmetros da RGA, aceite e congelamento dos termos |
 | 5D | Financeiro por vaga, faturamento, NF e cobranças | Não implementada | Conferir valores contratados, vencimento, baixa e histórico |
 | 5D | Garantia e reposição | Não implementada | Validar prazos contratuais e vínculo da reposição com a contratação original |

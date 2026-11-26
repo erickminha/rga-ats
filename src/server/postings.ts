@@ -7,7 +7,7 @@ import { actorOf, emitEvent } from '@/server/events';
 import { closePendingApprovals, requestApproval } from '@/server/approvals';
 import { isAdmin, requireRecruitingAccess, type SessionContext } from '@/lib/session';
 import { lockClientWrites } from '@/server/client-companies';
-import { invalidateListMeta } from '@/server/lists/cache';
+import { invalidateListMeta, invalidatePipelineCounts } from '@/server/lists/cache';
 
 function slugify(input: string): string {
   return input
@@ -231,7 +231,7 @@ export async function setPostingOwner(ctx: SessionContext, postingId: string, ow
   ]);
   if (!posting) throw new Error('Posting not found');
   if (ownerId && !owner) throw new Error('That teammate isn’t in this workspace.');
-  return db.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     await tx.posting.update({ where: { id: posting.id }, data: { ownerId } });
     await emitEvent(tx, {
       orgId: ctx.orgId,
@@ -242,4 +242,5 @@ export async function setPostingOwner(ctx: SessionContext, postingId: string, ow
       payload: { title: posting.title, owner: owner?.name ?? null },
     });
   });
+  invalidatePipelineCounts(ctx.orgId);
 }
