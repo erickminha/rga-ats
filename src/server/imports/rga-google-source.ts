@@ -25,7 +25,7 @@ export async function readTalentSheet(): Promise<string[][]> {
   const id = process.env.RGA_TALENT_SHEET_ID;
   if (!id || !/^[a-zA-Z0-9_-]{10,180}$/.test(id)) throw new Error('Planilha de talentos não configurada.');
   const token = await readGoogleToken(sheetScope);
-  const range = encodeURIComponent("'Respostas ao formulário 1'!A:R");
+  const range = encodeURIComponent("'Respostas ao formulário 1'!A:S");
   const response = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + id + '/values/' + range, {
     headers: { Authorization: 'Bearer ' + token }, redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(25000),
   });
@@ -44,7 +44,7 @@ export async function readTalentSheet(): Promise<string[][]> {
   } finally { await reader.cancel(); }
   const rows: string[][] = JSON.parse(Buffer.concat(chunks).toString('utf8')).values;
   if (!Array.isArray(rows) || !rows.length || rows.length > 5000 ||
-      rows.some(row => !Array.isArray(row) || row.length > 18 || row.some(cell => typeof cell !== 'string' || cell.length > 12000))) {
+      rows.some(row => !Array.isArray(row) || row.length > 19 || row.some(cell => typeof cell !== 'string' || cell.length > 12000))) {
     throw new Error('A origem retornou células incompatíveis.');
   }
   const mapping = mappingSuggestion('talent', rows[0]);
