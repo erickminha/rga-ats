@@ -19,7 +19,7 @@ describe('sincronização incremental', () => {
     const saved = new Map(first.batch.map(item => [item.key, item.fingerprint]));
     const item = first.batch[0];
     saved.set(item.key, 'erro:' + item.fingerprint);
-    expect(changedTalentRows(source, saved, false).changed).toBe(1);
+    expect(changedTalentRows(source, saved, false)).toMatchObject({ changed: 1, skippedErrors: 1 });
     expect(changedTalentRows(source, saved, true).changed).toBe(2);
   });
 
