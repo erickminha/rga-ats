@@ -56,6 +56,20 @@ export function sheetSummaryRows(rows: string[][]) {
   });
 }
 
+/** Texto integral do OCR: não é um resumo e não deve ser enviado à IA. */
+export function sheetCvRows(rows: string[][]) {
+  const head = rows[0] ?? [];
+  const col = (name: string) => head.indexOf(name) === head.lastIndexOf(name) ? head.indexOf(name) : -1;
+  const s = col('Texto CV'), o = col('ID Origem'), f = col('Upload de Currículo');
+  if (s < 0 || o < 0 || f < 0) return [];
+  const data = rows.slice(1).map(row => ({ origin: (row[o] ?? '').trim(), file: sheetResumeFileId(row[f] ?? ''), text: row[s] ?? '' }));
+  const counts = (values: string[]) => { const map = new Map<string, number>(); for (const v of values) if (v) map.set(v, (map.get(v) ?? 0) + 1); return map; };
+  const ids = counts(data.map(row => row.origin)), files = counts(data.map(row => row.file));
+  return data.filter(row => row.file && files.get(row.file) === 1 &&
+    (!row.origin || (row.origin.length <= 180 && ids.get(row.origin) === 1)) &&
+    row.text.trim() && row.text.length <= 50000 && !/^ERRO\s*:/i.test(row.text.trim()))
+    .map(row => ({ ...row, cvText: row.text }));
+}
 
 export function explicitTalentConsent(value: string) {
   return value.trim().normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').replace(/\.$/, '') === 'li as informacoes acima e concordo';
