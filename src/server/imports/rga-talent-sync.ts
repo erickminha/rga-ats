@@ -75,10 +75,13 @@ export async function syncTalentBatch(ctx: SessionContext, mode: 'preview' | 'co
       externalId: { in: batch.map(item => TALENT_SOURCE + ':id:' + item.sourceId) } }, select: { externalId: true, internalId: true } });
     const contacts = new Map(originalRefs.map(ref => [ref.externalId, ref.internalId]));
     let summaries = 0;
+    let failedRows = 0;
     for (const [index, item] of batch.entries()) {
       const internalId = contacts.get(TALENT_SOURCE + ':id:' + item.sourceId);
       const key = { orgId: ctx.orgId, provider: PROVIDER, kind: 'contact', externalId: item.key };
-      const data = { internalId: internalId ?? jobId, jobId, syncedAt: new Date(), fingerprint: (errors.has(index + 2) || !internalId ? 'erro:' : '') + item.fingerprint };
+      const failed = errors.has(index + 2) || !internalId;
+      if (failed) failedRows++;
+      const data = { internalId: internalId ?? jobId, jobId, syncedAt: new Date(), fingerprint: (failed ? 'erro:' : '') + item.fingerprint };
       if (process.env.RGA_SUMMARY_AUTO === 'true' && internalId && !errors.has(index + 2) &&
           await queueTalentSummary(tx, ctx.orgId, internalId, 10)) summaries++;
       await tx.importRef.upsert({ where: { orgId_provider_kind_externalId: key }, create: { ...key, ...data, created: false }, update: data });
@@ -89,14 +92,14 @@ export async function syncTalentBatch(ctx: SessionContext, mode: 'preview' | 'co
       await tx.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId }, data: {
       rowsRead, unresolved, remaining: Math.max(0, changed - batch.length), attempts: 0,
       createdCount: { increment: report.created }, updatedCount: { increment: report.updated },
-      duplicates: { increment: report.duplicates }, errors: { increment: report.errors }, summaries: { increment: summaries },
+      duplicates: { increment: report.duplicates }, errors: { increment: Math.max(report.errors, failedRows) }, summaries: { increment: summaries },
       errorCode: null,
       } });
       if (changed <= batch.length) {
         const current = await tx.talentSyncRun.findFirstOrThrow({ where: { id: runId, orgId: ctx.orgId }, select: { errors: true } });
-        const partial = !!(unresolved || skippedErrors || current.errors || errors.size);
+        const partial = !!(unresolved || skippedErrors || current.errors || failedRows);
         await tx.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId }, data: {
-          status: partial ? 'PARTIAL' : 'SUCCEEDED', remaining: skippedErrors + errors.size,
+          status: partial ? 'PARTIAL' : 'SUCCEEDED', remaining: skippedErrors + failedRows,
           finishedAt: new Date(), errorCode: partial ? 'review_rows' : null,
         } });
       }
