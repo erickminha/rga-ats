@@ -95,13 +95,13 @@ export async function syncTalentBatch(ctx: SessionContext, mode: 'preview' | 'co
     select: { externalId: true, fingerprint: true } });
   const { batch, file, unresolved, changed, skippedErrors, rowsRead } = changedTalentRows(rows, new Map(saved.map(ref => [ref.externalId, ref.fingerprint])), retry);
   if (!batch.length) {
-    const summaries = mode !== 'preview' && sheetMode ? await syncSheetSummaries(ctx, rows) : 0;
+    const summaries = mode !== 'preview' && sheetMode ? await syncSheetSummaries(ctx, rows) : { imported: 0, remaining: 0 };
     if (runId && mode !== 'preview') {
       await db.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId, rowsRead: 0 }, data: { unchanged: Math.max(0, rowsRead - unresolved - skippedErrors) } });
       await db.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId },
-      data: { rowsRead, unresolved, summaries: { increment: summaries }, remaining: skippedErrors, status: unresolved || skippedErrors ? 'PARTIAL' : 'SUCCEEDED', finishedAt: new Date(), errorCode: unresolved || skippedErrors ? 'review_rows' : null } });
+      data: { rowsRead, unresolved, summaries: { increment: summaries.imported }, remaining: skippedErrors + summaries.remaining, ...(summaries.remaining ? { status: 'RUNNING', errorCode: null } : { status: unresolved || skippedErrors ? 'PARTIAL' : 'SUCCEEDED', finishedAt: new Date(), errorCode: unresolved || skippedErrors ? 'review_rows' : null }) } });
     }
-    return { changed, unresolved, count: 0, report: null, ticket: null };
+    return { changed, unresolved, count: 0, report: null, ticket: null, summariesImported: summaries.imported, summariesRemaining: summaries.remaining };
   }
   const preview = await previewRgaImport(ctx, file);
   if (mode === 'preview') return { changed, unresolved, count: batch.length, ...preview };
@@ -154,15 +154,16 @@ export async function syncTalentBatch(ctx: SessionContext, mode: 'preview' | 'co
     }
   };
   const run = await confirmRgaImport(ctx, file, mode === 'scheduled' ? preview.ticket : ticket ?? '', checkpoint);
-  const imported = sheetMode ? await syncSheetSummaries(ctx, rows) : 0;
+  const imported = sheetMode ? await syncSheetSummaries(ctx, rows) : { imported: 0, remaining: 0 };
   if (runId) {
     const current = await db.talentSyncRun.findFirstOrThrow({ where: { id: runId, orgId: ctx.orgId }, select: { errors: true } });
     const partial = !!(unresolved || skippedErrors || current.errors);
     await db.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId }, data: {
-      summaries: { increment: imported },
-      ...(changed <= batch.length ? { status: partial ? 'PARTIAL' : 'SUCCEEDED',
+      summaries: { increment: imported.imported },
+      remaining: Math.max(0, changed - batch.length) + imported.remaining + skippedErrors,
+      ...(changed <= batch.length && !imported.remaining ? { status: partial ? 'PARTIAL' : 'SUCCEEDED',
         remaining: skippedErrors + current.errors, finishedAt: new Date(), errorCode: partial ? 'review_rows' : null } : {}),
     } });
   }
-  return { changed, unresolved, count: batch.length, report: run.report, ticket: null };
+  return { changed, unresolved, count: batch.length, report: run.report, ticket: null, summariesImported: imported.imported, summariesRemaining: imported.remaining };
 }
