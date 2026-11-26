@@ -38,13 +38,13 @@ export async function readTalentSheet(): Promise<string[][]> {
       const { done, value } = await reader.read();
       if (done) break;
       bytes += value.length;
-      if (bytes > 8 * 1024 * 1024) throw new Error('A origem excede o limite de leitura.');
+      if (bytes > 32 * 1024 * 1024) throw new Error('A origem excede o limite de leitura.');
       chunks.push(value);
     }
   } finally { await reader.cancel(); }
   const rows: string[][] = JSON.parse(Buffer.concat(chunks).toString('utf8')).values;
   if (!Array.isArray(rows) || !rows.length || rows.length > 5000 ||
-      rows.some(row => !Array.isArray(row) || row.length > 19 || row.some(cell => typeof cell !== 'string' || cell.length > 12000))) {
+      rows.some(row => !Array.isArray(row) || row.length > 19 || row.some((cell, i) => typeof cell !== 'string' || cell.length > (rows[0]?.[i] === 'Texto CV' ? 50000 : 12000)))) {
     throw new Error('A origem retornou células incompatíveis.');
   }
   const mapping = mappingSuggestion('talent', rows[0]);

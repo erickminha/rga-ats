@@ -12,6 +12,15 @@ type Saved = { headline: string | null; reviewedText: string | null; reviewedAt:
 export function TalentSummaryCard({ id, saved, allowed, hasResume, sheetMode = false }: { id: string; saved: Saved | null; allowed: boolean; hasResume: boolean; sheetMode?: boolean }) {
   const [message, setMessage] = useState('');
   const router = useRouter();
+  if (sheetMode) {
+    const content = saved?.content as { cvText?: unknown } | null;
+    const text = allowed && typeof content?.cvText === 'string' ? content.cvText : '';
+    return <section className="mb-4 rounded-card bg-surface p-4" aria-labelledby="texto-cv">
+      <h2 id="texto-cv" className="font-semibold">Texto CV</h2>
+      {text ? <p className="mt-2 whitespace-pre-wrap break-words text-sm">{text}</p> :
+        <p className="mt-2 text-sm text-ink-2">{allowed ? 'Texto do currículo ainda não disponível.' : 'Autorização vigente necessária.'}</p>}
+    </section>;
+  }
   const current = saved?.reviewedText ?? saved?.headline;
   const facts = saved?.content as (SummaryFacts & { years?: number | null; sheetText?: string }) | null;
   const imported = saved?.sourceKind === 'PLANILHA';
