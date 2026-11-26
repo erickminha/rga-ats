@@ -236,6 +236,7 @@ model Contact {
   name           String
   headline       String?
   careerProfile  Json?
+  talentSummary TalentSummary?
   salaryExpectation Int?
   location       String?
   emails         String[]
@@ -1505,4 +1506,61 @@ model NativeDisc {
   reviewedAt DateTime?
 
   @@index([opportunityId, createdAt])
+}
+
+model TalentSummary {
+  contactId String @id
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  orgId String
+  status String @default("QUEUED")
+  headline String?
+  content Json?
+  searchText String?
+  sourceKind String?
+  sourceFileId String?
+  inputHash String?
+  requestedHash String
+  provider String?
+  model String?
+  promptVersion String?
+  tokens Int?
+  generatedAt DateTime?
+  reviewedText String?
+  reviewedAt DateTime?
+  reviewedById String?
+  attempts Int @default(0)
+  priority Int @default(0)
+  availableAt DateTime @default(now())
+  leaseUntil DateTime?
+  leaseToken String?
+  errorCode String?
+  updatedAt DateTime @updatedAt
+
+  @@index([orgId, status, priority, availableAt])
+}
+
+model TalentSyncRun {
+  id String @id @default(uuid())
+  orgId String
+  requestedById String?
+  mode String
+  status String @default("QUEUED")
+  createdAt DateTime @default(now())
+  startedAt DateTime?
+  finishedAt DateTime?
+  availableAt DateTime @default(now())
+  attempts Int @default(0)
+  rowsRead Int @default(0)
+  unresolved Int @default(0)
+  remaining Int @default(0)
+  unchanged Int @default(0)
+  createdCount Int @default(0)
+  updatedCount Int @default(0)
+  duplicates Int @default(0)
+  errors Int @default(0)
+  summaries Int @default(0)
+  errorCode String?
+
+  @@index([orgId, createdAt])
+  @@index([orgId, status, availableAt])
 }

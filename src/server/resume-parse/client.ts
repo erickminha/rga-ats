@@ -1,3 +1,4 @@
+import { reserveGroq } from '@/server/groq-budget';
 import type { ResumeParserConfig } from './config';
 import { buildMessages, halveText, RESUME_SCHEMA } from './prompt';
 
@@ -265,6 +266,8 @@ export async function completeResumeJson(cfg: ResumeParserConfig, input: string,
     const cutByDeadline = remaining < cfg.timeoutMs;
     const timeout = AbortSignal.timeout(Math.min(cfg.timeoutMs, remaining));
     const body = requestBody(cfg, text, { maxTokens, caps });
+    const payload = JSON.stringify(body);
+    if (cfg.profile === 'groq' && !await reserveGroq(payload, maxTokens)) throw fail('provider_rate_limited', { status: 429 });
 
     let res: Response;
     let parsed: unknown = null;
@@ -272,7 +275,7 @@ export async function completeResumeJson(cfg: ResumeParserConfig, input: string,
       res = await doFetch(url, {
         method: 'POST',
         headers: headers(cfg),
-        body: JSON.stringify(body),
+        body: payload,
         // Never follow a redirect: the key goes only to the configured host.
         redirect: 'manual',
         signal: timeout,

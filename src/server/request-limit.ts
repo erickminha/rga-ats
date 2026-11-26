@@ -12,18 +12,18 @@ export async function requestLimitActive(scope: string, identity: string[]) {
 }
 
 /** Reuse the persisted counter table. Store neither addresses nor user-supplied IPs. */
-export async function reserveRequest(scope: string, identity: string[], limit: number, windowMs: number) {
-  if (!Number.isSafeInteger(limit) || limit < 1 || !Number.isFinite(windowMs) || windowMs <= 0) return false;
+export async function reserveRequest(scope: string, identity: string[], limit: number, windowMs: number, cost = 1) {
+  if (!Number.isSafeInteger(cost) || cost < 1 || !Number.isSafeInteger(limit) || limit < cost || !Number.isFinite(windowMs) || windowMs <= 0) return false;
   if ((process.env.NODE_ENV === 'production' || process.env.K_SERVICE) && !process.env.AUTH_SECRET?.trim()) return false;
   const key = limitKey(scope, identity);
   const now = new Date();
   const expiresAt = new Date(now.getTime() + windowMs);
   const changed = await db.$executeRaw`
-    INSERT INTO "PasswordResetLimit" ("key", "count", "expiresAt") VALUES (${key}, 1, ${expiresAt})
+    INSERT INTO "PasswordResetLimit" ("key", "count", "expiresAt") VALUES (${key}, ${cost}, ${expiresAt})
     ON CONFLICT ("key") DO UPDATE
-    SET "count" = CASE WHEN "PasswordResetLimit"."expiresAt" <= ${now} THEN 1 ELSE "PasswordResetLimit"."count" + 1 END,
+    SET "count" = CASE WHEN "PasswordResetLimit"."expiresAt" <= ${now} THEN ${cost} ELSE "PasswordResetLimit"."count" + ${cost} END,
         "expiresAt" = CASE WHEN "PasswordResetLimit"."expiresAt" <= ${now} THEN ${expiresAt} ELSE "PasswordResetLimit"."expiresAt" END
-    WHERE "PasswordResetLimit"."expiresAt" <= ${now} OR "PasswordResetLimit"."count" < ${limit}
+    WHERE "PasswordResetLimit"."expiresAt" <= ${now} OR "PasswordResetLimit"."count" <= ${limit - cost}
   `;
   return changed === 1;
 }

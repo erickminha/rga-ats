@@ -522,6 +522,9 @@ export default async function SettingsPage({
             <Link href="/settings/import" className={buttonClass({ variant: 'tonal', size: 'sm' })}>
               {settings.controls.startImport}
             </Link>
+            <Link href="/contacts/sincronizar" className={buttonClass({ variant: 'tonal', size: 'sm' })}>
+              Sincronizar banco de talentos
+            </Link>
           </ControlRow>
         </Group>
         ) : null}

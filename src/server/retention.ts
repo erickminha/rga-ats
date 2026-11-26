@@ -80,6 +80,7 @@ async function anonymizeContact(orgId: string, id: string, rule: Prisma.ContactW
     await tx.caseStudy.deleteMany({ where: { orgId, contactId: id } });
     await tx.newsletterRecipient.deleteMany({ where: { orgId, contactId: id } });
     await tx.emailMessage.deleteMany({ where: emails });
+    await tx.talentSummary.deleteMany({ where: { orgId, contactId: id } });
     await tx.consentRecord.deleteMany({ where: { orgId, contactId: id } });
     await tx.referral.updateMany({ where: { orgId, contactId: id }, data: { relationship: null, notes: null } });
     await tx.interview.updateMany({ where: byOpportunity, data: { title: 'Entrevista anonimizada', location: null, focusAreas: [] } });

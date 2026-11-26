@@ -1,3 +1,4 @@
+import { queueExtractedTalentSummaries } from '@/server/talent-summary';
 import type { OcrStatus, Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { takeCronLease } from '@/server/cron';
@@ -183,6 +184,7 @@ export async function processResumeOcr(
         await tx.storedFile.update({ where: { id }, data: { ocrStatus: 'SKIPPED', ocrError: 'has_text' } });
         return 'SKIPPED';
       }
+      await queueExtractedTalentSummaries(tx, file.orgId, id);
       run.written += wrote.count;
       // A careers-page application's parse gave up waiting for text: now there is some.
       await tx.storedFile.updateMany({

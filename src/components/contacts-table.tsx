@@ -417,7 +417,10 @@ function ContactRowCells({ row: c, index, selected, onToggle }: RowProps) {
           </span>
         </span>
       </td>
-      <td className={`${cell} text-ink-2`} title={c.desiredRole ?? c.headline ?? undefined}>{c.desiredRole ?? c.headline ?? '—'}</td>
+      <td className={`${cell} text-ink-2`} title={c.desiredRole ?? c.headline ?? undefined}>
+        {c.desiredRole ?? c.headline ?? '—'}
+        {c.summaryPreview && <p className="line-clamp-2 whitespace-normal text-xs">{c.summaryPreview}</p>}
+      </td>
       <td className={cell}>
         {c.observation ? <Link href={`/contacts/${c.id}#observacao`} className="line-clamp-2 whitespace-normal break-words text-xs leading-4 text-ink-2 hover:underline" title={c.observation}>{c.observation}</Link> : <span className="text-ink-3">—</span>}
       </td>

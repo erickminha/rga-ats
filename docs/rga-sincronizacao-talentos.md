@@ -21,3 +21,46 @@ A conta de serviço precisa de permissão de leitura na pasta histórica; a apli
 O arquivo original permanece no Drive. O ATS valida conteúdo, tamanho e integridade antes de vincular o documento, extrai o texto pelos mecanismos existentes e registra a proveniência da versão. Conteúdo idêntico já copiado para a mesma pessoa é ignorado. Alterações de conteúdo geram outra versão e preservam o currículo principal existente e os documentos de cada seleção. Referências ambíguas, atalhos, arquivos fora da pasta e formatos incompatíveis exigem revisão.
 
 Em **Importações → Conciliação de currículos do Drive**, a prévia apresenta até cinco documentos por vez. A busca cruza os IDs do lote inteiro, exclui vínculos ambíguos e conta as pessoas sem autorização. Confirme a cópia ou confira os próximos cinco documentos. Após interrupção, gere outra prévia. Cada confirmação bem-sucedida registra um marcador; se a conexão cair entre a gravação e o marcador, a impressão do conteúdo evita repetir a versão. Use a ficha individual para conferir uma nova versão publicada posteriormente no mesmo arquivo do Drive. Um link novo na origem volta a aparecer como pendente.
+
+## Operação no ciclo 5C.2
+
+O botão **Banco de talentos → Sincronizar banco de talentos** está disponível aos perfis de recrutamento. Ele registra a solicitação em `TalentSyncRun` e inicia o primeiro lote em segundo plano. A rotina diária utiliza o mesmo processamento e os mesmos marcadores de importação. O painel mostra o estado configurado no ATS e o histórico de execuções, inclusive quando a planilha retorna sem alterações. A rotina periódica de processamento retoma os lotes pendentes e a fila de resumos.
+
+Em homologação, a auditoria encontrou 2.103 profissionais ativos, 2.036 elegíveis pela autorização vigente, 67 sem autorização vigente identificada, zero currículos principais e zero sincronizações registradas pelo importador. As verificações de autenticação do serviço com Sheets e Groq e a configuração do Cloud Scheduler aguardam acesso administrativo ao projeto.
+
+### Comandos de homologação
+
+A conta Google de leitura precisa ser leitora da planilha de origem. Vincule o JSON dessa conta por referência a um segredo. Use uma conta administrativa ativa no ATS para `RGA_TALENT_SYNC_ADMIN_ID` e o ID da organização para `RGA_TALENT_SYNC_ORG_ID`. A identidade OIDC do Scheduler deve pertencer ao projeto e é separada da credencial de leitura do Sheets.
+
+Consulte os agendamentos existentes na região. Reutilize os jobs que já apontem para os endpoints abaixo, com `gcloud scheduler jobs update http`. Os comandos `create` servem para quando a auditoria confirmar que não existe um job equivalente. O operador autenticado precisa de acesso para configurar o serviço, administrar os jobs e usar a conta de serviço indicada.
+
+```bash
+project=rga-ats-homolog
+region=us-west1
+service=rga-ats
+origin="$(gcloud run services describe "$service" --project "$project" --region "$region" --format='value(status.url)')"
+gcloud scheduler jobs list --project "$project" --location "$region" \
+  --format='table(name,state,schedule,timeZone,httpTarget.uri)'
+
+gcloud run services update "$service" --project "$project" --region "$region" \
+  --update-env-vars="RGA_TALENT_SYNC_ORG_ID=${RGA_ATS_ORG_ID},RGA_TALENT_SYNC_ADMIN_ID=${RGA_ATS_SYNC_ADMIN_ID},RGA_TALENT_SHEET_ID=${RGA_ATS_SHEET_ID},RGA_TALENT_SYNC_DAILY=true,RGA_TALENT_SCHEDULER_EMAIL=${RGA_ATS_SCHEDULER_EMAIL},RGA_TALENT_SCHEDULER_AUDIENCE=${origin}" \
+  --update-secrets="RGA_GOOGLE_SERVICE_ACCOUNT=${RGA_ATS_SHEETS_SECRET}:latest"
+
+gcloud scheduler jobs create http rga-talentos-diario \
+  --project "$project" --location "$region" --schedule='0 3 * * *' --time-zone=America/Sao_Paulo \
+  --uri="${origin}/api/cron/rga-talentos" --http-method=POST \
+  --oidc-service-account-email="$RGA_ATS_SCHEDULER_EMAIL" --oidc-token-audience="$origin"
+
+gcloud scheduler jobs create http rga-talentos-processar \
+  --project "$project" --location "$region" --schedule='*/5 * * * *' --time-zone=America/Sao_Paulo \
+  --uri="${origin}/api/cron/rga-talentos-processar" --http-method=POST \
+  --oidc-service-account-email="$RGA_ATS_SCHEDULER_EMAIL" --oidc-token-audience="$origin"
+```
+
+Ative a rotina diária após validar a origem e aprovar a primeira execução real. Consulte o job no Scheduler e confira o histórico no ATS. A janela exibida na interface é a configurada no código. O console do agendador é a fonte da próxima execução efetiva.
+
+### Resumos profissionais
+
+A ficha exibe o resumo salvo, oferece geração sob demanda, atualização de status, cópia e revisão. A geração local está disponível sem Groq. `RGA_SUMMARY_AUTO=true` enfileira dados novos ou alterados nos fluxos integrados. `RGA_SUMMARY_PAUSED=true` pausa o worker. A rotina não agenda uma carga inicial histórica.
+
+Ative `RGA_SUMMARY_ALLOW_GROQ=true` somente após confirmar a finalidade autorizada e os limites da conta. A rotina reusa o provedor Groq do Assistente RGA configurado pelo Secret Manager. Configure `RGA_SUMMARY_DAILY_LIMIT` inicialmente em 20 e informe `RGA_GROQ_DAILY_REQUESTS` e `RGA_GROQ_DAILY_TOKENS` dentro dos limites verificados da conta. O worker pega um resumo por vez, aplica backoff e utiliza a projeção profissional reduzida. O orçamento compartilhado reserva uma estimativa conservadora de tokens por requisição. A auditoria registra os tokens informados pelo provedor nas gerações concluídas. A revogação remove o resumo e a fila daquele cadastro.

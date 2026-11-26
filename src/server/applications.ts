@@ -1,3 +1,4 @@
+import { queueTalentSummary } from '@/server/talent-summary';
 import { reserveRequest } from '@/server/request-limit';
 import { discardUnlinkedFile } from '@/server/storage';
 import { EEOEnabled, talentNetworkAllowed } from '@/server/privacy-options';
@@ -172,6 +173,7 @@ export async function submitApplication(input: ApplicationInput) {
       await tx.consentRecord.create({
         data: { orgId: org.id, contactId: contact.id, purpose: 'PROFILE_STORAGE', withdrawnAt: input.storeProfile ? null : new Date() },
       });
+      if (input.storeProfile && process.env.RGA_SUMMARY_AUTO === 'true') await queueTalentSummary(tx, org.id, contact.id, 20);
     }
 
     await emitEvent(tx, {

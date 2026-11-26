@@ -48,3 +48,15 @@ Administração de IA com modelos autorizados, cotas por organização e globais
 ## Produtividade operacional — 5C
 
 Anúncios estruturados a partir dos dados da vaga, prévia editável, texto, PNG e impressão/PDF; sete modelos de WhatsApp, agendamento preenchido e registro de envio manual. Assistente direto separado do DISC, com configuração explícita de provedor/credencial, cotas persistidas, fontes locais e teste sintético. A validação operacional permanece pendente; ainda faltam personalização central dos modelos, rastreamento de origem de anúncios e mineração com currículos reais. A chave Groq não foi configurada na infraestrutura durante esta alteração. Consulte `docs/rga-prod-5c.md`.
+
+## Ciclo 5C.2
+
+Em 26/11/2026, o Neon de homologação informou 2.103 profissionais, 2.036 elegíveis pela autorização vigente, 67 sem autorização vigente identificada, 21 empresas, 38 vagas, zero currículos principais ou versões históricas vinculadas e zero execuções registradas da sincronização anterior. O endereço do serviço respondeu com o commit `5a775b5`. O acesso à credencial do provedor, o agendamento e a próxima execução no Scheduler aguardam validação no projeto.
+
+| Funcionalidade | Situação | Evidência |
+| --- | --- | --- |
+| Resumo persistido, revisável e pesquisável | Implementada, mas não testada | Percurso local com PostgreSQL descartável, resumo cadastral e exibição em desktop |
+| Sincronização manual pela recrutadora | Implementada, mas não testada | Percurso local em celular com planilha simulada e histórico persistente |
+| Sincronização diária, retomada e consumo de IA | Implementada parcialmente | Endpoints autenticados disponíveis no código. Falta configurar e testar no Google Cloud |
+
+[Resumo em desktop](evidencias-5c2/resumo-desktop.jpg) · [Sincronização em celular](evidencias-5c2/sincronizacao-mobile.jpg) · [Configuração operacional](rga-sincronizacao-talentos.md)

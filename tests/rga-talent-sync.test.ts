@@ -60,3 +60,26 @@ describe.skipIf(!hasDb)('sincronização com PostgreSQL local', () => {
     expect(await db.consentRecord.count({ where: { orgId: org.id } })).toBe(0);
   });
 });
+
+describe.skipIf(!hasDb)('histórico da sincronização operacional', () => {
+  it('compartilha o processamento manual e diário e registra uma execução sem mudanças', async () => {
+    const { enqueueTalentSync, processTalentSync, requestTalentSync } = await import('@/server/talent-sync-run');
+    const { org, admin } = await createOrg();
+    vi.stubEnv('AUTH_SECRET', 'chave-local-de-teste');
+    vi.stubEnv('RGA_TALENT_SYNC_ORG_ID', org.id);
+    vi.stubEnv('RGA_TALENT_SYNC_ADMIN_ID', admin.id);
+    vi.stubEnv('RGA_TALENT_SHEET_ID', 'planilha-ficticia-1');
+    vi.stubEnv('RGA_GOOGLE_SERVICE_ACCOUNT', 'somente-teste');
+    vi.mocked(readTalentSheet).mockResolvedValue([header, ['Pessoa simulada', 'id-operacional', 'Manaus']]);
+    const ctx = { orgId: org.id, userId: admin.id, accessRole: 'TEAM_MEMBER' };
+    const [first, second] = await Promise.all([requestTalentSync(ctx), requestTalentSync(ctx)]);
+    expect(first.id).toBe(second.id);
+    await Promise.all([processTalentSync(org.id), processTalentSync(org.id)]);
+    expect(await db.talentSyncRun.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({ status: 'SUCCEEDED', rowsRead: 1, createdCount: 1 });
+    const daily = await enqueueTalentSync(org.id, 'daily', null);
+    await processTalentSync(org.id);
+    expect(await db.talentSyncRun.findUniqueOrThrow({ where: { id: daily.id } })).toMatchObject({ status: 'SUCCEEDED', rowsRead: 1, unchanged: 1, createdCount: 0 });
+    expect(await db.contact.count({ where: { orgId: org.id } })).toBe(1);
+    await expect(requestTalentSync({ ...ctx, accessRole: 'INTERVIEWER' })).rejects.toThrow();
+  });
+});
