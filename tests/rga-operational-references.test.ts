@@ -9,7 +9,7 @@ import { saveRecruitingAssessment } from '@/server/recruiting-assessment';
 import { safeOpinion } from '@/server/share-links';
 import { createCandidate, moveStage } from '@/server/opportunities';
 import { createPosting } from '@/server/postings';
-import { setPostingStageExclusions, setStageAvailability, setStageOrder } from '@/server/stages';
+import { renameStage, setPostingStageExclusions, setStageAvailability, setStageOrder } from '@/server/stages';
 import { createOrg } from './fixtures';
 import { hasDb } from './setup';
 
@@ -55,6 +55,7 @@ describe.skipIf(!hasDb)('Ciclo 5C.3', () => {
     const screen = stages.find(stage => stage.type === 'SCREEN')!;
     const interview = stages.find(stage => stage.type === 'ONSITE')!;
     const hired = stages.find(stage => stage.type === 'HIRED')!;
+    await expect(setStageAvailability(ctx, hired.id, false)).rejects.toThrow(/contratação ativa/);
     const opportunity = await createCandidate(ctx, { name: 'Pessoa fictícia', postingId: posting.id, stageId: applicant.id, origin: 'APPLIED' });
     await saveRecruitingAssessment(recruiter, opportunity.id, 'screening', form({ result: 'REVIEW', notes: 'Triagem fictícia' }));
     await moveStage(ctx, opportunity.id, screen.id, { note: 'Triagem manual' });
@@ -76,6 +77,18 @@ describe.skipIf(!hasDb)('Ciclo 5C.3', () => {
     expect(await db.stageTransition.count({ where: { opportunityId: opportunity.id, actorId: admin.id } })).toBe(5);
     expect(await db.recruitingAssessment.findUniqueOrThrow({ where: { opportunityId: opportunity.id } }))
       .toMatchObject({ screening: { result: 'REVIEW', notes: 'Triagem fictícia' } });
+  });
+
+  it('keeps an operational indicator after a recognized stage is renamed', async () => {
+    const { org, admin, stages } = await createOrg();
+    const ctx = { orgId: org.id, userId: admin.id, accessRole: 'ADMIN' };
+    const stage = stages.find(row => row.type === 'ONSITE')!;
+    await db.stage.update({ where: { id: stage.id }, data: { name: 'Entrevista', operationalRole: 'INTERVIEW' } });
+    const person = await createCandidate(ctx, { name: 'Pessoa simulada', stageId: stage.id, origin: 'SOURCED' });
+    const where = operationalConditions(org.id, new Date(), [], [], []).interview;
+    expect(await db.opportunity.count({ where: { id: person.id, AND: [where] } })).toBe(1);
+    await renameStage(ctx, stage.id, 'Conversa técnica');
+    expect(await db.opportunity.count({ where: { id: person.id, AND: [where] } })).toBe(1);
   });
 
   it('scopes references to the organization and preserves versioned, selected excerpts after revocation', async () => {
