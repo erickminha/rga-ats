@@ -9,31 +9,36 @@ import type { SummaryFacts } from '@/lib/talent-summary';
 type Saved = { headline: string | null; reviewedText: string | null; reviewedAt: Date | null; sourceKind: string | null;
   status: string; stale: boolean; generatedAt: Date | null; content: unknown };
 
-export function TalentSummaryCard({ id, saved, allowed, hasResume }: { id: string; saved: Saved | null; allowed: boolean; hasResume: boolean }) {
+export function TalentSummaryCard({ id, saved, allowed, hasResume, sheetMode = false }: { id: string; saved: Saved | null; allowed: boolean; hasResume: boolean; sheetMode?: boolean }) {
   const [message, setMessage] = useState('');
   const router = useRouter();
   const current = saved?.reviewedText ?? saved?.headline;
-  const facts = saved?.content as (SummaryFacts & { years?: number | null }) | null;
+  const facts = saved?.content as (SummaryFacts & { years?: number | null; sheetText?: string }) | null;
+  const imported = saved?.sourceKind === 'PLANILHA';
+  const details = imported && typeof facts?.sheetText === 'string' ? facts.sheetText.slice(facts.sheetText.indexOf('Cargo recente:')) : '';
+  const copyText = imported && details ? 'Resumo: ' + current + '\n' + details : current;
   const status = !allowed ? 'Autorização vigente necessária' :
     saved?.status === 'QUEUED' || saved?.status === 'RUNNING' ? 'Aguardando processamento' :
     saved?.status === 'INSUFFICIENT' ? 'Informações profissionais insuficientes' :
     saved?.status === 'FAILED' ? 'Processamento indisponível' :
     saved?.stale ? 'Resumo desatualizado' : saved?.reviewedAt ? 'Revisado pela recrutadora' :
-    saved?.sourceKind === 'CADASTRO' ? 'Resumo baseado no cadastro' : current ? 'Resumo disponível' : 'Resumo ainda não solicitado';
+    saved?.sourceKind === 'CADASTRO' ? 'Resumo baseado no cadastro' : current ? 'Resumo disponível' : sheetMode ? 'Aguardando resumo da planilha' : 'Resumo ainda não solicitado';
   return <section className="mb-4 rounded-card bg-surface p-4" aria-labelledby="resumo-profissional">
     <h2 id="resumo-profissional" className="font-semibold">Resumo profissional</h2>
-    <p className="my-2 text-sm text-ink-2">{status}{!hasResume && ' · Currículo não disponível'}</p>
+    <p className="my-2 text-sm text-ink-2">{status}{!hasResume && !imported && !sheetMode && ' · Currículo não disponível'}</p>
     {current && <>
       <p className="whitespace-pre-wrap break-words">{current}</p>
-      <p className="my-2 text-sm text-ink-2">{saved?.sourceKind === 'CURRICULO' ? 'Fonte: currículo e cadastro' : 'Fonte: cadastro'}
+      <p className="my-2 text-sm text-ink-2">{imported ? 'Fonte: currículo resumido na planilha RGA' : saved?.sourceKind === 'CURRICULO' ? 'Fonte: currículo e cadastro' : 'Fonte: cadastro'}
         {saved?.generatedAt && ' · ' + new Date(saved.generatedAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
+      {imported ? <p className="mb-3 whitespace-pre-wrap break-words text-sm">{details}</p> : <>
       <dl className="mb-3 space-y-1 text-sm">{Object.entries({
         experience: 'Experiência informada', skills: 'Competências', education: 'Formação', courses: 'Cursos e certificações', interest: 'Área de interesse',
       }).map(([key, label]) => facts?.[key as keyof SummaryFacts]?.length ? <div key={key}><dt className="inline font-medium">{label} </dt>
         <dd className="inline">{facts[key as keyof SummaryFacts].join(' · ')}</dd></div> : null)}</dl>
       {typeof facts?.years === 'number' && facts.years > 0 && <p className="mb-2 text-sm">{facts.years} {facts.years === 1 ? 'ano completo' : 'anos completos'} nos períodos de trabalho datados no currículo.</p>}
       {!facts?.experience?.length && <p className="mb-2 text-sm">Experiência profissional não identificada nas fontes utilizadas.</p>}
-      <button type="button" className="mb-3 underline" onClick={() => navigator.clipboard.writeText(current)
+      </>}
+      <button type="button" className="mb-3 underline" onClick={() => navigator.clipboard.writeText(copyText ?? current)
         .then(() => setMessage('Resumo copiado.')).catch(() => setMessage('Selecione o texto do resumo para copiar.'))}>Copiar resumo</button>
     </>}
     {allowed && <form className="grid gap-3" action={async form => {
@@ -42,7 +47,7 @@ export function TalentSummaryCard({ id, saved, allowed, hasResume }: { id: strin
       router.refresh();
     }}>
       <div className="flex flex-wrap items-center gap-3">
-        <button className={buttonClass({ variant: 'secondary', size: 'sm' })} name="intent" value="queue">{current ? 'Atualizar resumo' : 'Gerar resumo'}</button>
+        {!sheetMode && <button className={buttonClass({ variant: 'secondary', size: 'sm' })} name="intent" value="queue">{current ? 'Atualizar resumo' : 'Gerar resumo'}</button>}
         <button type="button" onClick={() => router.refresh()} className="text-sm underline">Atualizar estado</button>
       </div>
       {current && <details key={current} className="text-sm">
