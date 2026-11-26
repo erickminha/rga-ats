@@ -44,6 +44,7 @@ import {
   type CsvImportResult,
 } from '@/server/contacts';
 import { createTask, setTaskCompleted, snoozeOpportunity } from '@/server/tasks';
+import { taskDate } from '@/lib/task-dates';
 import {
   createOffer,
   createRequisition,
@@ -418,25 +419,27 @@ export async function cancelEmailAction(messageId: string, opportunityId: string
 export async function createTaskAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireSession();
   const title = String(formData.get('title') ?? '').trim();
-  if (!title) return { error: 'Informe o título da tarefa.' };
+  if (!title || title.length>300) return { error: 'Informe o título da tarefa (até 300 caracteres).' };
   const dueAtRaw = String(formData.get('dueAt') ?? '');
-  const dueAt = dueAtRaw ? new Date(dueAtRaw) : undefined;
-  if (dueAt && Number.isNaN(dueAt.getTime())) return { error: 'Informe um prazo válido.' };
-  await createTask(ctx, {
-    title,
-    opportunityId: String(formData.get('opportunityId') ?? '') || undefined,
-    assigneeId: String(formData.get('assigneeId') ?? '') || undefined,
-    dueAt,
-  });
-  revalidatePath('/tasks');
-  const oppId = String(formData.get('opportunityId') ?? '');
-  if (oppId) revalidatePath(`/candidates/${oppId}`);
+  try {
+    const task=await createTask(ctx, {
+      title,
+      opportunityId: String(formData.get('opportunityId') ?? '') || undefined,
+      assigneeId: String(formData.get('assigneeId') ?? '') || undefined,
+      dueAt: dueAtRaw ? taskDate(dueAtRaw) : undefined,
+    });
+    revalidatePath('/tasks');
+    revalidatePath('/pipeline/operacao');
+    if (task.opportunityId) revalidatePath('/candidates/'+task.opportunityId);
+  } catch { return {error:'Não foi possível cadastrar. Confira o prazo, o responsável e a participação.'}; }
 }
 
 export async function setTaskCompletedAction(taskId: string, completed: boolean) {
   const ctx = await requireSession();
-  await setTaskCompleted(ctx, taskId, completed);
+  const task=await setTaskCompleted(ctx, taskId, completed);
   revalidatePath('/tasks');
+  revalidatePath('/pipeline/operacao');
+  if(task.opportunityId) revalidatePath('/candidates/'+task.opportunityId);
 }
 
 export async function snoozeOpportunityAction(
