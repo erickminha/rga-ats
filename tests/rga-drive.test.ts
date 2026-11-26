@@ -47,7 +47,7 @@ describe.skipIf(!hasDb)('transferência privada por ID de origem', () => {
     const recruiter = { ...ctx, accessRole: 'TEAM_MEMBER' };
     await expect(originalResumeUrl(recruiter, person.id)).resolves.toBe(url);
     await expect(originalResumeUrl({ ...ctx, accessRole: 'INTERVIEWER' }, person.id)).rejects.toThrow('FORBIDDEN');
-    await expect(originalResumeUrl({ ...ctx, orgId: 'outra-organizacao' }, person.id)).rejects.toThrow('FORBIDDEN');
+    await expect(originalResumeUrl({ ...ctx, orgId: 'outra-organizacao' }, person.id)).rejects.toThrow('CONFIG');
     const p = await previewDriveResume(ctx, person.id);
     parent = 'PastaDiferente'; await expect(confirmDriveResume(ctx,person.id,p.ticket)).rejects.toThrow('FILE'); parent = folder;
     expect(await confirmDriveResume(ctx, person.id, p.ticket)).toBe(true);

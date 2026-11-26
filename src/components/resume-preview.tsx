@@ -1,9 +1,10 @@
 'use client';
 
+import { buttonClass } from '@/components/ui/button';
 import { useEffect, useRef, useState } from 'react';
 
 /** Fetch the private document only while the recruiter is viewing it. */
-export function ResumePreview({ fileId }: { fileId: string }) {
+export function ResumePreview({ fileId, prominent = false }: { fileId: string; prominent?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<{ url: string; mime: string } | null>(null);
@@ -39,7 +40,7 @@ export function ResumePreview({ fileId }: { fileId: string }) {
   }, [href, open]);
 
   return <>
-    <button type="button" className="text-sm underline" onClick={() => {
+    <button type="button" className={prominent ? buttonClass({ variant: 'secondary', size: 'sm' }) : 'text-sm underline'} onClick={() => {
       setPreview(null); setMessage(''); setOpen(true); dialog.current?.showModal();
     }}>Visualizar currículo</button>
     <dialog ref={dialog} aria-label="Visualização do currículo" onClose={() => setOpen(false)}
