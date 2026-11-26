@@ -6,7 +6,7 @@ import { assistedFields, customerFeedbackLabels, opinionTemplate, opinionTemplat
 import { readText } from '@/lib/competency-assessment';
 import { actorOf, emitEvent } from '@/server/events';
 import { lockIdentifiableContact } from '@/server/contact-lock';
-import { finalistStageNames } from '@/server/share-links';
+import { finalistStage } from '@/server/operational-pipeline';
 import { aiConfigured, runAiTask } from '@/server/ai-client';
 
 export async function saveOpinionTemplate(ctx: SessionContext, form: FormData) {
@@ -43,7 +43,7 @@ export async function saveCustomerFeedback(ctx: SessionContext, postingId: strin
   if (!Object.hasOwn(customerFeedbackLabels, status)) throw new Error('Selecione uma situação de retorno.');
   await db.$transaction(async (tx) => {
     const row = await tx.opportunity.findFirst({
-      where: { id, postingId, orgId: ctx.orgId, stage: { orgId: ctx.orgId, name: { in: finalistStageNames } }, posting: { orgId: ctx.orgId, clientCompany: { orgId: ctx.orgId } },
+      where: { id, postingId, orgId: ctx.orgId, stage: finalistStage(ctx.orgId), posting: { orgId: ctx.orgId, clientCompany: { orgId: ctx.orgId } },
         contact: { orgId: ctx.orgId, isAnonymized: false } },
       select: { contactId: true, posting: { select: { clientCompanyId: true } } },
     });

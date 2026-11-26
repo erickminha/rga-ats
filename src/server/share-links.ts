@@ -1,3 +1,5 @@
+import { redactProfessionalContacts } from '@/lib/professional-references';
+import { finalistStage } from '@/server/operational-pipeline';
 import { publicOpinionKeys } from '@/lib/professional-opinion';
 import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { createHash, randomBytes } from 'node:crypto';
@@ -51,14 +53,15 @@ async function persistShare(ctx: SessionContext, scope: ShareScope, id: string, 
   const { orgId } = ctx;
   const code = randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + expiryDays() * DAY);
+  const recordId = tokenHash(code);
   await db.$transaction(async (tx) => {
-    await tx.shareLink.create({ data: { code: tokenHash(code), orgId, scope, targetId: id, expiresAt, selection } });
+    await tx.shareLink.create({ data: { code: recordId, orgId, scope, targetId: id, expiresAt, selection } });
     await emitEvent(tx, {
       orgId, ...actorOf(ctx), verb: 'share.created', subjectType: scope === 'candidate' ? 'opportunity' : scope === 'shortlist' ? 'posting' : scope,
       subjectId: id, payload: { expiresAt: expiresAt.toISOString(), ...(selection ? { count: selection.candidates.length } : {}) },
     });
   });
-  return { code, expiresAt };
+  return { code, expiresAt, recordId };
 }
 
 export async function revokeRecruitingShares(ctx: SessionContext, scope: ShareScope, id: string) {
@@ -90,7 +93,6 @@ export async function resolveShare(token: string): Promise<SharePayload | null> 
   return { orgId: link.orgId, scope: link.scope, id: link.targetId, exp: link.expiresAt.getTime() };
 }
 
-export const finalistStageNames = ['Finalistas', 'Avaliação DISC', 'Parecer', 'Apresentação ao cliente'];
 const professionalOpinion = (value: unknown) => {
   const fields = textRecord(value);
   return { history: fields.history || '', experience: fields.experience || '', competencies: fields.competencies || '', recommendation: fields.recommendation || '' };
@@ -99,7 +101,7 @@ const professionalOpinion = (value: unknown) => {
 const publicFinalists = (orgId: string, postingId: string) => ({
   ...shareableOpportunity(orgId), postingId, status: 'ACTIVE' as const,
   contact: { orgId, isAnonymized: false, retentionHold: false },
-  stage: { orgId, name: { in: finalistStageNames } },
+  stage: finalistStage(orgId),
 });
 
 async function shortlistPosting(orgId: string, postingId: string) {
@@ -111,7 +113,7 @@ async function shortlistPosting(orgId: string, postingId: string) {
 
 export const safeOpinion = (value: unknown) => {
   const values = textRecord(value);
-  return Object.fromEntries(publicOpinionKeys.map((key) => [key, values[key] || '']));
+  return Object.fromEntries(publicOpinionKeys.map((key) => [key, redactProfessionalContacts(values[key] || '')]));
 };
 const hash = (value: unknown) => tokenHash(JSON.stringify(value));
 const publicFile = (orgId: string, contactId: string, file: { id: string; orgId: string; contactId: string | null; deletePendingAt: Date | null } | null) =>
@@ -190,7 +192,7 @@ export async function readShortlistShare(payload: SharePayload) {
     const version = assessment?.opinionVersions[0];
     const versionHash = hash([content, version?.version]);
     const opinion = assessment?.opinionFinalizedAt && approval?.opinionHash === 'v2:' + versionHash ? content :
-      assessment?.opinionFinalizedAt && approval?.opinionHash === hash(legacy) ? legacy : null;
+      assessment?.opinionFinalizedAt && approval?.opinionHash === hash(legacy) ? safeOpinion(legacy) : null;
     const opinionPdf = assessment?.opinionFinalizedAt && version && approval?.opinionPdfHash === versionHash
       ? { content, version: version.version, issuedAt: version.issuedAt } : null;
     const resumeId = publicFile(payload.orgId, candidate.contactId, candidate.applicationResume);
@@ -199,4 +201,33 @@ export async function readShortlistShare(payload: SharePayload) {
       resumeId: resumeId && resumeId === approval?.resumeId ? resumeId : null,
       discId: discId && discId === approval?.discId ? discId : null };
   }) };
+}
+
+export async function recordShortlistSend(ctx: SessionContext, postingId: string, recordId: string) {
+  if (!canManageRecruiting(ctx)) throw new Error('Seu perfil não pode registrar envios.');
+  const posting = await shortlistPosting(ctx.orgId, postingId);
+  if (!posting?.clientCompanyId) throw new Error('Apresentação indisponível.');
+  await db.$transaction(async tx => {
+    const now = new Date();
+    const link = await tx.shareLink.findFirst({
+      where: { code: recordId, orgId: ctx.orgId, scope: 'shortlist', targetId: postingId, revokedAt: null, expiresAt: { gt: now } },
+      select: { selection: true, sentAt: true },
+    });
+    const selection = link?.selection as SharePayload['selection'];
+    if (!link || selection?.clientId !== posting.clientCompanyId) throw new Error('Apresentação indisponível.');
+    if (link.sentAt) return;
+    const eligible = await tx.opportunity.findFirst({
+      where: { ...publicFinalists(ctx.orgId, postingId), id: { in: selection.candidates.map(item => item.id) } },
+      select: { id: true },
+    });
+    if (!eligible) throw new Error('Nenhum finalista está disponível para a apresentação.');
+    const { count } = await tx.shareLink.updateMany({
+      where: { code: recordId, sentAt: null, revokedAt: null, expiresAt: { gt: now } },
+      data: { sentAt: now },
+    });
+    if (count) await emitEvent(tx, {
+      orgId: ctx.orgId, ...actorOf(ctx), verb: 'shortlist.sent_manually', subjectType: 'posting', subjectId: postingId,
+      payload: { count: selection.candidates.length },
+    });
+  });
 }

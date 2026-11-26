@@ -14,15 +14,28 @@ export function CandidateDiscForm() {
   const [error, setError] = useState('');
   const [busy, start] = useTransition();
   useEffect(() => {
-    const key = location.hash.slice(1);
-    setToken(key);
-    candidateDiscAction(key).then(result => {
-      if (result?.answers) {
-        setDraft(result);
-        setStep(Math.max(0, result.answers.findIndex(group => !validGroup(group))));
-      } else if (result?.done) setDone(true);
-      else setError(result?.error ?? 'Link inválido, expirado ou cancelado.');
-    }).catch(() => setError('Não foi possível abrir a avaliação. Recarregue a página.'));
+    let request = 0;
+    const load = () => {
+      const key = location.hash.slice(1);
+      const current = ++request;
+      setToken(key);
+      setDraft(undefined);
+      setDone(false);
+      setError('');
+      candidateDiscAction(key).then(result => {
+        if (current !== request) return;
+        if (result?.answers) {
+          setDraft(result);
+          setStep(Math.max(0, result.answers.findIndex(group => !validGroup(group))));
+        } else if (result?.done) setDone(true);
+        else setError(result?.error ?? 'Link inválido, expirado ou cancelado.');
+      }).catch(() => {
+        if (current === request) setError('Não foi possível abrir a avaliação. Recarregue a página.');
+      });
+    };
+    load();
+    window.addEventListener('hashchange', load);
+    return () => { request++; window.removeEventListener('hashchange', load); };
   }, []);
   const completed = draft?.answers.filter(validGroup).length ?? 0;
   function move(target: number, submit = false) {
@@ -31,12 +44,13 @@ export function CandidateDiscForm() {
       setError('');
       try {
         const result = await candidateDiscAction(token, { answers: draft.answers, revision: draft.revision, submit });
+        if (location.hash.slice(1) !== token) return;
         if (result?.done) setDone(true);
         else if (typeof result?.saved === 'number') {
           setDraft({ ...draft, revision: result.saved });
           setStep(target);
         } else setError(result?.error ?? 'O link expirou ou o limite temporário foi atingido.');
-      } catch { setError('Falha de conexão. Tente salvar novamente.'); }
+      } catch { if (location.hash.slice(1) === token) setError('Falha de conexão. Tente salvar novamente.'); }
     });
   }
   return <section className="rga-card grid gap-4 p-5">

@@ -1,7 +1,7 @@
 import { listHref, listKey, PIPELINE_KEYS, type ListInput } from '@/lib/list-client/list-key';
 type Input = ListInput<(typeof PIPELINE_KEYS)[number]>;
 export function pipelineBoardQuery(input: Input): string {
-  return listKey({ posting: input.posting, client: input.client, q: input.q, sort: input.sort }, PIPELINE_KEYS);
+  return listKey({ posting: input.posting, client: input.client, owner: input.owner, q: input.q, sort: input.sort }, PIPELINE_KEYS);
 }
 export function pipelineViewHref(input: Input, board: boolean): string {
   const query = new URLSearchParams(pipelineBoardQuery(input));

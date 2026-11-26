@@ -37,7 +37,7 @@ export function NewPostingForm({
         <input {...noAutofill} name="title" required defaultValue={initialPosting?.title} placeholder="Analista de RH" className={inputClass} />
       </Field>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {!initialPosting ? <Field label={isAgency ? organization.client.singular : organization.department.singular}>
           <FormSelect
             name={isAgency ? 'clientCompanyId' : 'departmentId'}
@@ -62,7 +62,7 @@ export function NewPostingForm({
             ]}
           />
         </Field>
-        <Field label="Tipo de contratação">
+        <Field label="Jornada ou tipo de vínculo">
           <FormSelect
             name="commitment"
             defaultValue={initialPosting?.commitment ?? 'FULL_TIME'}
@@ -76,7 +76,7 @@ export function NewPostingForm({
         </Field>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field label="Salário mínimo">
           <input {...noAutofill} name="salaryMin" defaultValue={initialPosting?.salaryMin ?? ''} type="number" min="0" placeholder="1518" className={inputClass} />
         </Field>
@@ -103,7 +103,7 @@ export function NewPostingForm({
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         {Object.entries(adFieldLabels).map(([key,label]) => <Field key={key} label={label}>
-          <textarea name={'ad_' + key} rows={key === 'benefits' ? 3 : 1} maxLength={1000} defaultValue={initialPosting?.advertisement?.[key as keyof AdFields]} className={textareaClass} />
+          <textarea name={'ad_' + key} placeholder={key === 'deadline' ? 'DD/MM/AAAA' : undefined} rows={key === 'benefits' ? 3 : 1} maxLength={1000} defaultValue={initialPosting?.advertisement?.[key as keyof AdFields]} className={textareaClass} />
         </Field>)}
       </div>
       <p className="text-xs text-ink-2">Os dados de divulgação devem conter apenas informações que podem ser publicadas.</p>

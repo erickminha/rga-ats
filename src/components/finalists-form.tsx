@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { presentFinalistsAction, revokeFinalistsAction } from '@/app/(app)/recruiting-actions';
+import { presentFinalistsAction, recordFinalistsSendAction, revokeFinalistsAction } from '@/app/(app)/recruiting-actions';
 import { opinionFields } from '@/lib/i18n/pt-BR/assessment';
 import { btnTonal } from '@/components/form-controls';
 
@@ -12,7 +12,12 @@ type Finalist = {
   opinionSummary: Record<string, string>; resumeId?: string; discId?: string; version?: number; reviewFingerprint: string;
 };
 
-export function FinalistsForm({ id, finalists, enabled }: { id: string; finalists: Finalist[]; enabled: boolean }) {
+const displayDate = (date: string) => new Date(date).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+
+export function FinalistsForm({ id, finalists, enabled, links }: {
+  id: string; finalists: Finalist[]; enabled: boolean;
+  links: { id: string; createdAt: string; expiresAt: string; sentAt: string | null; names: string[] }[];
+}) {
   const [url, setUrl] = useState('');
   const [message, setMessage] = useState('');
   const [pending, start] = useTransition();
@@ -53,7 +58,7 @@ export function FinalistsForm({ id, finalists, enabled }: { id: string; finalist
             {fileId && <a className="ml-2 text-sm underline" href={`/api/files/${fileId}`} target="_blank" rel="noreferrer">Conferir arquivo</a>}
           </div>)}
         </>}
-        {!person.canShare && <p className="text-xs">Participação confidencial</p>}
+        {!person.canShare && <p className="text-xs">Participação indisponível para divulgação</p>}
       </article>)}
       {enabled && selected.length > 0 && <>
         <button type="button" className={btnTonal} onClick={() => setPreview(true)}>Revisar apresentação</button>
@@ -83,13 +88,26 @@ export function FinalistsForm({ id, finalists, enabled }: { id: string; finalist
         void navigator.clipboard.writeText(url).then(() => setMessage('Link copiado.'), () => setMessage('Não foi possível copiar.'));
       }}>Copiar link</button>
     </div>}
-    <button type="button" className={btnTonal} disabled={pending} onClick={() => {
+    {!!links.length && <ul className="grid gap-2 text-sm">
+      {links.map(link => <li key={link.id} className="grid gap-1 rounded-field border border-line p-3">
+        <p className="break-words">{link.names.join(' · ') || 'Participações indisponíveis para divulgação'}</p>
+        <p>Link criado em {displayDate(link.createdAt)} · Expira em {displayDate(link.expiresAt)}</p>
+        {link.sentAt ? <p>Envio registrado em {displayDate(link.sentAt)}</p> : !!link.names.length && <button type="button" className={btnTonal} disabled={pending} onClick={() => {
+          if (!window.confirm('Confirma que você enviou esta apresentação à empresa cliente?')) return;
+          start(async () => {
+            try { await recordFinalistsSendAction(id, link.id); setMessage('Envio registrado.'); }
+            catch { setMessage('Não foi possível registrar o envio. Confira se o link continua vigente.'); }
+          });
+        }}>Registrar envio ao cliente</button>}
+      </li>)}
+    </ul>}
+    {!!links.length && <button type="button" className={btnTonal} disabled={pending} onClick={() => {
       if (!window.confirm('Revogar os links de apresentação desta vaga?')) return;
       start(async () => {
         try { await revokeFinalistsAction(id); setUrl(''); setMessage('Links revogados.'); }
         catch { setMessage('Não foi possível revogar os links.'); }
       });
-    }}>Revogar links de apresentação</button>
+    }}>Revogar links de apresentação</button>}
     <p role="status" className="text-sm">{message}</p>
   </div>;
 }

@@ -48,7 +48,7 @@ export function OpinionEditor({ id, templates, content, prefill, revision, issue
       try {
         await saveAssessmentAction(id, 'opinion', form);
         setMessage(form.get('intent') === 'finalize' ? 'Parecer finalizado.' : 'Rascunho salvo.');
-      } catch { setMessage('Não foi possível salvar. Confira a recomendação e atualize a página se necessário.'); }
+      } catch { setMessage('Não foi possível salvar. Confira a recomendação, os dados de eventual verificação complementar e a versão do rascunho.'); }
     })}>
       <input type="hidden" name="opinionRevision" value={revision} />
       <label className="grid gap-1">Modelo de parecer
@@ -72,6 +72,17 @@ export function OpinionEditor({ id, templates, content, prefill, revision, issue
       {sections.map((key) => <label key={key} className="grid gap-1 text-sm">{opinionFields[key]}
         <textarea name={key} rows={3} className={textareaClass} maxLength={4000} value={fields[key] ?? ''} onChange={(event) => update(key, event.target.value)} />
       </label>)}
+      {sections.includes('complementary') && <fieldset className="grid min-w-0 gap-2 rounded-field border border-line p-3">
+        <legend className="px-1 text-sm font-medium">Contexto da verificação complementar</legend>
+        <p className="text-sm">Registre apenas o resultado profissional pertinente e a referência da autorização. Use os dados mínimos e mantenha documentos pessoais fora do parecer.</p>
+        {([
+          ['verificationPurpose', '_verificationPurpose', 'Finalidade profissional'],
+          ['verificationAuthorization', '_verificationAuthorization', 'Referência da autorização'],
+          ['verificationBasis', '_verificationBasis', 'Fundamento aplicável'],
+        ] as const).map(([name, key, label]) => <label className="grid gap-1 text-sm" key={name}>{label}
+          <input name={name} maxLength={500} value={fields[key] ?? ''} onChange={event => update(key, event.target.value)} className={inputClass} />
+        </label>)}
+      </fieldset>}
       <div className="flex flex-wrap gap-2">
         <button name="intent" value="draft" className={btnTonal} disabled={pending}>Salvar rascunho</button>
         <button name="intent" value="finalize" className={btnTonal} disabled={pending}>Finalizar e emitir versão</button>

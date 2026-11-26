@@ -7,6 +7,7 @@ import { decodeCursor, encodeCursor } from '@/lib/list-cursor';
 import {
   PAGE_SIZE,
   pipelineCounts,
+  pipelineFilterFor,
   pipelineHasAny,
   pipelinePage,
   type PipelineFilter,
@@ -126,6 +127,30 @@ async function walkContacts(orgId: string, input: { q?: string; tag?: string; po
 }
 
 const dup = (ids: string[]) => ids.length - new Set(ids).size;
+
+describe.skipIf(!hasDb)('pipeline owner scope', () => {
+  it('uses the participation owner before the posting owner and keeps counts consistent', async () => {
+    const { org, admin, stages } = await createOrg();
+    const other = await createOrg();
+    const colleague = await db.user.create({ data: {
+      orgId: org.id, name: 'Recrutadora Fictícia', email: 'responsavel@example.invalid',
+    } });
+    const posting = await db.posting.create({ data: {
+      orgId: org.id, title: 'Vaga fictícia', slug: 'filtro-responsavel', ownerId: admin.id,
+    } });
+    const inherited = await candidate(org.id, stages, [[0, 0]], { postingId: posting.id });
+    const assigned = await candidate(org.id, stages, [[1, 1]], { postingId: posting.id, ownerId: colleague.id });
+    const direct = await candidate(org.id, stages, [[1, 2]], { ownerId: admin.id });
+    await candidate(other.org.id, other.stages, [[0, 0]], { ownerId: other.admin.id });
+    const mine = pipelineFilterFor(org.id, { owner: admin.id }, null);
+    const coworker = pipelineFilterFor(org.id, { owner: colleague.id, posting: posting.id }, null);
+    const foreign = pipelineFilterFor(org.id, { owner: other.admin.id }, null);
+    expect(await walk(mine, 'time', 1)).toEqual([inherited.opportunity.id, direct.opportunity.id]);
+    expect(await walk(coworker, 'name', 1)).toEqual([assigned.opportunity.id]);
+    expect(await walk(foreign, 'time', 1)).toEqual([]);
+    expect(await pipelineCounts(mine)).toMatchObject({ total: 2, counts: { [stages[0].id]: 1, [stages[1].id]: 1 } });
+  });
+});
 
 describe.skipIf(!hasDb)('pipeline keyset pages', () => {
   let orgId = '';

@@ -5,7 +5,7 @@
  * never drift apart.
  */
 
-export const PIPELINE_KEYS = ['status', 'posting', 'client', 'stage', 'q', 'sort', 'reason'] as const;
+export const PIPELINE_KEYS = ['status', 'posting', 'client', 'owner', 'stage', 'q', 'sort', 'reason'] as const;
 export const CONTACT_KEYS = ['pool', 'tag', 'q'] as const;
 
 export type ListInput<K extends string> = Partial<Record<K, string>>;

@@ -1,3 +1,5 @@
+import { WhatsappTemplateSettings } from '@/components/rga-productivity';
+import { readWhatsappTemplates } from '@/lib/rga-productivity';
 import { saveArchiveReasonAction, seedRgaArchiveReasonsAction, translateRgaEmailDefaultsAction } from '@/app/org-actions';
 import { outcomeCategory, outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
 import { organization } from '@/lib/i18n/pt-BR/organization';
@@ -284,6 +286,10 @@ export default async function SettingsPage({
           </Row>
         </Group>
         ) : null}
+
+        {section === 'email' && <Group title="Modelos de WhatsApp">
+          <Row><WhatsappTemplateSettings templates={readWhatsappTemplates(org?.whatsappTemplates)} /></Row>
+        </Group>}
 
         {section === 'email' ? (
         <Group title={settings.controls.automation}>

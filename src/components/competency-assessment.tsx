@@ -98,10 +98,13 @@ export function CompareFinalists({ finalists }: { finalists: Comparison[] }) {
   const [ids, setIds] = useState<string[]>([]);
   return <details className={`${surface} my-5 p-5`}>
     <summary className="cursor-pointer font-medium">Comparar finalistas</summary>
-    {finalists.length === 0 && <p className="mt-3">Nenhum finalista nesta vaga.</p>}
+    <p className="mt-3 text-sm">{finalists.length ? 'Selecione até três finalistas.' : 'Nenhum finalista nesta vaga.'}</p>
     <div className="my-3 flex flex-wrap gap-3">
-      {finalists.map((row) => <label key={row.id}><input type="checkbox" checked={ids.includes(row.id)}
-        onChange={(event) => setIds(event.target.checked ? [...ids, row.id] : ids.filter((id) => id !== row.id))} /> {row.name}</label>)}
+      {finalists.map((row) => <label key={row.id}><input type="checkbox" checked={ids.includes(row.id)} disabled={ids.length >= 3 && !ids.includes(row.id)}
+        onChange={(event) => setIds(current => {
+          if (!event.target.checked) return current.filter(id => id !== row.id);
+          return current.length < 3 ? [...current, row.id] : current;
+        })} /> {row.name}</label>)}
     </div>
     <div className="grid gap-3 sm:grid-cols-2">
       {finalists.filter((row) => ids.includes(row.id)).map((row) => <article key={row.id} className="grid content-start gap-2 rounded-xl border border-line p-3">

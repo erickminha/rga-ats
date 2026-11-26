@@ -5,6 +5,7 @@ import { canManageRecruiting, isAdmin, requireSession } from '@/lib/session';
 import { notFound } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { DiscInterpretationEditor, DiscInvite, DiscManage } from '@/components/native-disc-controls';
+import { realDiscAvailable } from '@/server/native-disc';
 import { dimensions, localDiscInterpretation, type Scores } from '@/lib/native-disc';
 
 const colors = { D: '#B42318', I: '#F9C82B', S: '#23734D', C: '#116DA9' };
@@ -40,13 +41,15 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
     contact: { isAnonymized: false, retentionHold: false,
       ...(params.candidato ? { name: { contains: params.candidato, mode: 'insensitive' } } : {}) },
   }, orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], take: 100, select: {
-    id: true, contact: { select: { name: true } }, posting: { select: { title: true, clientCompany: { select: { name: true } } } },
+    id: true, status: true, contact: { select: { name: true, emails: true } }, posting: { select: { title: true, clientCompany: { select: { name: true } } } },
     nativeDiscs: { where: filterDiscs, orderBy: { createdAt: 'desc' }, take: 20,
       select: { id: true, createdById: true, simulation: true, scoringKey: true, createdAt: true, emailedAt: true, expiresAt: true, submittedAt: true, cancelledAt: true, reviewedAt: true, revision: true, results: true } },
   } });
   const test = ctx.orgId === process.env.RGA_DISC_TEST_ORG_ID;
+  const canInvite = test || realDiscAvailable();
   return <main className="grid gap-4 p-5">
     <PageHeader title="Central DISC" subtitle="Convites, acompanhamento e revisão das avaliações por vaga." />
+    {!canInvite && <p className="text-sm">Convites reais aguardam a aprovação e configuração da metodologia pela administração.</p>}
     {isAdmin(ctx) && <Link className="underline" href="/settings/ia">Configurar inteligência artificial</Link>}
     <form className="flex flex-wrap items-end gap-3">
       <label className="grid text-sm">Candidato <input className="rounded-field border border-line p-2" name="candidato" defaultValue={params.candidato} /></label>
@@ -69,7 +72,9 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
     {opportunities.map(item => <section key={item.id} className="rga-card grid gap-3 p-4">
       <h2 className="font-semibold"><Link href={'/candidates/' + item.id}>{item.contact.name}</Link></h2>
       <p>{item.posting?.title} {item.posting?.clientCompany && '· ' + item.posting.clientCompany.name}</p>
-      <DiscInvite opportunityId={item.id} test={test} />
+      {canInvite && item.status === 'ACTIVE' && (!test || (item.contact.emails.length > 0 &&
+        item.contact.emails.every(email => email.toLowerCase().endsWith('.invalid')))) &&
+        <DiscInvite opportunityId={item.id} test={test} />}
       {item.nativeDiscs.length === 0 && <p>Não solicitado</p>}
       {item.nativeDiscs.map(row => {
         const label = row.reviewedAt ? 'Concluído' : row.submittedAt ? (row.results && 'analysis' in (row.results as object) ? 'Aguardando revisão' : 'Aguardando processamento') : row.cancelledAt ? 'Cancelado' :

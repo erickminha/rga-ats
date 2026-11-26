@@ -1,3 +1,4 @@
+import { simulationDiscInstrument } from '@/lib/native-disc';
 import { opinionKeys } from '@/lib/professional-opinion';
 import { discDetails, discScale } from '@/lib/competency-assessment';
 import { db } from '@/lib/db';
@@ -78,7 +79,7 @@ export async function saveRecruitingAssessment(ctx: SessionContext, opportunityI
           confidential: false } },
       });
       const sourceDisc = reused && reused.disc && typeof reused.disc === 'object' && !Array.isArray(reused.disc) ? reused.disc : null;
-      if (reuseId && (!sourceDisc || sourceDisc.complete !== true)) throw new Error('Avaliação anterior indisponível.');
+      if (reuseId && (!sourceDisc || sourceDisc.complete !== true || sourceDisc.instrument === simulationDiscInstrument)) throw new Error('Avaliação anterior indisponível.');
       const current = await tx.recruitingAssessment.findUnique({ where: { opportunityId } });
       const reuseDays = Number(process.env.RGA_DISC_REUSE_MAX_DAYS ?? 0);
       if (reuseId && sourceDisc && Number.isSafeInteger(reuseDays) && reuseDays > 0) {
@@ -102,6 +103,20 @@ export async function saveRecruitingAssessment(ctx: SessionContext, opportunityI
       const editedAt = current?.opinionDraftAt?.toISOString() ?? '';
       if (opinion && (form.has('opinionRevision') && read(form, 'opinionRevision', 50) !== editedAt)) {
         throw new Error('Atualize a página antes de editar este parecer.');
+      }
+      if (opinion && Object.hasOwn(opinion, 'complementary') && opinion.complementary) {
+        const previous = current?.opinion && typeof current.opinion === 'object' && !Array.isArray(current.opinion) ? current.opinion : {};
+        const verification = {
+          _verificationPurpose: read(form, 'verificationPurpose', 500),
+          _verificationAuthorization: read(form, 'verificationAuthorization', 500),
+          _verificationBasis: read(form, 'verificationBasis', 500),
+        };
+        const legacyUnchanged = previous.complementary === opinion.complementary
+          && !Object.values(verification).some(Boolean) && !previous._verificationPurpose;
+        if (!legacyUnchanged && !Object.values(verification).every(Boolean)) {
+          throw new Error('Registre a finalidade profissional, a autorização e o fundamento da verificação complementar.');
+        }
+        if (!legacyUnchanged) Object.assign(opinion, verification);
       }
       const data = {
         screening,
