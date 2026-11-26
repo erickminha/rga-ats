@@ -64,6 +64,7 @@ export type RgaSpreadsheet = {
   headerRow: number;
   mapping: Record<string, unknown>;
   attestation?: string;
+  preserveExistingTalents?: boolean;
 };
 
 function parseFile(ctx: SessionContext, file: RgaSpreadsheet) {
@@ -254,14 +255,16 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
   const xlsx = file.name.toLowerCase().endsWith('.xlsx');
   const candidate = file.kind === 'candidate' || file.kind === 'talent';
   const source = file.kind === 'talent' ? TALENT_SOURCE : WORK_SOURCE;
+  const hasPosting = file.kind !== 'talent' || parsed.records.some(({ fields }) => fields.postingRef);
+  const hasOpportunity = file.kind === 'candidate' || (file.kind === 'talent' && hasPosting);
   const [org, companies, jobs, contacts, opportunities, stage, ledger] = await Promise.all([
     tx.organization.findUnique({ where: { id: orgId }, select: { kind: true } }),
-    tx.clientCompany.findMany({ where: { orgId }, orderBy: { id: 'asc' } }),
-    file.kind !== 'company' ? tx.posting.findMany({ where: { orgId }, select: { id: true, title: true, location: true, clientCompanyId: true, content: true, salaryMin: true, salaryMax: true, salaryCurrency: true }, orderBy: { id: 'asc' } }) : [],
+    !candidate ? tx.clientCompany.findMany({ where: { orgId }, orderBy: { id: 'asc' } }) : [],
+    file.kind !== 'company' && hasPosting ? tx.posting.findMany({ where: { orgId }, select: { id: true, title: true, location: true, clientCompanyId: true, content: true, salaryMin: true, salaryMax: true, salaryCurrency: true }, orderBy: { id: 'asc' } }) : [],
     candidate ? tx.contact.findMany({ where: { orgId }, select: { id: true, name: true, emails: true, phones: true, headline: true, location: true, careerProfile: true, salaryExpectation: true, isAnonymized: true }, orderBy: { id: 'asc' } }) : [],
-    candidate ? tx.opportunity.findMany({ where: { orgId }, select: { id: true, contactId: true, postingId: true, customFields: file.kind === 'candidate' } }) : [],
-    candidate ? tx.stage.findFirst({ where: { orgId, type: { in: ['LEAD', 'APPLICANT'] } }, orderBy: [{ order: 'asc' }, { id: 'asc' }], select: { id: true } }) : null,
-    tx.importRef.findMany({ where: { orgId, provider: RGA_IMPORT_PROVIDER }, select: { kind: true, externalId: true, internalId: true } }),
+    hasOpportunity ? tx.opportunity.findMany({ where: { orgId }, select: { id: true, contactId: true, postingId: true, customFields: file.kind === 'candidate' } }) : [],
+    hasOpportunity ? tx.stage.findFirst({ where: { orgId, type: { in: ['LEAD', 'APPLICANT'] } }, orderBy: [{ order: 'asc' }, { id: 'asc' }], select: { id: true } }) : null,
+    tx.importRef.findMany({ where: { orgId, provider: RGA_IMPORT_PROVIDER, ...(file.kind === 'talent' && !hasPosting ? { kind: 'contact', externalId: { startsWith: source + ':' } } : {}) }, select: { kind: true, externalId: true, internalId: true } }),
   ]);
   if (!org || (file.kind === 'company' && org.kind !== 'AGENCY')) throw new RgaImportError('A importação de empresas está disponível no espaço de trabalho da agência.');
   const stageId = stage?.id;
@@ -454,12 +457,12 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
   }
 
   function person(f: DataFields, row: number): Counts {
+    const ext = external(f.externalId);
     if (!f.name || f.name.length > 180) throw new RgaImportError('Informe um nome de candidato de até 180 caracteres.');
     const email = nullable(f.email)?.toLowerCase() ?? null;
     if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw new RgaImportError('E-mail inválido.');
     const phone = f.phone ? comparablePhone(f.phone) : null;
     if (f.phone && !phone) throw new RgaImportError('Telefone brasileiro inválido. Confira o DDD e o número.');
-    const ext = external(f.externalId);
     if (!ext && !email && !phone) throw new RgaImportError('Informe e-mail, telefone ou ID de origem.');
     const date = calendar(f.createdAt, xlsx);
     const salary = currency(f.salary, xlsx);
@@ -488,6 +491,7 @@ async function planImport(tx: Prisma.TransactionClient, ctx: SessionContext, fil
     const current = contactRows.get(id);
     if (current?.isAnonymized) return 'duplicates';
     const explicitMatch = ext && refId('contact', externalKeys[0]) === id;
+    if (file.preserveExistingTalents && explicitMatch) return 'duplicates';
     if (ext && !explicitMatch && originIdsByContact.has(id)) throw new RgaImportError('O ID de origem diverge do cadastro localizado.');
     const name = companyNameKey(f.name);
     const seenName = namedContacts.get(id);

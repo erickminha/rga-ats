@@ -100,6 +100,13 @@ export async function getTalentSummary(ctx: SessionContext, contactId: string) {
   return row ? { ...row, stale: row.sourceKind !== 'PLANILHA' && !!row.inputHash && row.inputHash !== (await sources(db, ctx.orgId, contactId))?.hash } : null;
 }
 
+export async function getTalentCvText(ctx: SessionContext, contactId: string) {
+  requireRecruitingAccess(ctx);
+  const row = await db.talentCvText.findFirst({ where: { orgId: ctx.orgId, contactId, contact: summaryConsent(ctx.orgId) },
+    select: { text: true } });
+  return row?.text ?? null;
+}
+
 function limit() {
   const n = Number(process.env.RGA_SUMMARY_DAILY_LIMIT ?? 20);
   return Number.isSafeInteger(n) && n > 0 ? Math.min(n, 500) : 0;

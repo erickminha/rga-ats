@@ -8,10 +8,12 @@ import { usePipelineNav } from '@/components/pipeline-nav';
 export function PipelineFilters({
   postingGroups,
   clients,
+  owners,
 }: {
   /** The rail's groups: the Posting dropdown lists the same postings, by title. */
   postingGroups: { label: string | null; postings: { id: string; title: string }[] }[];
   clients: { id: string; name: string }[];
+  owners: { id: string; name: string }[];
 }) {
   const nav = usePipelineNav();
   const postings = useMemo(
@@ -38,6 +40,9 @@ export function PipelineFilters({
         options={postings.map((p) => ({ value: p.id, label: p.title }))}
         onSelect={(value) => nav.go({ posting: value })}
       />
+      {!!owners.length && <Dropdown label="Responsável" value={nav.input.owner ?? ''} allLabel="Todos os responsáveis"
+        options={owners.map(owner => ({ value: owner.id, label: owner.name }))}
+        onSelect={(value) => nav.go({ owner: value })} />}
     </>
   );
 }

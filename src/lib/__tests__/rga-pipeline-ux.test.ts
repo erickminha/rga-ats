@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { pipelineBoardQuery, pipelineTalentHref, pipelineViewHref } from '@/lib/rga-pipeline-ux';
 describe('RGA pipeline navigation', () => {
   it('keeps scope and sort, removes single-stage filter in Kanban', () => {
-    const input = { client: 'c1', posting: 'p1', stage: 's1', q: '  auxiliar & fiscal  ', sort: 'name' };
-    expect(Object.fromEntries(new URL(pipelineViewHref(input, true), 'https://example.invalid').searchParams)).toEqual({ posting: 'p1', client: 'c1', q: 'auxiliar & fiscal', sort: 'name', view: 'kanban' });
+    const input = { client: 'c1', posting: 'p1', owner: 'u1', stage: 's1', q: '  auxiliar & fiscal  ', sort: 'name' };
+    expect(Object.fromEntries(new URL(pipelineViewHref(input, true), 'https://example.invalid').searchParams)).toEqual({ posting: 'p1', client: 'c1', owner: 'u1', q: 'auxiliar & fiscal', sort: 'name', view: 'kanban' });
     expect(new URLSearchParams(pipelineBoardQuery(input)).has('stage')).toBe(false);
   });
   it('keeps archived scope in list', () => {

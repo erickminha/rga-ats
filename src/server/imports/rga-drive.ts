@@ -1,4 +1,4 @@
-import { queueTalentSummary } from '@/server/talent-summary';
+import { queueTalentSummary, summaryConsent } from '@/server/talent-summary';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { db } from '@/lib/db';
 import { canManageRecruiting, isAdmin, type SessionContext } from '@/lib/session';
@@ -35,8 +35,7 @@ export function linkedResume(rows: string[][], origin: string) {
   return id;
 }
 
-const eligible = (orgId: string, id: string) => ({ orgId, id, isAnonymized: false, retentionHold: false,
-  consents: { some: { orgId, purpose: 'PROFILE_STORAGE' as const, withdrawnAt: null } } });
+const eligible = (orgId: string, id: string) => ({ id, ...summaryConsent(orgId) });
 
 const prefix = TALENT_SOURCE + ':id:';
 
@@ -61,10 +60,18 @@ export async function originalResumeUrl(ctx: SessionContext, contactId: string) 
   const ref = await importedResumeRef(ctx.orgId, contactId);
   const snapshot = ref.snapshot;
   const cachedId = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) ? snapshot.resumeDriveFileId : null;
-  if (typeof cachedId === 'string' && idPattern.test(cachedId)) return 'https://drive.google.com/open?id=' + cachedId;
+  if (typeof cachedId === 'string' && idPattern.test(cachedId)) {
+    const conflict = await db.importRef.findFirst({ where: { orgId: ctx.orgId, provider: RGA_IMPORT_PROVIDER, kind: 'contact',
+      externalId: { startsWith: prefix, not: ref.externalId }, snapshot: { path: ['resumeDriveFileId'], equals: cachedId } },
+      select: { id: true } });
+    if (conflict) throw new Error('IDENTITY');
+    return 'https://drive.google.com/open?id=' + cachedId;
+  }
   if (!originalResumeEnabled(ctx.orgId)) throw new Error('CONFIG');
   const id = linkedResume(await readTalentSheet(), ref.externalId.slice(prefix.length));
-  if (!id) throw new Error('IDENTITY');
+  if (!id || await db.importRef.findFirst({ where: { orgId: ctx.orgId, provider: RGA_IMPORT_PROVIDER, kind: 'contact',
+    externalId: { startsWith: prefix, not: ref.externalId }, snapshot: { path: ['resumeDriveFileId'], equals: id } },
+    select: { id: true } })) throw new Error('IDENTITY');
   return 'https://drive.google.com/open?id=' + id;
 }
 

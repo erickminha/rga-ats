@@ -6,17 +6,23 @@ import { isAdmin, type SessionContext } from '@/lib/session';
 import { confirmRgaImport, previewRgaImport, RgaImportError, type RgaSpreadsheet } from './rga-spreadsheet';
 import { queueTalentSummary, usesSheetSummaries } from '@/server/talent-summary';
 import { explicitTalentConsent, prepareTalentRows, sheetResumeFileId } from '@/lib/rga-sheet-summary';
-import { syncSheetSummaries } from './rga-sheet-summary';
+import { cachedFile, syncSheetSummaries } from './rga-sheet-summary';
 import { lockIdentifiableContact } from '@/server/contact-lock';
 import { actorOf, emitEvent } from '@/server/events';
-import { readTalentSheet } from './rga-google-source';
+import { readTalentSheetForImport, type readTalentSheetPage } from './rga-google-source';
+import { takeCronLease } from '@/server/cron';
 
 const PROVIDER = 'rga-google-talentos';
 const LIMIT = 100;
+const prefix = TALENT_SOURCE + ':id:';
+export const talentSyncLease = (orgId: string) => takeCronLease('rga-talent-sheet:' + orgId, new Date(Date.now() + 540000));
+type Page = Awaited<ReturnType<typeof readTalentSheetPage>>;
+type Guard = (tx: Prisma.TransactionClient) => Promise<void>;
+
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const verifiedTerm = (value: string) => hash(value.trim().replace(/\s+/g, ' ')) === '20b1ce34706f5790f82e468ebb5df1902dfd3e7264346bdd3f37261ef44512f8';
 
-export function changedTalentRows(rows: string[][], saved: Map<string, string | null>, retry: boolean) {
+export function changedTalentRows(rows: string[][], saved: Map<string, string | null>, retry: boolean, stable = new Set<string>()) {
   const headers = rows[0] ?? [];
   const mapping = mappingSuggestion('talent', headers);
   if (mapping.externalId === undefined || mapping.name === undefined) throw new RgaImportError('Mapeie Nome Completo e ID Origem na fonte.');
@@ -51,6 +57,7 @@ export function changedTalentRows(rows: string[][], saved: Map<string, string | 
     const previous = saved.get(key);
     if (previous === fingerprint) continue;
     if (!retry && previous === 'erro:' + fingerprint) { skippedErrors++; continue; }
+    if (stable.has(sourceId) && !previous?.startsWith('erro:')) continue;
     changed++;
     if (batch.length < LIMIT) batch.push({ key, fingerprint, sourceId, row: [...fields, driveFile, accepted ? 'sim' : ''], driveFile, accepted });
   }
@@ -60,112 +67,203 @@ export function changedTalentRows(rows: string[][], saved: Map<string, string | 
   return { batch, file, unresolved, changed, skippedErrors, rowsRead: data.length };
 }
 
-export async function syncTalentBatch(ctx: SessionContext, mode: 'preview' | 'confirm' | 'scheduled', ticket?: string, retry = false, runId?: string) {
+export async function syncTalentBatch(ctx: SessionContext, mode: 'preview' | 'confirm' | 'scheduled', ticket?: string, retry = false) {
+  requireSyncAdmin(ctx);
+  if (mode === 'preview') return processBatch(ctx, await readTalentSheetForImport(), mode, ticket, retry);
+  const lease = await talentSyncLease(ctx.orgId);
+  if (!lease) throw new RgaImportError('Outra sincronização está em execução. Aguarde e gere uma nova prévia.');
+  try {
+    return await processBatch(ctx, await readTalentSheetForImport(), mode, ticket, retry, lease.assertOwned);
+  } finally { await lease(); }
+}
+
+function requireSyncAdmin(ctx: SessionContext) {
   if (!isAdmin(ctx) || !ctx.userId || ctx.orgId !== process.env.RGA_TALENT_SYNC_ORG_ID) throw new RgaImportError('Integração indisponível para esta organização.');
-  let rows: string[][];
-  try { rows = await readTalentSheet(); }
-  catch {
-    if (mode === 'scheduled') await db.importJob.create({ data: {
-      orgId: ctx.orgId, provider: RGA_IMPORT_PROVIDER, accountName: 'Sincronização diária do Banco de Talentos',
-      status: 'FAILED', options: { kind: 'talent', source: PROVIDER }, createdById: ctx.userId, finishedAt: new Date(),
-      error: 'Não foi possível consultar a origem. Confira a configuração e repita a sincronização.',
-    } });
-    throw new RgaImportError('Não foi possível consultar a origem. Confira a configuração e tente novamente.');
-  }
-  if (rows[0]?.filter(verifiedTerm).length === 1) {
-    const prefix = TALENT_SOURCE + ':id:';
-    const refs = await db.importRef.findMany({ where: { orgId: ctx.orgId, provider: RGA_IMPORT_PROVIDER, kind: 'contact',
-      externalId: { startsWith: prefix } }, select: { externalId: true, snapshot: true } });
-    rows = prepareTalentRows(rows, refs.flatMap(ref => {
-      const snapshot = ref.snapshot;
-      const file = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) ? snapshot.resumeDriveFileId : null;
-      return typeof file === 'string' ? [{ origin: ref.externalId.slice(prefix.length), file }] : [];
+}
+
+export async function syncTalentPage(ctx: SessionContext, page: Page, start: number, runId: string, guard: Guard) {
+  requireSyncAdmin(ctx);
+  return processBatch(ctx, page.rows, 'scheduled', undefined, false, guard, { page, start, runId });
+}
+
+async function processBatch(ctx: SessionContext, rows: string[][], mode: 'preview' | 'confirm' | 'scheduled',
+  ticket?: string, retry = false, guard?: Guard, progress?: { page: Page; start: number; runId: string }) {
+  const header = rows[0] ?? [];
+  const mapping = mappingSuggestion('talent', header);
+  const idCol = Number(mapping.externalId);
+  const fileCol = header.indexOf('Upload de Currículo');
+  const source = progress?.page.index ?? rows;
+  const pageFiles = [...new Set(rows.slice(1).map(row => sheetResumeFileId(row[fileCol] ?? '')).filter(Boolean))];
+  const origins = [...new Set(rows.slice(1).map(row => row[idCol]?.trim()).filter(Boolean))];
+  const lookup = { orgId: ctx.orgId, provider: RGA_IMPORT_PROVIDER, kind: 'contact', externalId: { startsWith: prefix } };
+  const refs = await db.importRef.findMany({ where: { ...lookup, OR: [
+    { externalId: { in: origins.map(id => prefix + id) } },
+    ...pageFiles.map(file => ({ snapshot: { path: ['resumeDriveFileId'], equals: file } })),
+  ] }, select: { id: true, externalId: true, internalId: true, snapshot: true } });
+  let sourceIds: string[] | undefined;
+  if (header.filter(verifiedTerm).length === 1) {
+    // Use the actual page for consent. The compact index is only identity evidence.
+    const withConsent = progress ? source.map((row, i) => i >= progress.start - 1 && i < progress.page.next - 1 ? rows[i - progress.start + 2] : row) : rows;
+    const prepared = prepareTalentRows(withConsent, refs.flatMap(ref => {
+      const file = cachedFile(ref.snapshot);
+      return file ? [{ origin: ref.externalId.slice(prefix.length), file }] : [];
     }), (file, date) => {
-      // Only synthesize identities for new submissions after the reconciled historical export.
-      // An older record with missing evidence must never be recreated after erasure.
       const m = date.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
       const after = process.env.RGA_TALENT_DRIVE_ID_FROM;
       if (!m || !after || !Number.isFinite(Date.parse(after))) return '';
       const timestamp = Date.parse(m[3] + '-' + m[2] + '-' + m[1] + 'T' + m[4] + ':' + m[5] + ':' + m[6] + '-03:00');
       return Number.isFinite(timestamp) && timestamp > Date.parse(after) ? 'DRIVE-RGA-' + hash(file) : '';
     });
+    sourceIds = prepared.map(row => row[idCol]?.trim());
+    rows = progress ? [header, ...prepared.slice(progress.start - 1, progress.page.next - 1)] : prepared;
   }
-  const sheetMode = usesSheetSummaries(ctx.orgId);
-  const saved = await db.importRef.findMany({ where: { orgId: ctx.orgId, provider: PROVIDER, kind: 'contact' },
-    select: { externalId: true, fingerprint: true } });
-  const { batch, file, unresolved, changed, skippedErrors, rowsRead } = changedTalentRows(rows, new Map(saved.map(ref => [ref.externalId, ref.fingerprint])), retry);
-  if (!batch.length) {
-    const summaries = mode !== 'preview' && sheetMode ? await syncSheetSummaries(ctx, rows) : { imported: 0, remaining: 0 };
-    if (runId && mode !== 'preview') {
-      const previousRun = await db.talentSyncRun.findFirstOrThrow({ where: { id: runId, orgId: ctx.orgId }, select: { errors: true } });
-      const partial = !!(unresolved || skippedErrors || previousRun.errors);
-      await db.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId, rowsRead: 0 }, data: { unchanged: Math.max(0, rowsRead - unresolved - skippedErrors) } });
-      await db.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId },
-      data: { rowsRead, unresolved, summaries: { increment: summaries.imported }, remaining: skippedErrors + summaries.remaining, ...(summaries.remaining ? { status: 'RUNNING', errorCode: null } : { status: partial ? 'PARTIAL' : 'SUCCEEDED', finishedAt: new Date(), errorCode: partial ? 'review_rows' : null }) } });
+
+  const totals = new Map<string, number>();
+  const files = new Map<string, number>();
+  for (const [i, row] of source.slice(1).entries()) {
+    const id = sourceIds?.[i + 1] ?? row[idCol]?.trim();
+    const file = sheetResumeFileId(row[fileCol] ?? '');
+    if (id) totals.set(id, (totals.get(id) ?? 0) + 1);
+    if (file) files.set(file, (files.get(file) ?? 0) + 1);
+  }
+  const rowsRead = rows.slice(1).filter(row => row.some(cell => cell.trim())).length;
+  let ambiguous = 0;
+  const issues = new Map<number, string>();
+  const bySource = new Map<string, number>();
+  const byFile = new Map<string, number>();
+  const existing = new Map(refs.map(ref => [ref.externalId.slice(prefix.length), ref]));
+  rows = [header, ...rows.slice(1).filter((row, index) => {
+    const id = row[idCol]?.trim();
+    const file = sheetResumeFileId(row[fileCol] ?? '');
+    const ref = id ? existing.get(id) : undefined;
+    const cached = ref ? cachedFile(ref.snapshot) : '';
+    const line = index + (progress?.start ?? 2);
+    if ((id && totals.get(id) !== 1) || (file && files.get(file) !== 1) || (file && cached && cached !== file)) {
+      issues.set(line, 'ambiguous_identity');
+      ambiguous++;
+      return false;
     }
-    return { changed, unresolved, count: 0, report: null, ticket: null, summariesImported: summaries.imported, summariesRemaining: summaries.remaining };
+    if ((!id || id.length > 180) && row.some(cell => cell.trim())) issues.set(line, 'invalid_origin');
+    if (id) bySource.set(id, line);
+    if (file) byFile.set(file, line);
+    return true;
+  })];
+
+  const hashes = rows.slice(1).flatMap(row => row[idCol]?.trim() ? [hash(row[idCol].trim())] : []);
+  const saved = await db.importRef.findMany({ where: { orgId: ctx.orgId, provider: PROVIDER, kind: 'contact',
+    ...(progress ? { externalId: { in: hashes } } : {}) }, select: { externalId: true, fingerprint: true } });
+  const sheetMode = usesSheetSummaries(ctx.orgId);
+  const stable = new Set<string>();
+  if (progress) {
+    const contactIds = [...new Set(refs.map(ref => ref.internalId))];
+    const consent = await db.consentRecord.findMany({ where: { orgId: ctx.orgId, purpose: 'PROFILE_STORAGE',
+      contactId: { in: contactIds } }, select: { contactId: true }, distinct: ['contactId'] });
+    const knownConsent = new Set(consent.map(record => record.contactId));
+    for (const row of rows.slice(1)) {
+      const id = row[idCol]?.trim();
+      const ref = existing.get(id);
+      if (!ref) continue;
+      const file = sheetResumeFileId(row[fileCol] ?? '');
+      if (!file || (cachedFile(ref.snapshot) === file && knownConsent.has(ref.internalId))) stable.add(id);
+    }
   }
-  const preview = await previewRgaImport(ctx, file);
-  if (mode === 'preview') return { changed, unresolved, count: batch.length, ...preview };
-  const checkpoint = async (tx: Prisma.TransactionClient, jobId: string, errors: Set<number>, report: import('@/lib/rga-import').RgaImportReport) => {
-    await tx.importJob.update({ where: { id: jobId }, data: { accountName: 'Sincronização do Banco de Talentos', options: { kind: 'talent', source: PROVIDER, mode } } });
-    const originalRefs = await tx.importRef.findMany({ where: { orgId: ctx.orgId, provider: RGA_IMPORT_PROVIDER, kind: 'contact',
-      externalId: { in: batch.map(item => TALENT_SOURCE + ':id:' + item.sourceId) } }, select: { id: true, externalId: true, internalId: true, snapshot: true } });
+  const selection = changedTalentRows(rows, new Map(saved.map(ref => [ref.externalId, ref.fingerprint])), retry, stable);
+  const { batch, file, changed, skippedErrors } = selection;
+  const unresolved = selection.unresolved + ambiguous;
+  file.preserveExistingTalents = true;
+  const preview = batch.length ? await previewRgaImport(ctx, file) : null;
+  if (mode === 'preview') return { changed, unresolved, count: batch.length, report: preview?.report ?? null, ticket: preview?.ticket ?? null };
+
+  const apply = async (tx: Prisma.TransactionClient, jobId: string | null, errors: Set<number>, report?: import('@/lib/rga-import').RgaImportReport) => {
+    await guard?.(tx);
+    if (jobId) await tx.importJob.update({ where: { id: jobId }, data: {
+      accountName: 'Sincronização do Banco de Talentos', options: { kind: 'talent', source: PROVIDER, mode, ...(progress ? {
+        runId: progress.runId,
+        sourceRowsWithError: [...errors].flatMap(row => {
+          const line = bySource.get(batch[row - 2]?.sourceId);
+          return line === undefined ? [] : [{ reportRow: row, sourceRow: line }];
+        }),
+      } : {}) },
+    } });
+    const originalRefs = await tx.importRef.findMany({ where: { ...lookup,
+      externalId: { in: batch.map(item => prefix + item.sourceId) } }, select: { id: true, externalId: true, internalId: true, snapshot: true } });
     const contacts = new Map(originalRefs.map(ref => [ref.externalId, ref]));
-    let summaries = 0;
-    let failedRows = 0;
+    let queued = 0;
+    let failures = 0;
     for (const [index, item] of batch.entries()) {
-      const ref = contacts.get(TALENT_SOURCE + ':id:' + item.sourceId);
+      const ref = contacts.get(prefix + item.sourceId);
       const internalId = ref?.internalId;
       const key = { orgId: ctx.orgId, provider: PROVIDER, kind: 'contact', externalId: item.key };
       const failed = errors.has(index + 2) || !internalId;
-      if (failed) failedRows++;
-      const data = { internalId: internalId ?? jobId, jobId, syncedAt: new Date(), fingerprint: (failed ? 'erro:' : '') + item.fingerprint };
+      if (failed) failures++;
       if (!failed && ref && item.driveFile && await lockIdentifiableContact(tx, ctx.orgId, ref.internalId)) {
-        const eligible = await tx.contact.findFirst({ where: { id: ref.internalId, orgId: ctx.orgId, isAnonymized: false, retentionHold: false }, select: { id: true } });
-        const conflict = await tx.importRef.findFirst({ where: { orgId: ctx.orgId, provider: RGA_IMPORT_PROVIDER, kind: 'contact',
-          externalId: { startsWith: TALENT_SOURCE + ':id:' }, internalId: { not: ref.internalId },
-          snapshot: { path: ['resumeDriveFileId'], equals: item.driveFile } }, select: { id: true } });
+        const eligible = await tx.contact.findFirst({ where: { id: ref.internalId, orgId: ctx.orgId, isAnonymized: false, retentionHold: false },
+          select: { consents: { where: { orgId: ctx.orgId, purpose: 'PROFILE_STORAGE' }, select: { withdrawnAt: true } } } });
+        const current = cachedFile(ref.snapshot);
+        const conflict = (current && current !== item.driveFile) || await tx.importRef.findFirst({ where: { ...lookup,
+          id: { not: ref.id }, snapshot: { path: ['resumeDriveFileId'], equals: item.driveFile } }, select: { id: true } });
+        if (conflict) {
+          const line = bySource.get(item.sourceId);
+          if (line !== undefined) issues.set(line, 'conflicting_drive_link');
+        }
         if (eligible && !conflict) {
-          const current = ref.snapshot;
-          const snapshot = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
-          if (item.accepted && !await tx.consentRecord.findFirst({ where: { orgId: ctx.orgId, contactId: ref.internalId, purpose: 'PROFILE_STORAGE' }, select: { id: true } })) {
-            const consent = await tx.consentRecord.create({ data: { orgId: ctx.orgId, contactId: ref.internalId, purpose: 'PROFILE_STORAGE', policyVersion: 'rga-formulario-talentos-v1' }, select: { id: true } });
+          const consents = eligible.consents;
+          if (item.accepted && !consents.length) {
+            const consent = await tx.consentRecord.create({ data: { orgId: ctx.orgId, contactId: ref.internalId, purpose: 'PROFILE_STORAGE',
+              policyVersion: 'rga-formulario-talentos-v1' }, select: { id: true } });
             await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'consent.reconciled', subjectType: 'contact', subjectId: ref.internalId,
-              payload: { consentId: consent.id, evidence: 'Registro explícito na planilha', reference: item.sourceId, jobId } });
+              payload: { consentId: consent.id, evidence: 'Registro explícito na planilha', referenceHash: item.key, jobId } });
           }
-          if (await tx.consentRecord.findFirst({ where: { orgId: ctx.orgId, contactId: ref.internalId, purpose: 'PROFILE_STORAGE', withdrawnAt: null }, select: { id: true } })) {
+          if (current !== item.driveFile && (consents.some(record => !record.withdrawnAt) || (item.accepted && !consents.length))) {
+            const snapshot = ref.snapshot && typeof ref.snapshot === 'object' && !Array.isArray(ref.snapshot) ? ref.snapshot : {};
             await tx.importRef.update({ where: { id: ref.id }, data: { snapshot: { ...snapshot, resumeDriveFileId: item.driveFile } } });
           }
         }
       }
-      if (!sheetMode && process.env.RGA_SUMMARY_AUTO === 'true' && internalId && !errors.has(index + 2) &&
-          await queueTalentSummary(tx, ctx.orgId, internalId, 10)) summaries++;
+      if (!sheetMode && process.env.RGA_SUMMARY_AUTO === 'true' && internalId && !failed &&
+          await queueTalentSummary(tx, ctx.orgId, internalId, 10)) queued++;
+      const data = { internalId: internalId ?? jobId!, jobId, syncedAt: new Date(), fingerprint: (failed ? 'erro:' : '') + item.fingerprint };
       await tx.importRef.upsert({ where: { orgId_provider_kind_externalId: key }, create: { ...key, ...data, created: false }, update: data });
     }
-    if (runId) {
-      await tx.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId, rowsRead: 0 },
-        data: { unchanged: Math.max(0, rowsRead - unresolved - changed - skippedErrors) } });
-      await tx.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId }, data: {
-      rowsRead, unresolved, remaining: Math.max(0, changed - batch.length), attempts: 0,
-      createdCount: { increment: report.created }, updatedCount: { increment: report.updated },
-      duplicates: { increment: report.duplicates }, errors: { increment: Math.max(report.errors, failedRows) }, summaries: { increment: summaries },
-      errorCode: null,
+    const imported = sheetMode ? await syncSheetSummaries(ctx, rows, tx) : { imported: 0, remaining: 0, reviewFiles: [], cv: false };
+    if (progress) {
+      const { page, start, runId } = progress;
+      const current = await tx.talentSyncRun.findFirstOrThrow({ where: { id: runId, orgId: ctx.orgId, status: 'RUNNING', nextSheetRow: start } });
+      const remaining = Math.max(0, page.end - page.next + 1);
+      const errors = skippedErrors + failures;
+      for (const file of imported.reviewFiles) {
+        const line = byFile.get(file);
+        if (line !== undefined && !issues.has(line)) issues.set(line, 'unconfirmed_cv_link');
+      }
+      const review = issues.size;
+      const previousIssues = Array.isArray(current.reviewDetails) ? current.reviewDetails : [];
+      const reviewDetails = [...previousIssues, ...[...issues].map(([row, reason]) => ({ row, reason }))].slice(0, 100);
+      const partial = !!(current.unresolved + review + current.errors + errors);
+      await tx.talentSyncRun.update({ where: { id: runId }, data: {
+        sourceEndRow: page.end, sourceHash: page.sourceHash, nextSheetRow: page.next, remaining, attempts: 0, reviewDetails,
+        rowsRead: { increment: rowsRead }, unresolved: { increment: review }, errors: { increment: errors },
+        unchanged: { increment: Math.max(0, rowsRead - unresolved - changed - skippedErrors) },
+        createdCount: { increment: report?.created ?? 0 }, updatedCount: { increment: report?.updated ?? 0 },
+        duplicates: { increment: report?.duplicates ?? 0 },
+        summaries: { increment: queued + (imported.cv ? 0 : imported.imported) },
+        cvImported: { increment: imported.cv ? imported.imported : 0 },
+        status: remaining ? 'RUNNING' : partial ? 'PARTIAL' : 'SUCCEEDED',
+        errorCode: remaining || !partial ? null : 'review_rows',
+        ...(remaining ? {} : { finishedAt: new Date() }),
       } });
-
     }
+    return imported;
   };
-  const run = await confirmRgaImport(ctx, file, mode === 'scheduled' ? preview.ticket : ticket ?? '', checkpoint);
-  const imported = sheetMode ? await syncSheetSummaries(ctx, rows) : { imported: 0, remaining: 0 };
-  if (runId) {
-    const current = await db.talentSyncRun.findFirstOrThrow({ where: { id: runId, orgId: ctx.orgId }, select: { errors: true } });
-    const partial = !!(unresolved || skippedErrors || current.errors);
-    await db.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId }, data: {
-      summaries: { increment: imported.imported },
-      remaining: Math.max(0, changed - batch.length) + imported.remaining + skippedErrors,
-      ...(changed <= batch.length && !imported.remaining ? { status: partial ? 'PARTIAL' : 'SUCCEEDED',
-        remaining: skippedErrors + current.errors, finishedAt: new Date(), errorCode: partial ? 'review_rows' : null } : {}),
-    } });
+  let imported: Awaited<ReturnType<typeof apply>> | undefined;
+  let report = null;
+  if (preview) {
+    const run = await confirmRgaImport(ctx, file, mode === 'scheduled' ? preview.ticket : ticket ?? '', async (tx, jobId, errors, report) => {
+      imported = await apply(tx, jobId, errors, report);
+    });
+    report = run.report;
+  } else if (mode !== 'confirm') {
+    imported = await db.$transaction(tx => apply(tx, null, new Set()), { timeout: 120_000 });
   }
-  return { changed, unresolved, count: batch.length, report: run.report, ticket: null, summariesImported: imported.imported, summariesRemaining: imported.remaining };
+  return { changed, unresolved, count: batch.length, report, ticket: null,
+    summariesImported: imported?.imported ?? 0, summariesRemaining: imported?.remaining ?? 0 };
 }

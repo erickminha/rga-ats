@@ -5,7 +5,7 @@ import { assistOpinionSection, saveCustomerFeedback, saveOpinionTemplate } from 
 import { saveCompetencyInterview, saveCompetencyTemplate, savePostingCompetencies } from "@/server/competency-assessment";
 import { requireSession } from '@/lib/session';
 import { saveRecruitingAssessment, type AssessmentPart } from '@/server/recruiting-assessment';
-import { createShortlistShare, revokeRecruitingShares } from '@/server/share-links';
+import { createShortlistShare, recordShortlistSend, revokeRecruitingShares } from '@/server/share-links';
 import { emailPublicOrigin } from '@/lib/base-url';
 import { capabilityPath } from '@/lib/capability-links';
 
@@ -30,10 +30,17 @@ export async function presentFinalistsAction(id: string, form: FormData) {
   return new URL(capabilityPath('share', share.code), origin).href;
 }
 
+export async function recordFinalistsSendAction(id: string, recordId: string) {
+  await recordShortlistSend(await requireSession(), id, recordId);
+  revalidatePath(`/postings/${id}`);
+  revalidatePath('/pipeline/operacao');
+}
+
 export async function revokeFinalistsAction(id: string) {
   const ctx = await requireSession();
   const revoked = await revokeRecruitingShares(ctx, 'shortlist', id);
   revalidatePath(`/postings/${id}`);
+  revalidatePath('/pipeline/operacao');
   return revoked;
 }
 

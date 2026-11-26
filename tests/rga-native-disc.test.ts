@@ -44,7 +44,7 @@ import { discAiConfiguration, saveDiscAiConfiguration } from '@/server/disc-ai-s
 import { hasDb } from './setup';
 import { candidate, createOrg } from './fixtures';
 import { db } from '@/lib/db';
-import { cancelDisc, candidateDisc, createDiscInvite, editDiscInterpretation, prepareDisc, reviewDisc } from '@/server/native-disc';
+import { cancelDisc, candidateDisc, createDiscInvite, editDiscInterpretation, prepareDisc, recordDiscWhatsapp, reviewDisc } from '@/server/native-disc';
 
 describe.skipIf(!hasDb)('Fluxo DISC com PostgreSQL', () => {
   it('permite configurar IA apenas a administradores e limita modelos autorizados', async () => {
@@ -72,6 +72,7 @@ describe.skipIf(!hasDb)('Fluxo DISC com PostgreSQL', () => {
     const posting = await db.posting.create({ data: { orgId: org.id, title: 'Vaga fictícia', slug: 'disc-ficticio' } });
     const { opportunity } = await candidate(org.id, stages, [[0, 0]], { postingId: posting.id, emails: ['pessoa@example.invalid'] });
     const ctx = { orgId: org.id, userId: admin.id, accessRole: 'TEAM_MEMBER' };
+    const { opportunity: extra } = await candidate(org.id, stages, [[0, 0]], { postingId: posting.id, emails: ['outra@example.invalid'] });
     vi.stubEnv('RGA_DISC_TEST_ORG_ID', org.id);
     vi.stubEnv('RGA_DISC_APPROVED_KEY', '');
     try {
@@ -86,6 +87,7 @@ describe.skipIf(!hasDb)('Fluxo DISC com PostgreSQL', () => {
       await cancelDisc(ctx, first.id);
       expect(await candidateDisc(cancelled.token)).toBeNull();
       const invite = await createDiscInvite(ctx, opportunity.id, 7, true);
+      await expect(recordDiscWhatsapp(ctx, invite.token)).rejects.toThrow('indisponível');
       const draft = groups.map((_, i) => i === 0 ? [4,3,2,1] : [0,0,0,0]);
       expect(await candidateDisc(invite.token, { answers: draft, revision: 0, submit: false })).toEqual({ saved: 1 });
       expect(await candidateDisc(invite.token)).toMatchObject({ answers: draft, revision: 1 });
@@ -104,6 +106,11 @@ describe.skipIf(!hasDb)('Fluxo DISC com PostgreSQL', () => {
       expect((await db.recruitingAssessment.findUniqueOrThrow({ where: { opportunityId: opportunity.id } })).disc).toEqual({ profile: 'Histórico' });
       expect((await db.nativeDisc.findUniqueOrThrow({ where: { id: row.id } })).results).toMatchObject({ D: 40, provider: 'manual', analysis: { detail: 'Texto revisado pela recrutadora.' } });
       expect(await db.event.count({ where: { orgId: org.id, verb: 'disc.submitted' } })).toBe(1);
+      const simulation = await createDiscInvite(ctx, extra.id, 7, true);
+      await candidateDisc(simulation.token, { answers, revision: 0, submit: true });
+      const simulated = await db.nativeDisc.findFirstOrThrow({ where: { opportunityId: extra.id } });
+      await reviewDisc(ctx, simulated.id);
+      expect(await db.recruitingAssessment.findUnique({ where: { opportunityId: extra.id } })).toBeNull();
       const expiring = await createDiscInvite(ctx, opportunity.id, 1, true);
       await db.nativeDisc.updateMany({ where: { opportunityId: opportunity.id, submittedAt: null }, data: { expiresAt: new Date(0) } });
       expect(await candidateDisc(expiring.token)).toBeNull();

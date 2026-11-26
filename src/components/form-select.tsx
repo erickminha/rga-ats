@@ -17,7 +17,7 @@ export function FormSelect({
   name,
   options,
   defaultValue = '',
-  placeholder = 'Select…',
+  placeholder = 'Selecione…',
   className,
   disabled = false,
   value: controlledValue,

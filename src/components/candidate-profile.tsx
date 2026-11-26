@@ -3,11 +3,11 @@ import { ProfessionalReferences } from '@/components/professional-references';
 import { readReferenceAnswers, referenceOpinionLine, referenceQuestions, referenceStatuses } from '@/lib/professional-references';
 import { OriginalResume } from '@/components/original-resume';
 import { ResumePreview } from '@/components/resume-preview';
-import { dimensions, scoreDisc, validatedDiscInterpretation, type ScoringKey } from '@/lib/native-disc';
+import { dimensions, scoreDisc, simulationDiscInstrument, validatedDiscInterpretation, type ScoringKey } from '@/lib/native-disc';
 import { OpinionEditor } from '@/components/opinion-editor';
 import { opinionTemplates } from '@/lib/professional-opinion';
 import { recommendationLabels, requirementLabels } from '@/lib/competency-assessment';
-import { readCareerProfile } from '@/lib/talent-profile';
+import { availabilityLabels, formatSalary, readCareerProfile } from '@/lib/talent-profile';
 import { aiConfigured as opinionAiConfigured } from '@/server/ai-client';
 import { CompetencyInterviewForm } from '@/components/competency-assessment';
 import { postingRequirements, readInterview, readPlan } from '@/lib/competency-assessment';
@@ -39,7 +39,7 @@ import { TaskSection } from '@/components/task-section';
 import { TranscriptSection } from '@/components/transcript-section';
 import { ShareLinkButton } from '@/components/share-link-button';
 import { OfferSection } from '@/components/offer-section';
-import { approvedForMessage } from '@/lib/rga-productivity';
+import { approvedForMessage, readWhatsappTemplates } from '@/lib/rga-productivity';
 import { WhatsappComposer } from '@/components/rga-productivity';
 import { EmailSection } from '@/components/email-section';
 import { Field, btnTonal, inputClass, surface, textareaClass, noAutofill } from '@/components/form-controls';
@@ -137,7 +137,7 @@ export async function CandidateProfile({ id }: { id: string }) {
     }),
     db.organization.findUnique({
       where: { id: ctx.orgId },
-      select: { name: true, hideFeedbackUntilSubmitted: true, requireOfferApproval: true, opinionTemplate: true, referenceQuestionnaire: true },
+      select: { name: true, hideFeedbackUntilSubmitted: true, requireOfferApproval: true, opinionTemplate: true, referenceQuestionnaire: true, whatsappTemplates: true },
     }),
     db.stage.findMany({ where: { orgId: ctx.orgId }, orderBy: { order: 'asc' }, include: { postingExclusions: true } }),
     db.archiveReason.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: 'asc' } }),
@@ -233,15 +233,17 @@ export async function CandidateProfile({ id }: { id: string }) {
       where: { disc: { path: ['complete'], equals: true }, opportunity: { id: { not: id }, orgId: ctx.orgId,
         contactId: contact.id, confidential: false, posting: { orgId: ctx.orgId } } },
       orderBy: { updatedAt: 'desc' }, take: 12,
-      select: { opportunityId: true, opportunity: { select: { posting: { select: { title: true } } } } },
+      select: { opportunityId: true, disc: true, opportunity: { select: { posting: { select: { title: true } } } } },
     }) : [];
 
   const discComplete = !!assessment?.disc && typeof assessment.disc === 'object'
-    && !Array.isArray(assessment.disc) && assessment.disc.complete === true;
+    && !Array.isArray(assessment.disc) && assessment.disc.complete === true && disc.instrument !== simulationDiscInstrument;
   // Prefer the latest reviewed native evaluation for a new opinion, without
   // changing the historical DISC field or any previously issued opinion.
+  const testDisc = ctx.orgId === process.env.RGA_DISC_TEST_ORG_ID && contact.emails.length > 0
+    && contact.emails.every(email => email.toLowerCase().endsWith('.invalid'));
   const native = !contact.isAnonymized && !contact.retentionHold && !opportunity.confidential ? await db.nativeDisc.findFirst({
-    where: { opportunityId: id, reviewedAt: { not: null }, simulation: ctx.orgId === process.env.RGA_DISC_TEST_ORG_ID, opportunity: { orgId: ctx.orgId } },
+    where: { opportunityId: id, reviewedAt: { not: null }, simulation: testDisc, opportunity: { orgId: ctx.orgId } },
     orderBy: [{ reviewedAt: 'desc' }, { id: 'desc' }], select: { results: true, answers: true, scoringKey: true, simulation: true },
   }) : null;
   const nativeResult = native?.results as Record<string, unknown> | null;
@@ -255,7 +257,7 @@ export async function CandidateProfile({ id }: { id: string }) {
   const referenceCheck = opportunity.referenceCheck;
   const staffName = (id: string) => teammates.find(person => person.id === id)?.name ?? 'Usuário da organização';
   const referenceRows = referenceCheck?.references ?? [];
-  const referenceOptions = referenceRows.filter(row => !row.revokedAt).flatMap(row =>
+  const referenceOptions = referenceRows.filter(row => !row.revokedAt && row.authorization).flatMap(row =>
     readReferenceAnswers(row.answers).map((answer, index) => ({
       id: row.id + '-' + index,
       text: referenceOpinionLine(answer, referenceRows.flatMap(ref => [ref.name, ref.phone, ref.email])),
@@ -275,6 +277,13 @@ export async function CandidateProfile({ id }: { id: string }) {
     instruments: [review?.completed ? 'Entrevista por competências' : '', nativeBehavior || discComplete ? 'Inventário comportamental DISC (tendências autorrelatadas)' : ''].filter(Boolean).join('\n'),
     recommendation: review?.recommendation ? [recommendationLabels[review.recommendation as keyof typeof recommendationLabels], review.justification].filter(Boolean).join('\n') : '',
   };
+  const availability = preferences.availability;
+  const selectionFacts = [
+    ['Formação', opinionPrefill.education],
+    ['Trajetória e experiência', opinionPrefill.history],
+    ['Pretensão salarial', contact.salaryExpectation == null ? '' : formatSalary(contact.salaryExpectation)],
+    ['Disponibilidade', availability ? availabilityLabels[availability as keyof typeof availabilityLabels] ?? availability : ''],
+  ];
   for (const key of Object.keys(opinionPrefill) as (keyof typeof opinionPrefill)[]) opinionPrefill[key] = opinionPrefill[key].slice(0, 4000);
   const author = assessment?.opinionAuthorId ? await db.user.findFirst({
     where: { orgId: ctx.orgId, id: assessment.opinionAuthorId }, select: { name: true },
@@ -304,7 +313,7 @@ export async function CandidateProfile({ id }: { id: string }) {
 
   return (
     // data-profile: the drawer crossfades from its skeleton to this (globals.css)
-    <div data-profile className="mx-auto max-w-6xl px-6 py-6">
+    <div data-profile suppressHydrationWarning className="mx-auto max-w-6xl px-6 py-6">
       <Link
         href="/pipeline"
         className={`${buttonClass({ variant: 'ghost', size: 'sm' })} -ml-3 mb-4`}
@@ -491,7 +500,7 @@ export async function CandidateProfile({ id }: { id: string }) {
           />
 
           {!contact.isAnonymized && !contact.retentionHold && !opportunity.confidential && <WhatsappComposer
-            opportunityId={opportunity.id} name={contact.name} job={opportunity.posting?.title ?? 'processo seletivo'}
+            opportunityId={opportunity.id} templates={readWhatsappTemplates(org?.whatsappTemplates)} name={contact.name} job={opportunity.posting?.title ?? 'processo seletivo'}
             brand={org?.name ?? 'RGA Consultoria de RH'} phones={[preferences.whatsapp ?? '', ...contact.phones]}
             status={opportunity.status} approved={approvedForMessage(opportunity.status, opportunity.posting?.orgId === ctx.orgId ? opportunity.posting.clientCompanyId : null, assessment?.clientFeedback)}
             nextInterview={nextInterview ? { at: nextInterview.startAt.toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'}) + ' (horário de Brasília)', location: nextInterview.location ?? '' } : undefined} />}
@@ -581,7 +590,7 @@ export async function CandidateProfile({ id }: { id: string }) {
                   <div key={note.id} className="px-5 py-4">
                     <p className="whitespace-pre-wrap text-sm">{note.body}</p>
                     <p className="mt-2 text-xs text-ink-2">
-                      {note.author.name} · {note.createdAt.toLocaleDateString()}
+                      {note.author.name} · {dateBR(note.createdAt)}
                     </p>
                   </div>
                 ))}
@@ -634,14 +643,23 @@ export async function CandidateProfile({ id }: { id: string }) {
             }
           />
 
-          {!contact.isAnonymized && <Link className="text-sm underline" href={`/contacts/${contact.id}#curriculos`}>Gerenciar cadastro e versões de currículo</Link>}
+          {!contact.isAnonymized && <details className={surface + ' min-w-0 p-4'} id="dados-selecao">
+            <summary className="cursor-pointer font-medium">Dados profissionais da seleção</summary>
+            <dl className="mt-3 grid gap-3 text-sm">
+              {selectionFacts.map(([label, value]) => <div className="min-w-0" key={label}>
+                <dt className="font-medium">{label}</dt>
+                <dd className="whitespace-pre-wrap break-words">{value || 'Não informado'}</dd>
+              </div>)}
+            </dl>
+            <Link className="mt-3 inline-block text-sm underline" href={`/contacts/${contact.id}#curriculos`}>Gerenciar cadastro e versões de currículo</Link>
+          </details>}
           {!contact.isAnonymized && <CompetencyInterviewForm key={`competency-${opportunity.id}`} id={opportunity.id}
             plan={readPlan(opportunity.posting?.competencyPlan)} review={readInterview(assessment?.competencyInterview)}
             requirements={postingRequirements(opportunity.posting?.matchCriteria, opportunity.posting?.content)} postingId={opportunity.postingId} />}
           {!contact.isAnonymized && opportunity.postingId && <Link className="underline" href={`/disc?vaga=${opportunity.postingId}&participacao=${opportunity.id}`}>Solicitar ou acompanhar DISC</Link>}
           {!contact.isAnonymized && <RecruitingAssessmentForm key={opportunity.id}
             id={opportunity.id} screening={textRecord(assessment?.screening)} disc={disc} discComplete={discComplete}
-            discFileId={assessment?.discFileId ?? null} previousDiscs={previousDiscs.map((row) => ({
+            discFileId={assessment?.discFileId ?? null} previousDiscs={previousDiscs.filter(row => textRecord(row.disc).instrument !== simulationDiscInstrument).map((row) => ({
               id: row.opportunityId, title: row.opportunity.posting?.title ?? 'Vaga anterior',
             }))} />}
           {isAdmin(ctx) && !contact.isAnonymized && opportunity.status === 'HIRED' && <details className={surface + ' p-4'}>
@@ -656,7 +674,7 @@ export async function CandidateProfile({ id }: { id: string }) {
               <button className={btnTonal}>Reabrir seleção e registrar correção</button>
             </form>
           </details>}
-          {!contact.isAnonymized && <ProfessionalReferences id={opportunity.id}
+          {!contact.isAnonymized && <ProfessionalReferences id={opportunity.id} templates={readWhatsappTemplates(org?.whatsappTemplates)}
             status={referenceCheck?.status ?? 'NOT_REQUESTED'}
             responsible={referenceCheck ? staffName(referenceCheck.updatedBy) : undefined}
             history={events.flatMap(event => {

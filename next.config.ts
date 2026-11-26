@@ -70,7 +70,7 @@ const nextConfig: NextConfig = {
     incomingRequests: { ignore: [/^\/(share|portal|schedule|offer|unsubscribe)\/(?!view(?:[/?]|$))/] },
   },
   async headers() {
-    return ['/avaliacao-disc', '/share/:path*', '/portal/:path*', '/schedule/:path*', '/offer/:path*'].map((source) => ({
+    return ['/contacts/:path*', '/api/files/:path*', '/login/recuperar-senha', '/login/redefinir-senha', '/avaliacao-disc', '/share/:path*', '/portal/:path*', '/schedule/:path*', '/offer/:path*'].map((source) => ({
       source,
       headers: [
         { key: 'Cache-Control', value: 'private, no-store' },

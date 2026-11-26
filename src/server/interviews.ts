@@ -95,7 +95,8 @@ export async function sendInterviewConfirmation(input: {
   });
   const { vars, toEmail, contactId } = await buildOpportunityVars(input.opportunityId, {
     interview_title: input.title,
-    interview_time: input.startAt.toLocaleString('en-US', {
+    interview_time: input.startAt.toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
       weekday: 'long',
       month: 'long',
       day: 'numeric',

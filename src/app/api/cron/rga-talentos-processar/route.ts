@@ -10,5 +10,5 @@ export async function POST(request: Request) {
   if (!orgId) return NextResponse.json({ enabled: false });
   const sync = await processTalentSync(orgId);
   const summaries = await processTalentSummaries(orgId);
-  return NextResponse.json({ sync, summaries });
+  return NextResponse.json({ sync, summaries }, { status: sync.status === 'FAILED' ? 503 : 200 });
 }

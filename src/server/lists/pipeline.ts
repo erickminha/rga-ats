@@ -22,6 +22,7 @@ export type PipelineFilter = {
   view: PipelineView;
   stageId?: string;
   reasonId?: string;
+  ownerId?: string;
   /**
    * The postings in scope: ?posting, or every posting of ?client. null means
    * any posting (including none); an empty list means nothing can match.
@@ -34,6 +35,7 @@ export type PipelineFilter = {
 export type PipelineParams = {
   posting?: string;
   client?: string;
+  owner?: string;
   stage?: string;
   q?: string;
   status?: string;
@@ -62,6 +64,7 @@ export function pipelineFilterFor(
     stageId: input.stage || undefined,
     reasonId: input.status === 'archived' ? input.reason || undefined : undefined,
     postingIds,
+    ownerId: input.owner?.replaceAll('\u0000', '') || undefined,
     q: input.q?.trim() || undefined,
   };
 }
@@ -119,6 +122,15 @@ export function pipelineFilterSql(
   }
   if (stage && f.stageId) parts.push(Prisma.sql`o."stageId" = ${f.stageId}`);
   if (f.postingIds) parts.push(Prisma.sql`o."postingId" = ANY(${f.postingIds}::text[])`);
+  if (f.ownerId) {
+    parts.push(Prisma.sql`EXISTS (
+      SELECT 1 FROM "User" u WHERE u.id = ${f.ownerId} AND u."orgId" = o."orgId" AND (
+        o."ownerId" = u.id OR (o."ownerId" IS NULL AND EXISTS (
+          SELECT 1 FROM "Posting" p WHERE p.id = o."postingId" AND p."orgId" = o."orgId" AND p."ownerId" = u.id
+        ))
+      )
+    )`);
+  }
   if (f.reasonId) parts.push(Prisma.sql`o."archiveReasonId" = ${f.reasonId}`);
   const q = searchText(f);
   if (q) {

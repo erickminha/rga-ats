@@ -2,8 +2,8 @@
 import { useState, useTransition } from 'react';
 import { buttonClass } from '@/components/ui/button';
 import { inputClass, textareaClass, surface } from '@/components/form-controls';
-import { messageFor, messageKinds, whatsappPhone, type MessageKind } from '@/lib/rga-productivity';
-import { confirmWhatsappAction } from '@/app/(app)/productivity-actions';
+import { messageFor, messageKinds, whatsappPhone, whatsappVariables, type MessageKind, type WhatsappTemplates } from '@/lib/rga-productivity';
+import { confirmWhatsappAction, saveWhatsappTemplatesAction } from '@/app/(app)/productivity-actions';
 
 async function copyText(text: string) {
   try { await navigator.clipboard.writeText(text); return 'Texto copiado.'; }
@@ -90,9 +90,13 @@ export function AdComposer({ published, initial, title }: { published: boolean; 
   </section>;
 }
 
-export function WhatsappComposer({ opportunityId, name, job, brand, phones, status, approved, nextInterview, referenceId }: { opportunityId: string; name: string; job: string; brand: string; phones: string[]; status: string; approved: boolean; nextInterview?: { at: string; location: string }; referenceId?: string }) {
+export function WhatsappComposer({ opportunityId, name, job, brand, phones, status, approved, nextInterview, referenceId, templates }: { opportunityId: string; name: string; job: string; brand: string; phones: string[]; status: string; approved: boolean; nextInterview?: { at: string; location: string }; referenceId?: string; templates?: WhatsappTemplates }) {
   const thirdPartyKinds: MessageKind[] = ['referenceIntro', 'referenceReminder', 'referenceThanks'];
-  const available = referenceId ? thirdPartyKinds : (Object.keys(messageKinds) as MessageKind[]).filter(k => k !== 'approved' && k !== 'closed' && !thirdPartyKinds.includes(k) || k === 'approved' && approved || k === 'closed' && status === 'ARCHIVED');
+  const available = referenceId ? thirdPartyKinds : (Object.keys(messageKinds) as MessageKind[]).filter(key => {
+    if (key === 'approved') return approved;
+    if (key === 'closed') return status === 'ARCHIVED';
+    return key !== 'disc' && !thirdPartyKinds.includes(key);
+  });
   const [kind, setKind] = useState<MessageKind>(referenceId ? 'referenceIntro' : status === 'ARCHIVED' ? 'closed' : approved ? 'approved' : 'contact');
   const [appointment, setAppointment] = useState(nextInterview?.at ?? '');
   const [meeting, setMeeting] = useState(nextInterview?.location ?? '');
@@ -101,7 +105,7 @@ export function WhatsappComposer({ opportunityId, name, job, brand, phones, stat
   const [notice, setNotice] = useState('');
   const [busy, start] = useTransition();
   const phone = phones.map(whatsappPhone).find(Boolean);
-  const draft = edited ?? messageFor(kind, { name, job, brand, appointment, meeting });
+  const draft = edited ?? messageFor(kind, { name, job, brand, appointment, meeting }, templates?.[kind]);
   return <details className={surface + ' grid gap-3 p-4'}>
     <summary className="cursor-pointer font-medium">Mensagens para WhatsApp</summary>
     <div className="mt-3 grid gap-3">
@@ -128,4 +132,30 @@ export function WhatsappComposer({ opportunityId, name, job, brand, phones, stat
       <p role="status" className="text-sm">{notice}</p>
     </div>
   </details>;
+}
+
+export function WhatsappTemplateSettings({ templates }: { templates: WhatsappTemplates }) {
+  const [notice, setNotice] = useState('');
+  const [busy, start] = useTransition();
+  return <form className="grid gap-3" onSubmit={event => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    start(async () => {
+      const result = await saveWhatsappTemplatesAction(form);
+      setNotice(result.error ?? result.message ?? '');
+    });
+  }}>
+    <p className="text-sm">Deixe o campo vazio para usar o modelo padrão da organização. Use as variáveis conforme o tipo de mensagem.</p>
+    <ul className="grid gap-1 text-sm sm:grid-cols-2">
+      {Object.entries(whatsappVariables).map(([key, label]) => <li key={key}><code>{'{{' + key + '}}'}</code> · {label}</li>)}
+    </ul>
+    <fieldset className="grid min-w-0 gap-2" disabled={busy}>
+      {(Object.keys(messageKinds) as MessageKind[]).map(kind => <details key={kind} className="rounded-lg border border-line p-3">
+        <summary className="cursor-pointer">{messageKinds[kind]}</summary>
+        <textarea aria-label={messageKinds[kind]} className={textareaClass + ' mt-2'} name={kind} rows={5} maxLength={2000} defaultValue={templates[kind]} />
+      </details>)}
+      <button className={buttonClass({ variant: 'primary' })}>Salvar modelos de WhatsApp</button>
+    </fieldset>
+    <p className="text-sm" role="status">{notice}</p>
+  </form>;
 }

@@ -1,5 +1,6 @@
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { emailPublicOrigin } from '@/lib/base-url';
+import type { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 
 /**
@@ -50,12 +51,20 @@ export async function chainCron(path: string) {
  * Takes the named lease until `until`, or returns null while another run holds
  * it. A run that dies leaves it to expire. Returns the release.
  */
-export async function takeCronLease(name: string, until: Date): Promise<(() => Promise<void>) | null> {
+export async function takeCronLease(name: string, until: Date): Promise<((() => Promise<void>) & { assertOwned: (tx: Prisma.TransactionClient) => Promise<void> }) | null> {
   const token = randomUUID();
   await db.cronLease.createMany({ data: [{ name, leaseUntil: new Date(0), token }], skipDuplicates: true });
   const taken = await db.cronLease.updateMany({ where: { name, leaseUntil: { lte: new Date() } }, data: { leaseUntil: until, token } });
   if (!taken.count) return null;
-  return async () => {
+  return Object.assign(async () => {
     await db.cronLease.updateMany({ where: { name, token }, data: { leaseUntil: new Date(0) } }).catch(() => undefined);
-  };
+  }, {
+    async assertOwned(tx: Prisma.TransactionClient) {
+      const [lease] = await tx.$queryRaw<{ token: string; valid: boolean }[]>`
+        SELECT token, "leaseUntil" > clock_timestamp() AS valid
+        FROM "CronLease" WHERE name = ${name} FOR UPDATE
+      `;
+      if (!lease?.valid || lease.token !== token) throw new Error('sync_lease_lost');
+    },
+  });
 }

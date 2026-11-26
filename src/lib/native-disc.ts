@@ -1,3 +1,5 @@
+export const simulationDiscInstrument = 'DISC RGA · Simulação';
+
 export const dimensions = ['D', 'I', 'S', 'C'] as const;
 type Dimension = typeof dimensions[number];
 export type Scores = Record<Dimension, number>;

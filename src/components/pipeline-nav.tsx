@@ -12,7 +12,7 @@ type PipelineNav = ListNav<PipelineKey> & { committed: PipelineNavInput };
 const NavContext = createContext<PipelineNav | null>(null);
 
 /** Params that change what the tiles count (the stage tab and sort don't). */
-const SCOPE: PipelineKey[] = ['status', 'posting', 'client', 'q', 'reason'];
+const SCOPE: PipelineKey[] = ['status', 'posting', 'client', 'owner', 'q', 'reason'];
 export const sameScope = (a: PipelineNavInput, b: PipelineNavInput) =>
   SCOPE.every((k) => (a[k] ?? '').trim() === (b[k] ?? '').trim());
 

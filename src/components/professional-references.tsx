@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { saveReferenceQuestionnaire, updateReferenceCheck } from '@/app/(app)/reference-actions';
 import { btnTonal, inputClass, surface, textareaClass } from '@/components/form-controls';
 import { referenceChannels, referenceFields, referenceSources, referenceStatuses, type ReferenceAnswer } from '@/lib/professional-references';
+import type { WhatsappTemplates } from '@/lib/rga-productivity';
 import { WhatsappComposer } from '@/components/rga-productivity';
 
 type Reference = Record<keyof typeof referenceFields, string> & {
@@ -43,8 +44,9 @@ function ReferenceInputs({ item }: { item?: Reference }) {
   </label>);
 }
 
-export function ProfessionalReferences({ id, status, responsible, references, questions, brand, job, history }: {
+export function ProfessionalReferences({ id, status, responsible, references, questions, brand, job, history, templates }: {
   id: string; status: keyof typeof referenceStatuses; responsible?: string; references: Reference[]; questions: string[]; brand: string; job: string;
+  templates?: WhatsappTemplates;
   history: { id: string; at: string; actor: string; status: keyof typeof referenceStatuses }[];
 }) {
   const active = references.filter(item => !item.revoked);
@@ -87,7 +89,7 @@ export function ProfessionalReferences({ id, status, responsible, references, qu
             </ReferenceForm>
           </details>
           {item.authorization && <>
-            <WhatsappComposer opportunityId={id} name={item.name} job={job} brand={brand} phones={[item.phone]} status="" approved={false} referenceId={item.id} />
+            <WhatsappComposer templates={templates} opportunityId={id} name={item.name} job={job} brand={brand} phones={[item.phone]} status="" approved={false} referenceId={item.id} />
             <details className="my-3">
               <summary>Registrar tentativa de contato</summary>
               <ReferenceForm action={updateReferenceCheck.bind(null, id, 'attempt')}>

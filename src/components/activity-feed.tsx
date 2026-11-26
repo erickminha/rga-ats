@@ -79,6 +79,7 @@ function describe(event: FeedEvent): string {
     case 'disc.invited': return 'Convite DISC gerado';
     case 'disc.submitted': return 'Questionário DISC respondido';
     case 'disc.emailed': return 'Convite DISC enviado por e-mail';
+    case 'disc.whatsapp_confirmed': return 'Envio do convite DISC por WhatsApp informado';
     case 'disc.cancelled': return 'Convite DISC cancelado';
     case 'disc.interpreted': return 'Interpretação DISC preparada';
     case 'disc.interpretation_edited': return 'Interpretação DISC revisada';

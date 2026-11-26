@@ -42,6 +42,7 @@ model Organization {
   hideFeedbackUntilSubmitted Boolean @default(false)
   assessmentTemplates Json?
   referenceQuestionnaire Json?
+  whatsappTemplates Json?
   opinionTemplate Json?
   discAiSettings Json?
   // GDPR retention: anonymize archived candidates after N months (null = keep forever)
@@ -238,6 +239,7 @@ model Contact {
   headline       String?
   careerProfile  Json?
   talentSummary TalentSummary?
+  talentCvText TalentCvText?
   salaryExpectation Int?
   location       String?
   emails         String[]
@@ -1346,6 +1348,7 @@ model ShareLink {
   expiresAt DateTime
   revokedAt DateTime?
   selection Json?
+  sentAt    DateTime?
   createdAt DateTime     @default(now())
 
   @@index([orgId, scope, targetId])
@@ -1545,6 +1548,17 @@ model TalentSummary {
   @@index([orgId, status, priority, availableAt])
 }
 
+model TalentCvText {
+  contactId String @id
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  orgId String
+  text String
+  inputHash String
+  updatedAt DateTime @updatedAt
+
+  @@index([orgId, contactId])
+}
+
 model TalentSyncRun {
   id String @id @default(uuid())
   orgId String
@@ -1557,6 +1571,11 @@ model TalentSyncRun {
   availableAt DateTime @default(now())
   attempts Int @default(0)
   rowsRead Int @default(0)
+  nextSheetRow Int @default(2)
+  sourceEndRow Int?
+  sourceHash String?
+  cvImported Int @default(0)
+  reviewDetails Json?
   unresolved Int @default(0)
   remaining Int @default(0)
   unchanged Int @default(0)

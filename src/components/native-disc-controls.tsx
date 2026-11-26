@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { editDiscAction, emailDiscAction, issueDiscAction, manageDiscAction } from '@/app/(app)/disc/actions';
+import { editDiscAction, emailDiscAction, issueDiscAction, manageDiscAction, recordDiscWhatsappAction } from '@/app/(app)/disc/actions';
 import type { localDiscInterpretation } from '@/lib/native-disc';
 import { buttonClass } from '@/components/ui/button';
 
@@ -10,15 +10,24 @@ export function DiscInvite({ opportunityId, test }: { opportunityId: string; tes
   const [days, setDays] = useState(7);
   const [result, setResult] = useState<Awaited<ReturnType<typeof issueDiscAction>>>();
   const [busy, start] = useTransition();
+  const [draft, setDraft] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
   return <div className="grid gap-3">
     <label className="text-sm">Prazo em dias <input className="w-20 rounded-field border border-line p-1" type="number" min={1} max={30} value={days} onChange={e => setDays(+e.target.value)} /></label>
-    <button className={buttonClass({ variant: 'secondary' })} disabled={busy} onClick={() => start(async () => setResult(await issueDiscAction(opportunityId, days, test)))}>
+    <button className={buttonClass({ variant: 'secondary' })} disabled={busy} onClick={() => start(async () => {
+      const invite = await issueDiscAction(opportunityId, days, test);
+      setResult(invite);
+      setDraft(invite.message ?? '');
+      setConfirmed(false);
+      setNotice('');
+    })}>
       {test ? 'Solicitar DISC fictício' : 'Solicitar ou renovar DISC'}
     </button>
     {result?.error && <p role="alert">{result.error}</p>}
     {result?.url && <div className="grid gap-2">
       <label className="text-sm">Link individual <input readOnly value={result.url} className="block w-full rounded-field border border-line p-2" onFocus={event => event.target.select()} /></label>
-      <label className="text-sm">Mensagem de convite <textarea readOnly value={result.message} className="block w-full rounded-field border border-line p-2" /></label>
+      {!test && <label className="text-sm">Prévia da mensagem DISC <textarea value={draft} maxLength={3000} rows={4}
+        onChange={event => { setDraft(event.target.value); setConfirmed(false); }} className="block w-full rounded-field border border-line p-2" /></label>}
       <button className="justify-self-start underline" onClick={async () => {
         try { await navigator.clipboard.writeText(result.url!); setNotice('Link copiado.'); }
         catch { setNotice('Selecione e copie o link no campo acima.'); }
@@ -28,7 +37,26 @@ export function DiscInvite({ opportunityId, test }: { opportunityId: string; tes
         setNotice(sent.message ?? sent.error ?? '');
       })}>Enviar ao e-mail cadastrado</button>}
       {notice && <p role="status">{notice}</p>}
-      {!test && <a className="underline" href={'https://wa.me/?text=' + encodeURIComponent(result.message ?? '')} target="_blank" rel="noreferrer">Abrir WhatsApp</a>}
+      {!test && <>
+        <p className="text-sm">Destinatário do WhatsApp: {result.phone ? '+' + result.phone : 'Sem telefone válido'}</p>
+        <label className="text-sm"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} /> Revisei a mensagem e o destinatário.</label>
+        <div className="flex flex-wrap items-center gap-3">
+          <button className="underline" disabled={!confirmed || !draft.includes(result.url)} onClick={async () => {
+            try { await navigator.clipboard.writeText(draft); setNotice('Mensagem copiada.'); }
+            catch { setNotice('Selecione e copie a mensagem manualmente.'); }
+          }}>Copiar mensagem</button>
+          {confirmed && draft.includes(result.url) && result.phone && <a className="underline" href={'https://wa.me/' + result.phone + '?text=' + encodeURIComponent(draft)} target="_blank" rel="noreferrer">Abrir WhatsApp</a>}
+          <button className="underline" disabled={!confirmed || !draft.includes(result.url) || busy} onClick={() => {
+            if (!window.confirm('Confirma que você enviou o convite DISC por WhatsApp?')) return;
+            start(async () => {
+              const response = await recordDiscWhatsappAction(new URL(result.url!).hash.slice(1));
+              setNotice(response.message ?? response.error ?? '');
+              setConfirmed(false);
+            });
+          }}>Registrar envio por WhatsApp</button>
+        </div>
+        {!draft.includes(result.url) && <p className="text-sm">Inclua o link individual na mensagem.</p>}
+      </>}
     </div>}
   </div>;
 }
