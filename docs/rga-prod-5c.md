@@ -9,3 +9,9 @@
 ## API nativa DeepSeek
 
 Usar `RGA_ASSISTANT_PROVIDER=deepseek`, `RGA_ASSISTANT_MODEL=deepseek-flash` e referência `RGA_ASSISTANT_TOKEN=Api_deepseek:latest` no Cloud Run. A requisição nativa usa `max_tokens`, JSON e thinking desabilitado para busca breve. Falhas registram apenas código fixo (HTTP, timeout, resposta inválida), sem corpo ou credencial. A consulta por estado reconhece nomes e siglas maiúsculas; candidatos sem UF não entram quando estado explícito foi informado.
+
+## API direta Groq GPT-OSS
+
+Configuração de homologação: `RGA_ASSISTANT_PROVIDER=groq`, `RGA_ASSISTANT_MODEL=openai/gpt-oss-120b`, `RGA_ASSISTANT_TOKEN=API_Groq:latest` via referência ao Secret Manager no Cloud Run (projeto rga-ats-homolog). A referência do segredo não é o conteúdo da chave. Manter limites globais de 25/dia e 300/mês e o opt-in explícito `RGA_ASSISTANT_ALLOW_EXTERNAL_AI=true` somente após revisão de governança. O administrador confirmou a ativação de ZDR na Groq; não há verificação automática dessa configuração pelo aplicativo. ZDR não substitui minimização de dados, consentimento e revisão das condições de tratamento.
+
+Para GPT-OSS 120B/20B via Groq, usar `max_completion_tokens: 1000`, `reasoning_effort: low` e `response_format: json_object`. Somente o conteúdo final validado e referências profissionais são exibidos; não registrar raciocínio nem payload bruto. Sem troca automática para outros provedores nem tentativas adicionais; HTTP 429 e outras falhas preservam a busca local. A conexão direta foi validada pelo administrador com dados fictícios antes desta mudança; executar testes, build e teste sintético do assistente na revisão implantada antes da liberação de consultas reais. Não alterar o DISC ou a configuração legada.
