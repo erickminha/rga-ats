@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { assistantFailureMessage } from '@/server/assistant-provider';
 import { testAssistant } from '@/server/rga-assistant';
 import { requireSession } from '@/lib/session';
 import { saveDiscAiConfiguration, testDiscAi } from '@/server/disc-ai-settings';
@@ -16,6 +17,6 @@ export async function testDiscAiAction(provider: string, model: string) {
 }
 
 export async function testAssistantAction() {
-  try { const ok = await testAssistant(await requireSession()); return { message: ok ? 'Conexão confirmada com dados fictícios.' : 'Teste não concluído. Confira a configuração, a credencial e os limites.' }; }
+  try { const result = await testAssistant(await requireSession()); revalidatePath('/settings/ia'); return { message: result.ok ? 'Conexão confirmada com dados fictícios.' : assistantFailureMessage(result.code ?? 'internal') }; }
   catch { return { message: 'Não foi possível testar a conexão.' }; }
 }

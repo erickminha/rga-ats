@@ -3,15 +3,13 @@ import { db } from '@/lib/db';
 import { isAdmin, requireRecruitingAccess, type SessionContext } from '@/lib/session';
 import { actorOf, emitEvent } from '@/server/events';
 import { reserveRequest } from '@/server/request-limit';
-import { assistantChat, assistantLimits, assistantProvider } from '@/server/assistant-provider';
+import { assistantChat, assistantFailureCode, assistantFailureMessage, assistantLimits, assistantProvider } from '@/server/assistant-provider';
 import { likePattern } from '@/server/lists/pipeline';
 import { statesBR } from '@/lib/talent-profile';
 import type { CorpusAnswer } from '@/server/ai';
 
-const ignored = new Set('quero preciso procura procurar procure encontrar encontre busca buscar busque candidatos candidato candidatas candidata profissionais profissional pessoas pessoa qual quais quem tem tenham para com sem uma umas uns que dos das nos nas pelo pela sobre mais como muito tenho gostaria interesse interessado interessados vaga vagas oportunidade oportunidades nosso nossa banco talentos talento experiencia experiente perfil perfis trabalho trabalhar trabalhou atua atuou posso'.split(' '));
-export function profileTerms(question: string) {
-  return [...new Set(question.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().match(/[a-z0-9]+/g) ?? [])].filter(w => (w.length >= 3 || statesBR.includes(w.toUpperCase())) && !ignored.has(w) && /[a-z]/.test(w)).slice(0,8);
-}
+import { parseProfileSearch } from '@/lib/assistant-search';
+export function profileTerms(question: string) { const parsed = parseProfileSearch(question); return [...parsed.roles,...parsed.uf.map(x=>x.toLowerCase())]; }
 // Defense in depth: only the professional headline and UF are projected to the model.
 // Do not transfer resumes, notes, names, contact channels or other profile fields.
 export function scrubAssistantText(text: string) {
@@ -29,21 +27,19 @@ async function reserve(orgId: string) {
     && await reserveRequest('rga-assistant-global-month',[day.slice(0,7)],monthly,31*86400000)
     && await reserveRequest('rga-assistant-org-day',[orgId,day],daily,86400000);
 }
-async function log(ctx: SessionContext, success: boolean, tokens: number | null, count: number, test = false) {
+async function log(ctx: SessionContext, success: boolean, tokens: number | null, count: number, test = false, failure: string | null = null) {
   const config = assistantProvider();
   await db.$transaction(async tx => {
     await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: test ? 'assistant.tested' : 'assistant.queried',
       subjectType: 'organization', subjectId: ctx.orgId,
-      payload: { success, provider: config?.provider ?? 'local', model: config?.model ?? null, tokens, count } });
+      payload: { success, provider: config?.provider ?? 'local', model: config?.model ?? null, tokens, count, failure } });
   });
 }
 export async function askProfessionalProfiles(ctx: SessionContext, question: string): Promise<CorpusAnswer> {
   requireRecruitingAccess(ctx);
   if (/\b(?:cpf|rg|religiao|religião|etnia|raça|raca|gestante|gravida|grávida|estado civil|filhos|orientacao sexual|orientação sexual|idade)\b/i.test(question)) return { answer: 'Use apenas critérios profissionais pertinentes à vaga, como cargo, área e UF. Não pesquise atributos pessoais ou sensíveis.', sources: [] };
-  const terms = profileTerms(question.replace(/https?:\/\/\S+|[\w.+-]+@[\w.-]+|[\d(). -]{7,}/gi,' '));
-  if (!terms.length) return { answer: 'Informe um cargo, área profissional ou UF para localizar perfis. Ex.: auxiliar administrativo, técnico em eletrônica, Amazonas.', sources: [] };
-  const uf = terms.filter(term => statesBR.includes(term.toUpperCase())).map(term => term.toUpperCase());
-  const roles = terms.filter(term => !statesBR.includes(term.toUpperCase()));
+  const { roles, uf } = parseProfileSearch(question);
+  if (!roles.length && !uf.length) return { answer: 'Informe um cargo, área profissional ou UF para localizar perfis. Ex.: auxiliar administrativo, técnico em eletrônica, Amazonas.', sources: [] };
   const hits = roles.length ? roles.map(term => Prisma.sql`(CASE WHEN public.rga_fold(c.headline) LIKE public.rga_fold(${likePattern(term)}) ESCAPE '\\' THEN 1 ELSE 0 END)`) : [Prisma.sql`1`];
   const score = Prisma.join(hits, ' + ');
   const rows = await db.$queryRaw<{ id: string; name: string; headline: string | null; uf: string | null; score: number }[]>`
@@ -66,12 +62,14 @@ export async function askProfessionalProfiles(ctx: SessionContext, question: str
     })));
     await log(ctx,true,result.tokens,rows.length);
     return {answer: 'Busca assistida em até 12 perfis com cargo ou área e UF cadastrados. Não analisa currículos nesta etapa.\n\n' + result.answer, sources};
-  } catch { await log(ctx,false,null,rows.length).catch(() => {}); return local('IA indisponível no momento. Exibindo busca local.'); }
+  } catch (error) { const code = assistantFailureCode(error); await log(ctx,false,null,rows.length,false,code).catch(() => {}); console.warn('[assistant] provider failure:',code); return local('IA indisponível no momento. ' + assistantFailureMessage(code) + ' Exibindo busca local.'); }
 }
 export async function testAssistant(ctx: SessionContext) {
-  if (!isAdmin(ctx) || !assistantProvider() || !await reserveRequest('rga-assistant-test',[ctx.orgId],3,3600000) || !await reserve(ctx.orgId)) return false;
+  if (!isAdmin(ctx)) return {ok:false, code:'not_configured'};
+  if (!assistantProvider()) return {ok:false, code:'not_configured'};
+  if (!await reserveRequest('rga-assistant-test',[ctx.orgId],3,3600000) || !await reserve(ctx.orgId)) return {ok:false, code:'limit'};
   try {
     const result = await assistantChat('Qual perfil informou interesse em auxiliar administrativo?', [{n:1,professional:'Cargo informado: auxiliar administrativo. UF: AM.'}]);
-    await log(ctx,true,result.tokens,1,true); return true;
-  } catch { await log(ctx,false,null,1,true).catch(() => {}); return false; }
+    await log(ctx,true,result.tokens,1,true); return {ok:true, code:null};
+  } catch (error) { const code = assistantFailureCode(error); await log(ctx,false,null,1,true,code).catch(() => {}); console.warn('[assistant] test failure:',code); return {ok:false,code}; }
 }
