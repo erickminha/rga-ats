@@ -91,7 +91,7 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
     </section>
     <section id="curriculos" className="mb-4 rounded-card bg-surface p-4">
       <h2 className="mb-3 font-semibold">Currículos e documentos</h2>
-      {isAdmin(ctx) && ctx.orgId === process.env.RGA_TALENT_SYNC_ORG_ID && process.env.RGA_RESUME_FOLDER_ID && <RgaDriveResume contactId={id} />}
+      {allowed && canManageRecruiting(ctx) && ctx.orgId === process.env.RGA_TALENT_SYNC_ORG_ID && process.env.RGA_RESUME_FOLDER_ID && <RgaDriveResume contactId={id} />}
       {files.length === 0 && <p className="mb-3 text-sm">Nenhum documento anexado.</p>}
       <ul className="mb-4 grid gap-2">
         {files.map((file) => <li key={file.id} className="rounded-field border border-line p-3 text-sm">
