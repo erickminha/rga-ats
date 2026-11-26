@@ -42,7 +42,7 @@ function predicate(f: TalentFilters) {
       OR EXISTS (SELECT 1 FROM "StoredFile" f WHERE f."contactId" = c.id AND f."orgId" = c."orgId"
        AND f."resumeVersion" AND f."deletePendingAt" IS NULL AND f."resumeContent" IS NOT NULL
        AND public.rga_fold(f."resumeContent") LIKE public.rga_fold(${pattern}) ESCAPE '\\')
-      OR (${eligible} AND EXISTS (SELECT 1 FROM "TalentSummary" t WHERE t."contactId" = c.id AND t."orgId" = c."orgId"
+      OR (${eligible} AND NOT EXISTS (SELECT 1 FROM "Opportunity" o WHERE o."orgId" = c."orgId" AND o."contactId" = c.id AND o.confidential) AND EXISTS (SELECT 1 FROM "TalentSummary" t WHERE t."contactId" = c.id AND t."orgId" = c."orgId"
         AND ${textMatch(Prisma.sql`t."searchText"`, f.q)}))
       ${matchPhone}
     )`);
@@ -96,16 +96,16 @@ export async function searchTalents(ctx: SessionContext, filters: TalentFilters,
   const selected = rows.slice(0, limit);
   const people = new Map((await db.contact.findMany({
     where: { orgId: ctx.orgId, isAnonymized: false, id: { in: selected.map(({ id }) => id) } },
-    select: { id: true, name: true, headline: true, location: true, careerProfile: true, salaryExpectation: true, tags: true, resumeFileId: true, updatedAt: true, talentSummary: { select: { headline: true, reviewedText: true } } },
+    select: { id: true, name: true, headline: true, location: true, careerProfile: true, salaryExpectation: true, tags: true, resumeFileId: true, updatedAt: true, talentSummary: { select: { headline: true, reviewedText: true } }, _count: { select: { opportunities: { where: { orgId: ctx.orgId, confidential: true } } } } },
   })).map((person) => [person.id, person]));
   return {
     pool,
     rows: selected.flatMap((row) => {
       const person = people.get(row.id);
       if (!person) return [];
-      const { talentSummary, ...profile } = person;
+      const { talentSummary, _count, ...profile } = person;
       return [{ ...profile, eligible: row.eligible, hasResume: row.hasResume,
-        summaryPreview: row.eligible ? (talentSummary?.reviewedText ?? talentSummary?.headline)?.slice(0, 200) : undefined }];
+        summaryPreview: row.eligible && !_count.opportunities ? (talentSummary?.reviewedText ?? talentSummary?.headline)?.slice(0, 200) : undefined }];
     }),
     next: rows.length > limit ? selected.at(-1)?.id : undefined,
   };
