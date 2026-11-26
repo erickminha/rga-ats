@@ -30,7 +30,7 @@ describe.skipIf(!hasDb)('transferência privada por ID de origem', () => {
     const ctx = { orgId: org.id, userId: admin.id, accessRole: 'ADMIN' };
     vi.stubEnv('AUTH_SECRET', 'teste-ficticio'); vi.stubEnv('RGA_TALENT_SYNC_ORG_ID', org.id); vi.stubEnv('RGA_RESUME_FOLDER_ID', folder);
     const person = await db.contact.create({ data: { orgId: org.id, name: 'Pessoa fictícia', emails: [], phones: [], tags: [] } });
-    await db.importRef.create({ data: { orgId: org.id, provider: RGA_IMPORT_PROVIDER, kind: 'contact',
+    const ref = await db.importRef.create({ data: { orgId: org.id, provider: RGA_IMPORT_PROVIDER, kind: 'contact',
       externalId: TALENT_SOURCE + ':id:A', internalId: person.id } });
     vi.mocked(readTalentSheet).mockResolvedValue([header,['A',url]]);
     const pdf = await PDFDocument.create(); pdf.addPage().drawText('Curriculo ficticio');
@@ -47,7 +47,13 @@ describe.skipIf(!hasDb)('transferência privada por ID de origem', () => {
     const recruiter = { ...ctx, accessRole: 'TEAM_MEMBER' };
     await expect(originalResumeUrl(recruiter, person.id)).resolves.toBe(url);
     await expect(originalResumeUrl({ ...ctx, accessRole: 'INTERVIEWER' }, person.id)).rejects.toThrow('FORBIDDEN');
-    await expect(originalResumeUrl({ ...ctx, orgId: 'outra-organizacao' }, person.id)).rejects.toThrow('CONFIG');
+    await expect(originalResumeUrl({ ...ctx, orgId: 'outra-organizacao' }, person.id)).rejects.toThrow('PRIVACY');
+    vi.stubEnv('RGA_GOOGLE_SERVICE_ACCOUNT', '');
+    await expect(originalResumeUrl(recruiter, person.id)).rejects.toThrow('CONFIG');
+    await db.importRef.update({ where: { id: ref.id }, data: { snapshot: { resumeDriveFileId: fileId } } });
+    vi.mocked(readTalentSheet).mockClear();
+    await expect(originalResumeUrl(recruiter, person.id)).resolves.toBe(url);
+    expect(readTalentSheet).not.toHaveBeenCalled();
     const p = await previewDriveResume(ctx, person.id);
     parent = 'PastaDiferente'; await expect(confirmDriveResume(ctx,person.id,p.ticket)).rejects.toThrow('FILE'); parent = folder;
     expect(await confirmDriveResume(ctx, person.id, p.ticket)).toBe(true);
