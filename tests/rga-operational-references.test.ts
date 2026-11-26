@@ -53,12 +53,16 @@ describe.skipIf(!hasDb)('Ciclo 5C.3', () => {
     const posting = await createPosting(ctx, { title: 'Vaga fictícia', workplaceType: 'REMOTE', commitment: 'FULL_TIME' });
     const applicant = stages.find(stage => stage.type === 'APPLICANT')!;
     const screen = stages.find(stage => stage.type === 'SCREEN')!;
+    const interview = stages.find(stage => stage.type === 'ONSITE')!;
     const hired = stages.find(stage => stage.type === 'HIRED')!;
     const opportunity = await createCandidate(ctx, { name: 'Pessoa fictícia', postingId: posting.id, stageId: applicant.id, origin: 'APPLIED' });
+    await saveRecruitingAssessment(recruiter, opportunity.id, 'screening', form({ result: 'REVIEW', notes: 'Triagem fictícia' }));
     await moveStage(ctx, opportunity.id, screen.id, { note: 'Triagem manual' });
     await expect(setPostingStageExclusions(recruiter, posting.id, [screen.id])).rejects.toThrow();
     await setPostingStageExclusions(ctx, posting.id, [screen.id]);
-    await setStageOrder(ctx, stages.map(row => row.id));
+    const order = [applicant.id, interview.id, screen.id, hired.id];
+    await setStageOrder(ctx, order);
+    expect((await db.stage.findMany({ where: { orgId: org.id }, orderBy: { order: 'asc' } })).map(stage => stage.id)).toEqual(order);
     expect((await db.opportunity.findUniqueOrThrow({ where: { id: opportunity.id } })).stageId).toBe(screen.id);
     await moveStage(ctx, opportunity.id, applicant.id, { note: 'Correção da etapa' });
     await expect(moveStage(ctx, opportunity.id, screen.id)).rejects.toThrow();
@@ -70,6 +74,8 @@ describe.skipIf(!hasDb)('Ciclo 5C.3', () => {
     await expect(moveStage(recruiter, opportunity.id, screen.id, { correctHire: true, note: 'Registro fictício' })).rejects.toThrow();
     expect(await moveStage(ctx, opportunity.id, screen.id, { correctHire: true, note: 'Registro fictício' })).toMatchObject({ status: 'ACTIVE', hiredAt: null });
     expect(await db.stageTransition.count({ where: { opportunityId: opportunity.id, actorId: admin.id } })).toBe(5);
+    expect(await db.recruitingAssessment.findUniqueOrThrow({ where: { opportunityId: opportunity.id } }))
+      .toMatchObject({ screening: { result: 'REVIEW', notes: 'Triagem fictícia' } });
   });
 
   it('scopes references to the organization and preserves versioned, selected excerpts after revocation', async () => {
@@ -107,6 +113,7 @@ describe.skipIf(!hasDb)('Ciclo 5C.3', () => {
     await expect(update('revoke', { referenceId: row.id })).rejects.toThrow(/perfil/);
     ctx.accessRole = 'TEAM_MEMBER';
     await update('revoke', { referenceId: row.id });
+    expect(await db.opportunity.count({ where: { id: opportunity.id, AND: [conditions.references] } })).toBe(1);
     await expect(update('attempt', attempt)).rejects.toThrow();
     expect(await db.professionalReference.findUniqueOrThrow({ where: { id: row.id } })).toMatchObject({ email: '', name: '', answers: [] });
     expect(await db.professionalOpinionVersion.findFirstOrThrow({ where: { opportunityId: opportunity.id } })).toMatchObject({ content: { references: excerpt } });

@@ -27,6 +27,17 @@ O roteiro de homologação e o planejamento revisado descrevem a operação, mas
 
 ## Integração com o Ciclo 5C.2
 
-Arquivos compartilhados com a PR #33: `prisma/schema.prisma`, `src/server/applications.ts`, `src/server/retention.ts`, `src/lib/list-types.ts` e `src/app/(app)/settings/page.tsx`. Foram mantidas as duas alterações em cada arquivo e as migrações têm nomes distintos. Preservar as migrações independentes e aplicar as duas no PostgreSQL local em ordem antes de autorizar o Cloud Build. Fluxos de importação histórica preservam o mapeamento original das etapas. O reaproveitamento do banco de talentos merece um teste cruzado com etapas desativadas antes da integração.
+A PR #33 também alterou `prisma/schema.prisma`, `src/server/applications.ts`, `src/server/retention.ts`, `src/lib/list-types.ts` e `src/app/(app)/settings/page.tsx`. Foram mantidas as duas alterações em cada arquivo e as migrações têm nomes distintos. Preservar as migrações independentes e aplicar as duas no PostgreSQL local em ordem antes de autorizar o Cloud Build. Fluxos de importação histórica preservam o mapeamento original das etapas. O reaproveitamento do banco de talentos merece um teste cruzado com etapas desativadas antes da integração.
 
 Submeter as duas entregas à auditoria antes de integrar em `homolog` e aprovar o Cloud Build coordenado.
+
+## Validação local
+
+- `prisma validate`, `npm run typecheck` e `npm run build` concluídos com sucesso após a atualização para a base integrada.
+- Cinco suítes focadas passaram com 18 testes em PostgreSQL 17 local. O recorte inclui disponibilidade e reordenação de etapas, histórico, preservação de avaliações, correção de contratação, indicadores, referências, questionário, pareceres, acesso e regressão dos fluxos do 5C.2.
+- Chromium em desktop e mobile com dados fictícios. Validados o arraste no Kanban, a mudança pela lista, o filtro de referências, a edição de status no celular e a ausência de rolagem horizontal na tela operacional e na ficha.
+
+| Tela | Desktop | Mobile |
+| --- | --- | --- |
+| Acompanhamento operacional | [Captura desktop](evidencias-ciclo-5c3/operacao-desktop.jpg) | [Captura mobile](evidencias-ciclo-5c3/operacao-mobile.jpg) |
+| Referências profissionais | [Captura desktop](evidencias-ciclo-5c3/referencias-desktop.jpg) | [Captura mobile](evidencias-ciclo-5c3/referencias-mobile.jpg) |
