@@ -29,5 +29,11 @@ export async function originalResumeAction(contactId: string) {
   const ctx = await requireSession();
   if (typeof contactId !== 'string' || !contactId || contactId.length > 180) return { url: null };
   try { return { url: await originalResumeUrl(ctx, contactId) }; }
-  catch { return { url: null }; }
+  catch (error) {
+    const reason = error instanceof Error ? error.message : '';
+    return { url: null, error: reason === 'CONFIG' ? 'A planilha de currículos ainda não está conectada ao ATS.' :
+      reason === 'IDENTITY' ? 'Nenhum currículo com vínculo confirmado nesta planilha.' :
+      reason === 'PRIVACY' ? 'Currículo indisponível para este cadastro.' :
+      'Não foi possível consultar o currículo original. Tente novamente.' };
+  }
 }

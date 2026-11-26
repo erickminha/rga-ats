@@ -1,5 +1,5 @@
 import { OriginalResume } from '@/components/original-resume';
-import { originalResumeEnabled } from '@/server/imports/rga-drive';
+import { ResumePreview } from '@/components/resume-preview';
 import { dimensions, scoreDisc, validatedDiscInterpretation, type ScoringKey } from '@/lib/native-disc';
 import { OpinionEditor } from '@/components/opinion-editor';
 import { opinionTemplates } from '@/lib/professional-opinion';
@@ -318,6 +318,9 @@ export async function CandidateProfile({ id }: { id: string }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {canManageRecruiting(ctx) && !contact.isAnonymized && !contact.retentionHold && (
+              resumeFile ? <ResumePreview fileId={resumeFile.id} prominent /> : <OriginalResume contactId={contact.id} prominent />
+            )}
             <ShareLinkButton
               scope="candidate"
               id={opportunity.id}
@@ -588,7 +591,6 @@ export async function CandidateProfile({ id }: { id: string }) {
             />
           </div>
 
-          {!resumeFile && !contact.isAnonymized && !contact.retentionHold && originalResumeEnabled(ctx.orgId) && canManageRecruiting(ctx) && <OriginalResume key={contact.id} contactId={contact.id} />}
           <ContactCard
             opportunityId={opportunity.id}
             contactId={contact.id}

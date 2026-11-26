@@ -1,5 +1,4 @@
 import { OriginalResume } from '@/components/original-resume';
-import { originalResumeEnabled } from '@/server/imports/rga-drive';
 import { talentSourceFields } from '@/server/talent-source-fields';
 import { ResumePreview } from '@/components/resume-preview';
 import { textRecord } from '@/lib/i18n/pt-BR/assessment';
@@ -63,6 +62,10 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
   return <div className="mx-auto max-w-4xl px-4 pb-12 md:px-6">
     <PageHeader title={person.name} subtitle={`Cadastro atualizado em ${dateBR(person.updatedAt)}`} />
     <nav className="mb-4 flex flex-wrap gap-3 text-sm">
+      {canManageRecruiting(ctx) && !person.retentionHold && (
+        resumeFiles.length > 0 ? <ResumePreview fileId={(resumeFiles.find(file => file.id === person.resumeFileId) ?? resumeFiles[0]).id} prominent />
+          : <OriginalResume contactId={id} prominent />
+      )}
       <Link className="underline" href="/contacts">Voltar ao banco de talentos</Link>
       {person.opportunities[0] && <Link className="underline" href={`/candidates/${person.opportunities[0].id}`}>Abrir participação mais recente</Link>}
     </nav>
@@ -84,7 +87,6 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
     <section id="curriculos" className="mb-4 rounded-card bg-surface p-4">
       <h2 className="mb-3 font-semibold">Currículos e documentos</h2>
       {isAdmin(ctx) && ctx.orgId === process.env.RGA_TALENT_SYNC_ORG_ID && process.env.RGA_RESUME_FOLDER_ID && <RgaDriveResume contactId={id} />}
-      {!person.resumeFileId && originalResumeEnabled(ctx.orgId) && canManageRecruiting(ctx) && <OriginalResume contactId={id} />}
       {files.length === 0 && <p className="mb-3 text-sm">Nenhum documento anexado.</p>}
       <ul className="mb-4 grid gap-2">
         {files.map((file) => <li key={file.id} className="rounded-field border border-line p-3 text-sm">

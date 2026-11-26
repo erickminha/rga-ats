@@ -50,7 +50,8 @@ async function importedResumeId(orgId: string, contactId: string, rows?: string[
 }
 
 export async function originalResumeUrl(ctx: SessionContext, contactId: string) {
-  if (!ctx.userId || !canManageRecruiting(ctx) || !originalResumeEnabled(ctx.orgId)) throw new Error('FORBIDDEN');
+  if (!ctx.userId || !canManageRecruiting(ctx)) throw new Error('FORBIDDEN');
+  if (!originalResumeEnabled(ctx.orgId)) throw new Error('CONFIG');
   const id = await importedResumeId(ctx.orgId, contactId);
   return 'https://drive.google.com/open?id=' + encodeURIComponent(id);
 }
