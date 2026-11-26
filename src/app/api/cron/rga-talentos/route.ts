@@ -8,6 +8,7 @@ export async function POST(request: Request) {
   if (process.env.RGA_TALENT_SYNC_DAILY !== 'true') return NextResponse.json({ enabled: false });
   const orgId = process.env.RGA_TALENT_SYNC_ORG_ID;
   if (!orgId || !talentSyncConfigured(orgId)) return NextResponse.json({ error: 'Integração indisponível.' }, { status: 503 });
-  await enqueueTalentSync(orgId, 'daily', null);
-  return NextResponse.json(await processTalentSync(orgId));
+  const run = await enqueueTalentSync(orgId, 'daily', null);
+  const sync = await processTalentSync(orgId, run.id);
+  return NextResponse.json(sync, { status: sync.status === 'FAILED' ? 503 : 200 });
 }

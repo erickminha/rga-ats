@@ -889,13 +889,14 @@ export async function deleteTranscriptAction(transcriptId: string, opportunityId
 
 export async function askCorpusAction(question: string): Promise<CorpusAnswer | { error: string }> {
   const ctx = await requireSession();
-  const clean = question.trim();
+  const clean = typeof question === 'string' ? question.trim() : '';
+  if (clean.length > 1000) return { error: 'Limite a pergunta a 1.000 caracteres.' };
   if (clean.length < 5) return { error: 'Escreva uma pergunta mais completa.' };
   try {
     return await askCorpus(ctx, clean);
   } catch (error) {
     logAiFailure('ask', error);
-    return { error: error instanceof Error ? error.message : 'Não foi possível responder à pergunta.' };
+    return { error: 'Não foi possível responder à pergunta.' };
   }
 }
 

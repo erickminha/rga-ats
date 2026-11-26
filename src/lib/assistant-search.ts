@@ -6,7 +6,7 @@ const names: Record<string,string> = {
   'rio de janeiro':'RJ', 'rio grande do norte':'RN', 'rio grande do sul':'RS',
   rondonia:'RO', roraima:'RR', 'santa catarina':'SC', 'sao paulo':'SP', sergipe:'SE', tocantins:'TO',
 };
-const ignored = new Set('quero preciso procura procurar procure encontrar encontre busca buscar busque localize localizar candidatos candidato candidatas candidata profissionais profissional pessoas pessoa qual quais quem tem tenham para com sem uma umas uns que dos das nos nas pelo pela sobre mais como muito tenho gostaria interesse interessado interessados vaga vagas oportunidade oportunidades nosso nossa banco talentos talento experiencia experiente perfil perfis trabalho trabalhar trabalhou atua atuou posso'.split(' '));
+const ignored = new Set('quero preciso procura procurar procure encontrar encontre busca buscar busque localize localizar candidatos candidato candidatas candidata profissionais profissional pessoas pessoa qual quais quem tem tenham possui possuem conhecimento conhecimentos sabem sabe registrada comprovada de em para com sem uma umas uns que dos das nos nas pelo pela sobre mais como muito tenho gostaria interesse interessado interessados vaga vagas oportunidade oportunidades nosso nossa banco talentos talento experiencia experiente perfil perfis trabalho trabalhar trabalhou atua atuou posso'.split(' '));
 const fold = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 export function parseProfileSearch(question: string) {
   const clean = question.replace(/https?:\/\/\S+|[\w.+-]+@[\w.-]+|[\d(). -]{7,}/gi,' ');
@@ -21,6 +21,6 @@ export function parseProfileSearch(question: string) {
   for (const match of clean.matchAll(/\b(?:AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/g)) {
     uf.add(match[0]); text = text.replace(new RegExp('\\b'+match[0].toLowerCase()+'\\b','g'),' ');
   }
-  const roles = [...new Set(text.match(/[a-z0-9]+/g) ?? [])].filter(w => w.length >= 3 && !ignored.has(w) && /[a-z]/.test(w)).slice(0,8);
+  const roles = [...new Set((text.match(/\bpower\s+bi\b|[a-z0-9]+/g) ?? []).map(term => term.replace(/\s+/g, ' ')))].filter(w => w.length >= 3 && !ignored.has(w) && /[a-z]/.test(w)).slice(0,8);
   return { roles, uf:[...uf] };
 }

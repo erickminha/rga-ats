@@ -69,7 +69,7 @@ export default async function AppLayout({
         user={{ name: session.user.name ?? '', email: session.user.email ?? '' }}
         org={{ name: org?.name ?? navigation.workspace, logoFileId: org?.logoFileId ?? null }}
         signOutAction={handleSignOut}
-        aiEnabled={assistantConfigured()}
+        aiEnabled={session.user.orgId === process.env.RGA_TALENT_SYNC_ORG_ID || assistantConfigured()}
         showClients={showClients}
       />
       {fetched ? (

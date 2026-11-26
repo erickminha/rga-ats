@@ -141,7 +141,10 @@ export async function recordTalentPreference(ctx: SessionContext, id: string, gr
     const now = new Date();
     await tx.consentRecord.updateMany({ where: { ...scope, withdrawnAt: null }, data: { withdrawnAt: now } });
     await tx.consentRecord.create({ data: { ...scope, withdrawnAt: granted ? null : now } });
-    if (!granted) await tx.talentSummary.deleteMany({ where: { orgId: ctx.orgId, contactId: id } });
+    if (!granted) {
+      await tx.talentSummary.deleteMany({ where: { orgId: ctx.orgId, contactId: id } });
+      await tx.talentCvText.deleteMany({ where: { orgId: ctx.orgId, contactId: id } });
+    }
     else if (process.env.RGA_SUMMARY_AUTO === 'true') await queueTalentSummary(tx, ctx.orgId, id, 20);
     await emitEvent(tx, {
       orgId: ctx.orgId, ...actorOf(ctx), verb: granted ? 'consent.granted' : 'consent.withdrawn',

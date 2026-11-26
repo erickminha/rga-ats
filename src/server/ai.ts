@@ -130,7 +130,7 @@ export async function askCorpus(ctx: SessionContext, question: string): Promise<
   requireRecruitingAccess(ctx);
   const operational = await askOperationalQuestion(ctx, question);
   if (operational) return operational;
-  if (assistantProvider()) return askProfessionalProfiles(ctx, question);
+  if (ctx.orgId === process.env.RGA_TALENT_SYNC_ORG_ID || assistantProvider()) return askProfessionalProfiles(ctx, question);
   if (!aiConfigured()) throw new AiUnavailableError('not_configured');
   const terms = keywords(question);
   if (!terms.length) return { answer: 'Faça uma pergunta mais específica.', sources: [] };

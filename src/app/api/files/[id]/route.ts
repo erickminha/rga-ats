@@ -11,7 +11,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const file = await db.storedFile.findFirst({
-    where: { ...resumeAccess(ctx), id, deletePendingAt: null },
+    where: { ...resumeAccess(ctx), id, deletePendingAt: null, AND: [
+      { OR: [{ contactId: null }, { contact: { orgId: ctx.orgId, isAnonymized: false } }] },
+      { OR: [
+        { resumeVersion: false },
+        { contact: { orgId: ctx.orgId, isAnonymized: false, retentionHold: false, OR: [
+          { consents: { none: { orgId: ctx.orgId, purpose: 'PROFILE_STORAGE' } } },
+          { consents: { some: { orgId: ctx.orgId, purpose: 'PROFILE_STORAGE', withdrawnAt: null } } },
+        ] } },
+      ] },
+    ] },
   });
   if (!file) return NextResponse.json({ error: 'not found' }, { status: 404 });
 

@@ -67,7 +67,8 @@ export function sheetCvRows(rows: string[][]) {
   const ids = counts(data.map(row => row.origin)), files = counts(data.map(row => row.file));
   return data.filter(row => row.file && files.get(row.file) === 1 &&
     (!row.origin || (row.origin.length <= 180 && ids.get(row.origin) === 1)) &&
-    row.text.trim() && row.text.length <= 50000 && !/^ERRO\s*:/i.test(row.text.trim()))
+    row.text.trim() && row.text.length <= 50000 && !row.text.includes('\0') &&
+    !/^(?:erro(?:\s+(?:de|no)\s+ocr)?\s*[:–-]|ocr\s*[:–-]\s*(?:erro|falha)|falha\s+(?:de|no)\s+ocr|#(?:REF!|VALUE!|ERROR!|N\/A|DIV\/0!|NAME\?|NUM!|NULL!))/i.test(row.text.trim()))
     .map(row => ({ ...row, cvText: row.text }));
 }
 

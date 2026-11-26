@@ -3,22 +3,10 @@ import { db } from '@/lib/db';
 import { isAdmin, requireRecruitingAccess, type SessionContext } from '@/lib/session';
 import { actorOf, emitEvent } from '@/server/events';
 import { reserveRequest } from '@/server/request-limit';
-import { assistantChat, assistantFailureCode, assistantFailureMessage, assistantLimits, assistantProvider } from '@/server/assistant-provider';
-import { likePattern } from '@/server/lists/pipeline';
-import { statesBR } from '@/lib/talent-profile';
+import { assistantChat, assistantFailureCode, assistantLimits, assistantProvider } from '@/server/assistant-provider';
 import type { CorpusAnswer } from '@/server/ai';
 
 import { parseProfileSearch } from '@/lib/assistant-search';
-export function profileTerms(question: string) { const parsed = parseProfileSearch(question); return [...parsed.roles,...parsed.uf.map(x=>x.toLowerCase())]; }
-// Defense in depth: only the professional headline and UF are projected to the model.
-// Do not transfer resumes, notes, names, contact channels or other profile fields.
-export function scrubAssistantText(text: string) {
-  return text.replace(/https?:\/\/\S+/gi,'[link omitido]')
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[contato omitido]')
-    .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g,'[documento omitido]')
-    .replace(/(?:\+?55[\s.-]?)?\(?\d{2}\)?[\s.-]?\d{4,5}[\s.-]?\d{4}\b/g,'[contato omitido]')
-    .replace(/\b\d{7,}\b/g,'[número omitido]');
-}
 async function reserve(orgId: string) {
   const {daily,monthly} = assistantLimits();
   const day = new Date().toISOString().slice(0,10);
@@ -27,8 +15,8 @@ async function reserve(orgId: string) {
     && await reserveRequest('rga-assistant-global-month',[day.slice(0,7)],monthly,31*86400000)
     && await reserveRequest('rga-assistant-org-day',[orgId,day],daily,86400000);
 }
-async function log(ctx: SessionContext, success: boolean, tokens: number | null, count: number, test = false, failure: string | null = null) {
-  const config = assistantProvider();
+async function log(ctx: SessionContext, success: boolean, tokens: number | null, count: number, test = false, failure: string | null = null, execution?: 'local') {
+  const config = execution === 'local' ? null : assistantProvider();
   await db.$transaction(async tx => {
     await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: test ? 'assistant.tested' : 'assistant.queried',
       subjectType: 'organization', subjectId: ctx.orgId,
@@ -73,29 +61,81 @@ export async function askProfessionalProfiles(ctx: SessionContext, question: str
   if (/\b(?:cpf|rg|religiao|religião|etnia|raça|raca|gestante|gravida|grávida|estado civil|filhos|orientacao sexual|orientação sexual|idade)\b/i.test(question)) return { answer: 'Use apenas critérios profissionais pertinentes à vaga, como cargo, área e UF. Não pesquise atributos pessoais ou sensíveis.', sources: [] };
   const { roles, uf } = parseProfileSearch(question);
   if (!roles.length && !uf.length) return { answer: 'Informe um cargo, área profissional ou UF para localizar perfis. Ex.: auxiliar administrativo, técnico em eletrônica, Amazonas.', sources: [] };
-  const hits = roles.length ? roles.map(term => Prisma.sql`(CASE WHEN public.rga_fold(c.headline) LIKE public.rga_fold(${likePattern(term)}) ESCAPE '\\' THEN 1 ELSE 0 END)`) : [Prisma.sql`1`];
-  const score = Prisma.join(hits, ' + ');
-  const rows = await db.$queryRaw<{ id: string; name: string; headline: string | null; uf: string | null; score: number }[]>`
-    SELECT c.id,c.name,left(c.headline,300) AS headline,c."careerProfile"->>'state' AS uf,(${score})::int AS score
-    FROM "Contact" c WHERE c."orgId"=${ctx.orgId} AND NOT c."isAnonymized" AND NOT c."retentionHold"
-      AND EXISTS (SELECT 1 FROM "ConsentRecord" g WHERE g."orgId"=c."orgId" AND g."contactId"=c.id AND g.purpose='PROFILE_STORAGE' AND g."withdrawnAt" IS NULL)
-      AND NOT EXISTS (SELECT 1 FROM "Opportunity" o WHERE o."orgId"=c."orgId" AND o."contactId"=c.id AND o.confidential)
+  type Match = { title: string; snippet: string };
+  const patterns = roles.map(term => '\\m' + term.replace(' ', '[[:space:]]+') + '\\M');
+  const rows = await db.$queryRaw<{ id: string; name: string; uf: string | null; matches: Match[] }[]>`
+    SELECT c.id, c.name, c."careerProfile"->>'state' AS uf, evidence.matches
+    FROM "Contact" c
+    LEFT JOIN "TalentSummary" summary ON summary."contactId" = c.id AND summary."orgId" = c."orgId"
+    LEFT JOIN "TalentCvText" cv ON cv."contactId" = c.id AND cv."orgId" = c."orgId"
+    CROSS JOIN LATERAL (
+      WITH fields AS MATERIALIZED (
+        SELECT * FROM (VALUES
+          ('Cargo ou área de interesse', 1, c.headline),
+          ('Experiência informada no cadastro', 4, c."careerProfile"->>'experience'),
+          ('Competências informadas no cadastro', 3, c."careerProfile"->>'skills'),
+          ('Formação informada no cadastro', 3, c."careerProfile"->>'education')
+        ) AS f(title, priority, snippet)
+        WHERE nullif(btrim(snippet), '') IS NOT NULL
+        UNION ALL
+        SELECT f.title, f.priority, item.snippet
+        FROM (VALUES
+          ('Histórico no resumo profissional', 4, summary.content->'experience'),
+          ('Competências no resumo profissional', 3, summary.content->'skills'),
+          ('Formação no resumo profissional', 3, summary.content->'education'),
+          ('Cursos e certificações no resumo profissional', 3, summary.content->'courses'),
+          ('Cargo pretendido no resumo profissional', 1, summary.content->'interest')
+        ) AS f(title, priority, items)
+        CROSS JOIN LATERAL jsonb_array_elements_text(CASE WHEN jsonb_typeof(f.items) = 'array' THEN f.items ELSE '[]'::jsonb END) AS item(snippet)
+        UNION ALL
+        SELECT CASE
+          WHEN folded ~ '(^|[[:space:]])(objetivo|pretendo|interesse|busco|procuro|desejo|almejo|em busca)' THEN 'Interesse declarado no currículo'
+          WHEN folded !~ '(^|[[:space:]])(sem experiencia|nao (tenho|possuo|trabalhei|atuei))'
+           AND folded ~ '(^|[[:space:]])(experiencia|atuacao|atuei|trabalhei|responsavel|realizei|atividades)' THEN 'Experiência descrita no currículo'
+          ELSE 'Menção no currículo'
+        END,
+        CASE
+          WHEN folded ~ '(^|[[:space:]])(objetivo|pretendo|interesse|busco|procuro|desejo|almejo|em busca)' THEN 1
+          WHEN folded !~ '(^|[[:space:]])(sem experiencia|nao (tenho|possuo|trabalhei|atuei))'
+           AND folded ~ '(^|[[:space:]])(experiencia|atuacao|atuei|trabalhei|responsavel|realizei|atividades)' THEN 5
+          ELSE 2
+        END, line
+        FROM regexp_split_to_table(CASE WHEN public.rga_fold(cv.text) ~ ANY(${patterns}::text[]) THEN cv.text END, '[[:cntrl:]]+') AS cv_line(line)
+        CROSS JOIN LATERAL (SELECT public.rga_fold(line) AS folded) norm
+      ), hits AS (
+        SELECT term.position, term.pattern, match.title, match.priority, match.snippet
+        FROM unnest(${patterns}::text[]) WITH ORDINALITY AS term(pattern, position)
+        CROSS JOIN LATERAL (
+          SELECT title, priority, snippet FROM fields
+          WHERE public.rga_fold(snippet) ~ term.pattern
+          ORDER BY priority DESC, length(snippet), title, snippet LIMIT 1
+        ) match
+      )
+      SELECT count(*)::int AS found, coalesce(sum(priority), 0) AS score,
+        coalesce(jsonb_agg(jsonb_build_object('title', title, 'snippet',
+          btrim(substring(snippet FROM greatest(1, coalesce(strpos(public.rga_fold(snippet),
+            substring(public.rga_fold(snippet) FROM pattern)), 1) - 90) FOR 260))) ORDER BY position), '[]'::jsonb) AS matches
+      FROM hits
+    ) evidence
+    WHERE c."orgId" = ${ctx.orgId} AND NOT c."isAnonymized" AND NOT c."retentionHold"
+      AND EXISTS (SELECT 1 FROM "ConsentRecord" g WHERE g."orgId" = c."orgId" AND g."contactId" = c.id AND g.purpose = 'PROFILE_STORAGE' AND g."withdrawnAt" IS NULL)
+      AND NOT EXISTS (SELECT 1 FROM "Opportunity" o WHERE o."orgId" = c."orgId" AND o."contactId" = c.id AND o.confidential)
       ${uf.length ? Prisma.sql`AND c."careerProfile"->>'state' = ANY(${uf}::text[])` : Prisma.empty}
-      AND (${score}) > 0
-    ORDER BY score DESC,c."createdAt" DESC,c.id DESC LIMIT 12
+      AND evidence.found = ${roles.length}
+    ORDER BY evidence.score DESC, c."createdAt" DESC, c.id DESC LIMIT 12
   `;
-  const professional = (row: typeof rows[number]) => ['Cargo ou área informada: ' + (row.headline || 'não informado'),statesBR.includes(row.uf ?? '') ? 'UF: ' + row.uf : ''].filter(Boolean).join(' · ');
-  const sources: CorpusAnswer['sources'] = rows.map(row => ({ kind: 'profile', contactName: row.name, contactId: row.id, opportunityId: null, title: 'Perfil profissional', snippet: professional(row) }));
-  if (!rows.length) return { answer: 'Não localizei perfis autorizados que correspondam aos termos pesquisados. Isso não significa que não existam profissionais com essa experiência. Tente outro cargo ou a busca avançada.', sources: [] };
-  const local = (why: string) => ({ answer: why + '\n\nPerfis encontrados por correspondência de termos (até 12):\n' + rows.map((r,i) => '[' + (i+1) + '] ' + professional(r)).join('\n') + '\n\nCargo informado não comprova experiência. Confira os cadastros.', sources });
-  if (!await reserve(ctx.orgId)) return local('Limite de consultas de IA atingido. Exibindo busca local.');
-  try {
-    const result = await assistantChat('Resuma os perfis encontrados pelos termos profissionais da busca local. Destaque apenas o que consta no cargo informado e na UF, sem inferir experiência.', rows.map((row,i) => ({
-      n:i+1, professional: scrubAssistantText(row.name ? professional(row).replaceAll(row.name,'[nome omitido]') : professional(row)),
-    })));
-    await log(ctx,true,result.tokens,rows.length);
-    return {answer: 'Busca assistida em até 12 perfis com cargo ou área e UF cadastrados. Não analisa currículos nesta etapa.\n\n' + result.answer, sources};
-  } catch (error) { const code = assistantFailureCode(error); await log(ctx,false,null,rows.length,false,code).catch(() => {}); console.warn('[assistant] provider failure:',code); return local('IA indisponível no momento. ' + assistantFailureMessage(code) + ' Exibindo busca local.'); }
+  const sources: CorpusAnswer['sources'] = rows.map(row => {
+    const matches = [...new Map(row.matches.map(hit => [JSON.stringify(hit), hit])).values()];
+    return { kind: 'profile', contactName: row.name, contactId: row.id, opportunityId: null,
+      title: row.uf ? 'Perfil profissional · ' + row.uf : 'Perfil profissional',
+      snippet: matches.map(hit => hit.title + ': ' + hit.snippet).join(' · ') || 'UF cadastrada: ' + row.uf };
+  });
+  await log(ctx, true, null, rows.length, false, null, 'local');
+  return {
+    answer: rows.length ? 'Perfis com os termos pesquisados (até 12). Os trechos indicam a origem de cada informação. Confira na ficha os relatos de experiência e o contexto das menções.' :
+      'Nenhum perfil autorizado correspondeu aos termos e à UF pesquisados.',
+    sources,
+  };
 }
 export async function testAssistant(ctx: SessionContext) {
   if (!isAdmin(ctx)) return {ok:false, code:'not_configured'};
