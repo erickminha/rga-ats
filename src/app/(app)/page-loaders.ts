@@ -308,42 +308,43 @@ export async function loadInterviewsPage() {
   return { upcoming: upcoming.map(interviewRow), past: past.map(interviewRow), suggested };
 }
 
-export async function loadTasksPage() {
-  const ctx = await requireSession();
-  const now = new Date();
-  const [tasks, snoozed] = await Promise.all([
-    db.task.findMany({
-      where: { orgId: ctx.orgId, completedAt: null },
-      orderBy: [{ dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
-      include: {
-        assignee: { select: { name: true } },
-        opportunity: { include: { contact: { select: { name: true } } } },
-      },
-      take: 200,
-    }),
-    db.opportunity.findMany({
-      where: { orgId: ctx.orgId, status: 'ACTIVE', snoozedUntil: { gt: now } },
-      orderBy: { snoozedUntil: 'asc' },
-      include: { contact: { select: { name: true } } },
-      take: 50,
-    }),
+export async function loadTasksPage(params: {situacao?:string; responsavel?:string; busca?:string; pagina?:string} = {}) {
+  const ctx=await requireSession();
+  const now=new Date();
+  const { taskScope }=await import('@/server/tasks');
+  const { taskDay, taskDate }=await import('@/lib/task-dates');
+  const today=taskDay(now);
+  const start=taskDate(today);
+  const tomorrow=new Date(+start+86400000);
+  const status=['pending','today','overdue','completed','all'].includes(params.situacao??'')?params.situacao!:'pending';
+  const assignee=(params.responsavel??'').slice(0,100);
+  const q=(params.busca??'').trim().slice(0,120);
+  const requested=Number(params.pagina??1);
+  const page=Number.isSafeInteger(requested)&&requested>0?Math.min(requested,10000):1;
+  const scope:Prisma.TaskWhereInput={...taskScope(ctx.orgId),...(assignee?{assigneeId:assignee==='me'?ctx.userId:assignee}:{}),
+    ...(q?{title:{contains:q,mode:'insensitive'}}:{})};
+  const pending:Prisma.TaskWhereInput={...scope,completedAt:null};
+  const late:Prisma.TaskWhereInput={...pending,dueAt:{lt:start}};
+  const dueToday:Prisma.TaskWhereInput={...pending,dueAt:{gte:start,lt:tomorrow}};
+  const completed:Prisma.TaskWhereInput={...scope,completedAt:{not:null}};
+  const selected=status==='all'?scope:status==='today'?dueToday:status==='overdue'?late:status==='completed'?completed:pending;
+  const [tasks,total,pendingCount,todayCount,lateCount,doneCount,staff,opportunities,snoozed]=await Promise.all([
+    db.task.findMany({where:selected,orderBy:status==='completed'?[{completedAt:'desc'},{id:'desc'}]:[{completedAt:{sort:'asc',nulls:'first'}},{dueAt:{sort:'asc',nulls:'last'}},{createdAt:'asc'},{id:'asc'}],
+      skip:(page-1)*50,take:50,select:{id:true,title:true,dueAt:true,completedAt:true,assigneeId:true,opportunityId:true,
+      assignee:{select:{name:true}},opportunity:{select:{contact:{select:{name:true}},posting:{select:{title:true}}}}}}),
+    db.task.count({where:selected}),db.task.count({where:pending}),db.task.count({where:dueToday}),db.task.count({where:late}),db.task.count({where:completed}),
+    db.user.findMany({where:{orgId:ctx.orgId,deactivatedAt:null},select:{id:true,name:true},orderBy:{name:'asc'}}),
+    db.opportunity.findMany({where:{orgId:ctx.orgId,status:'ACTIVE',confidential:false,contact:{orgId:ctx.orgId,isAnonymized:false,retentionHold:false}},
+      orderBy:{updatedAt:'desc'},take:100,select:{id:true,contact:{select:{name:true}},posting:{select:{title:true}}}}),
+    db.opportunity.findMany({where:{orgId:ctx.orgId,status:'ACTIVE',confidential:false,snoozedUntil:{gt:now},contact:{orgId:ctx.orgId,isAnonymized:false,retentionHold:false}},
+      orderBy:{snoozedUntil:'asc'},take:50,select:{id:true,snoozedUntil:true,contact:{select:{name:true}}}}),
   ]);
-  return {
-    now: now.toISOString(),
-    tasks: tasks.map((t) => ({
-      id: t.id,
-      title: t.title,
-      dueAt: t.dueAt?.toISOString() ?? null,
-      assigneeName: t.assignee?.name ?? null,
-      opportunityId: t.opportunityId,
-      contactName: t.opportunity?.contact.name ?? null,
-    })),
-    snoozed: snoozed.map((o) => ({
-      id: o.id,
-      name: o.contact.name,
-      snoozedUntil: o.snoozedUntil?.toISOString() ?? null,
-    })),
-  };
+  return {now:now.toISOString(),today,status,assignee,q,page,total,userId:ctx.userId,counts:{pending:pendingCount,today:todayCount,overdue:lateCount,completed:doneCount},
+    staff,opportunities:opportunities.map(o=>({id:o.id,label:o.contact.name+' · '+(o.posting?.title??'Sem vaga')})),
+    tasks:tasks.map(t=>({id:t.id,title:t.title,dueAt:t.dueAt?.toISOString()??null,completed:!!t.completedAt,
+      completedAt:t.completedAt?.toISOString()??null,assigneeId:t.assigneeId,assigneeName:t.assignee?.name??null,opportunityId:t.opportunityId,
+      contactName:t.opportunity?.contact.name??null,postingTitle:t.opportunity?.posting?.title??null})),
+    snoozed:snoozed.map(o=>({id:o.id,name:o.contact.name,snoozedUntil:o.snoozedUntil?.toISOString()??null}))};
 }
 
 export async function loadSearchPage(q: string) {

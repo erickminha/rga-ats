@@ -4,7 +4,7 @@ import { CandidateLink } from '@/components/candidate-link';
 import { useOptimistic, useTransition } from 'react';
 import { setTaskCompletedAction } from '@/app/(app)/actions';
 import { Checkbox } from '@/components/ui/checkbox';
-import { LocalTime } from '@/components/local-time';
+import { taskDateLabel } from '@/lib/task-dates';
 import { runOptimistic } from '@/lib/optimistic';
 import { cn } from '@/lib/utils';
 
@@ -25,7 +25,7 @@ export function TaskRow({
   const [completed, setCompleted] = useOptimistic(task.completed);
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
+    <div className="flex flex-wrap items-center gap-3 px-4 py-3">
       <Checkbox
         checked={completed}
         onChange={() =>
@@ -36,10 +36,10 @@ export function TaskRow({
             completed ? 'Reabrindo a tarefa' : 'Concluindo a tarefa',
           )
         }
-        aria-label={`Mark "${task.title}" ${completed ? 'incomplete' : 'complete'}`}
+        aria-label={`${completed ? 'Reabrir' : 'Concluir'} tarefa ${task.title}`}
       />
       <div className="min-w-0 flex-1">
-        <p className={cn('truncate text-sm', completed && 'text-ink-2 line-through')}>{task.title}</p>
+        <p className={cn('break-words text-sm', completed && 'text-ink-2 line-through')}>{task.title}</p>
         {task.contactName && task.opportunityId ? (
           <CandidateLink
             id={task.opportunityId}
@@ -49,10 +49,10 @@ export function TaskRow({
           </CandidateLink>
         ) : null}
       </div>
-      <span className="shrink-0 text-xs text-ink-2">
+      <span className="text-xs text-ink-2">
         {task.assigneeName ? `${task.assigneeName} · ` : ''}
         {task.dueAt
-          ? <LocalTime date={task.dueAt} options={{ month: 'short', day: 'numeric' }} />
+          ? taskDateLabel(task.dueAt)
           : 'sem prazo'}
       </span>
     </div>
