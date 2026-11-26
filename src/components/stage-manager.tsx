@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useTransition, type ReactNode } from 'react';
+import { setStageAvailabilityAction } from '@/app/(app)/operational-stage-actions';
 import { Reorder, useDragControls } from 'motion/react';
 import { GripVertical, Plus, X } from 'lucide-react';
 import type { StageType } from '@prisma/client';
@@ -9,7 +10,7 @@ import { btnTonal, fieldBareInput, fieldShellClass, inputClass, noAutofill } fro
 import { FormSelect } from '@/components/form-select';
 import { guessInterviewType, INTERVIEW_TYPES, STAGE_GROUPS, stageGroup, type StageGroup } from '@/lib/stage-types';
 
-type Stage = { id: string; name: string; type: string };
+type Stage = { id: string; name: string; type: string; disabled?: boolean };
 
 const typeLabel = (type: string) => INTERVIEW_TYPES.find((t) => t.value === type)?.label ?? type.toLowerCase();
 
@@ -25,7 +26,7 @@ export function StageManager({ stages, showRgaPipeline = false }: { stages: Stag
   const [announcement, setAnnouncement] = useState('');
 
   // The server's order wins after every save or refresh.
-  const signature = stages.map((s) => `${s.id}:${s.name}:${s.type}`).join('|');
+  const signature = stages.map((s) => `${s.id}:${s.name}:${s.type}:${s.disabled}`).join('|');
   useEffect(() => setItems(stages), [signature]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inGroup = (group: StageGroup, list = items) => list.filter((s) => stageGroup(s.type as StageType) === group);
@@ -103,6 +104,10 @@ export function StageManager({ stages, showRgaPipeline = false }: { stages: Stag
                     onDrop={() => save(items)}
                     onMove={(by) => move(group.id, stage.id, by)}
                     onError={setError}
+                    onToggle={() => startTransition(async () => {
+                      const result = await setStageAvailabilityAction(stage.id, !!stage.disabled);
+                      setError(result.error ?? null);
+                    })}
                     onDelete={() => {
                       if (!confirm(`Excluir a etapa “${stage.name}”?`)) return;
                       startTransition(async () => {
@@ -135,6 +140,7 @@ function StageRow({
   onDrop,
   onMove,
   onDelete,
+  onToggle,
   onError,
 }: {
   stage: Stage;
@@ -144,6 +150,7 @@ function StageRow({
   onDrop: () => void;
   onMove: (by: -1 | 1) => void;
   onDelete: () => void;
+  onToggle: () => void;
   onError: (error: string | null) => void;
 }) {
   const controls = useDragControls();
@@ -191,6 +198,7 @@ function StageRow({
           <X size={14} />
         </button>
       </StageName>
+      <button type="button" className={btnTonal} disabled={pending} onClick={onToggle}>{stage.disabled ? 'Ativar' : 'Desativar'}</button>
     </Reorder.Item>
   );
 }

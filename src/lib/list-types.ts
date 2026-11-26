@@ -9,6 +9,7 @@ export type ListPage<R> = { rows: R[]; endCursor: string | null; hasMore: boolea
 
 /** A pipeline row: one opportunity with the contact and posting fields the table shows. */
 export type PipelineRow = {
+  postingId?: string | null;
   id: string;
   contactId: string;
   name: string;

@@ -90,9 +90,10 @@ export function AdComposer({ published, initial, title }: { published: boolean; 
   </section>;
 }
 
-export function WhatsappComposer({ opportunityId, name, job, brand, phones, status, approved, nextInterview }: { opportunityId: string; name: string; job: string; brand: string; phones: string[]; status: string; approved: boolean; nextInterview?: { at: string; location: string } }) {
-  const available = (Object.keys(messageKinds) as MessageKind[]).filter(k => k !== 'approved' && k !== 'closed' || k === 'approved' && approved || k === 'closed' && status === 'ARCHIVED');
-  const [kind, setKind] = useState<MessageKind>(status === 'ARCHIVED' ? 'closed' : approved ? 'approved' : 'contact');
+export function WhatsappComposer({ opportunityId, name, job, brand, phones, status, approved, nextInterview, referenceId }: { opportunityId: string; name: string; job: string; brand: string; phones: string[]; status: string; approved: boolean; nextInterview?: { at: string; location: string }; referenceId?: string }) {
+  const thirdPartyKinds: MessageKind[] = ['referenceIntro', 'referenceReminder', 'referenceThanks'];
+  const available = referenceId ? thirdPartyKinds : (Object.keys(messageKinds) as MessageKind[]).filter(k => k !== 'approved' && k !== 'closed' && !thirdPartyKinds.includes(k) || k === 'approved' && approved || k === 'closed' && status === 'ARCHIVED');
+  const [kind, setKind] = useState<MessageKind>(referenceId ? 'referenceIntro' : status === 'ARCHIVED' ? 'closed' : approved ? 'approved' : 'contact');
   const [appointment, setAppointment] = useState(nextInterview?.at ?? '');
   const [meeting, setMeeting] = useState(nextInterview?.location ?? '');
   const [edited, setEdited] = useState<string | null>(null);
@@ -117,10 +118,10 @@ export function WhatsappComposer({ opportunityId, name, job, brand, phones, stat
       <div className="flex flex-wrap gap-2">
         <button disabled={!confirmed || !draft.trim()} className={buttonClass({ variant: 'secondary' })} onClick={async () => setNotice(await copyText(draft))}>Copiar mensagem</button>
         {confirmed && draft.trim() && phone && <a className={buttonClass({ variant: 'primary' })} target="_blank" rel="noreferrer" href={'https://wa.me/' + phone + '?text=' + encodeURIComponent(draft)}>Abrir WhatsApp</a>}
-        <button disabled={!confirmed || !draft.trim() || busy} className={buttonClass({ variant: 'secondary' })} onClick={() => {
+        {!referenceId && <button disabled={!confirmed || !draft.trim() || busy} className={buttonClass({ variant: 'secondary' })} onClick={() => {
           if (!window.confirm('Confirma que você efetivamente enviou a mensagem? Abrir o WhatsApp não confirma o envio.')) return;
           start(async () => { setNotice((await confirmWhatsappAction(opportunityId, kind)).message); setConfirmed(false); });
-        }}>Registrar envio realizado</button>
+        }}>Registrar envio realizado</button>}
       </div>
       {!phone && <p className="text-sm">Telefone brasileiro não identificado. Use a cópia manual.</p>}
       <p className="text-xs text-ink-2">A plataforma não envia automaticamente nem confirma a entrega. O registro depende da sua confirmação. Para DISC, use a Central DISC e seu link individual.</p>

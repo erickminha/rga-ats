@@ -261,7 +261,7 @@ export default async function SettingsPage({
             </p>
             <StageManager
               showRgaPipeline={isAgency && isRgaWorkspace(ctx.orgId)}
-              stages={stages.map((s) => ({ id: s.id, name: s.name, type: s.type }))}
+              stages={stages.map((s) => ({ id: s.id, name: s.name, type: s.type, disabled: s.disabled }))}
             />
           </Row>
         </Group>

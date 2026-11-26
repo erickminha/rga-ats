@@ -10,7 +10,7 @@ import { StageSelect } from '@/components/stage-select';
 import type { PipelineRow } from '@/lib/list-types';
 import { confirmStageMovement } from '@/lib/stage-movement';
 
-type BoardStage = { id: string; name: string; type: StageType; rows: PipelineRow[]; hasMore: boolean };
+type BoardStage = { id: string; name: string; type: StageType; disabled?: boolean; excludedPostingIds?: string[]; rows: PipelineRow[]; hasMore: boolean };
 
 export function RecruitingBoard({ stages, query }: { stages: BoardStage[]; query: string }) {
   const [error, setError] = useState('');
@@ -19,6 +19,11 @@ export function RecruitingBoard({ stages, query }: { stages: BoardStage[]; query
     const before = stages.findIndex((column) => column.rows.some((row) => row.id === id));
     const after = stages.findIndex((column) => column.id === target.id);
     if (before < 0 || before === after) return;
+    const row = stages[before].rows.find(row => row.id === id);
+    if (target.disabled || (row?.postingId && target.excludedPostingIds?.includes(row.postingId))) {
+      setError('A etapa está desativada para esta participação.');
+      return;
+    }
     const input = confirmStageMovement(target.type, after - before !== 1);
     if (!input) return;
     start(async () => {
@@ -46,7 +51,7 @@ export function RecruitingBoard({ stages, query }: { stages: BoardStage[]; query
               {row.phone && <a className="inline-flex items-center gap-1 rounded-field border border-line px-2 py-1 hover:text-brand" href={`tel:${row.phone.replace(/[^+\d]/g, '')}`}><Phone size={13} />{row.phone}</a>}
               {row.email && <a className="inline-flex items-center gap-1 rounded-field border border-line px-2 py-1 hover:text-brand" href={`mailto:${row.email}`} aria-label={`Enviar e-mail para ${row.name}`}><Mail size={13} /> E-mail</a>}
             </div>}
-            {stage.type !== 'HIRED' && <StageSelect opportunityId={row.id} currentStageId={stage.id} stages={stages} onSurface />}
+            {stage.type !== 'HIRED' && <StageSelect opportunityId={row.id} currentStageId={stage.id} postingId={row.postingId} stages={stages} onSurface />}
           </div>)}
         </div>
         {stage.hasMore && <Link className="mt-3 inline-block text-sm underline" href={`/pipeline?${query}&stage=${encodeURIComponent(stage.id)}`}>Ver todos nesta etapa</Link>}

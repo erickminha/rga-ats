@@ -207,3 +207,41 @@ export async function reconcileRgaStages(ctx: SessionContext) {
   if (result.changed) invalidateListMeta(ctx.orgId);
   return result;
 }
+
+
+export function availableStageWhere(orgId: string, postingId?: string | null): Prisma.StageWhereInput {
+  return { orgId, disabled: false, ...(postingId ? { postingExclusions: { none: { postingId } } } : {}) };
+}
+
+export async function setStageAvailability(ctx: SessionContext, stageId: string, enabled: boolean) {
+  requireStageAdmin(ctx);
+  await db.$transaction(async tx => {
+    const stages = await lockStages(tx, ctx.orgId);
+    const stage = stages.find(row => row.id === stageId);
+    if (!stage) throw new Error('Etapa não encontrada.');
+    if (stage.disabled === !enabled) return;
+    if (!enabled && !stages.some(row => row.id !== stageId && !row.disabled && row.type === 'APPLICANT') && stage.type === 'APPLICANT') {
+      throw new Error('Mantenha pelo menos uma etapa de candidatura ativa.');
+    }
+    if (!enabled && !stages.some(row => row.id !== stageId && !row.disabled && row.type !== 'HIRED')) {
+      throw new Error('Mantenha pelo menos uma etapa inicial ativa.');
+    }
+    await tx.stage.update({ where: { id: stageId }, data: { disabled: !enabled } });
+    await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'stage.availability_changed', subjectType: 'stage', subjectId: stageId, payload: { enabled } });
+  });
+  invalidateListMeta(ctx.orgId);
+}
+
+export async function setPostingStageExclusions(ctx: SessionContext, postingId: string, excluded: string[]) {
+  requireStageAdmin(ctx);
+  await db.$transaction(async tx => {
+    const stages = await lockStages(tx, ctx.orgId);
+    if (!await tx.posting.findFirst({ where: { id: postingId, orgId: ctx.orgId }, select: { id: true } })) throw new Error('Vaga não encontrada.');
+    const optional = stages.filter(stage => stage.type !== 'APPLICANT' && stage.type !== 'HIRED');
+    if (excluded.some(id => !optional.some(stage => stage.id === id))) throw new Error('Etapa inválida nesta vaga.');
+    await tx.postingStageExclusion.deleteMany({ where: { postingId } });
+    if (excluded.length) await tx.postingStageExclusion.createMany({ data: [...new Set(excluded)].map(stageId => ({ postingId, stageId })) });
+    await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'posting.stage_exclusions_changed', subjectType: 'posting', subjectId: postingId, payload: { excluded } });
+  });
+  invalidateListMeta(ctx.orgId);
+}

@@ -72,6 +72,7 @@ async function anonymizeContact(orgId: string, id: string, rule: Prisma.ContactW
       data: { title: 'Reunião anonimizada', attendeeNames: [], attendeeEmails: [], transcriptId: null, status: 'DISMISSED' },
     });
     await tx.nativeDisc.deleteMany({ where: { opportunityId: { in: ids }, opportunity: { orgId } } });
+    await tx.referenceCheck.deleteMany({ where: { opportunityId: { in: ids }, opportunity: { orgId } } });
     await tx.recruitingAssessment.deleteMany({ where: { opportunityId: { in: ids }, opportunity: { orgId } } });
     await tx.transcript.deleteMany({ where: byOpportunity });
     await tx.note.deleteMany({ where: byOpportunity });

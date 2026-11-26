@@ -41,6 +41,7 @@ model Organization {
   // Bias control: hide teammates' scorecards until your own is submitted
   hideFeedbackUntilSubmitted Boolean @default(false)
   assessmentTemplates Json?
+  referenceQuestionnaire Json?
   opinionTemplate Json?
   discAiSettings Json?
   // GDPR retention: anonymize archived candidates after N months (null = keep forever)
@@ -321,6 +322,7 @@ model Opportunity {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
+  referenceCheck ReferenceCheck?
   recruitingAssessment RecruitingAssessment?
   nativeDiscs NativeDisc[]
   stageTransitions StageTransition[]
@@ -395,6 +397,8 @@ model Stage {
   order     Int
   createdAt DateTime  @default(now())
 
+  disabled Boolean @default(false)
+  postingExclusions PostingStageExclusion[]
   opportunities   Opportunity[]
   transitionsFrom StageTransition[] @relation("FromStage")
   transitionsTo   StageTransition[] @relation("ToStage")
@@ -461,6 +465,7 @@ enum Commitment {
 }
 
 model Posting {
+  stageExclusions PostingStageExclusion[]
   id            String        @id @default(uuid())
   orgId         String
   org           Organization  @relation(fields: [orgId], references: [id])
@@ -1563,4 +1568,72 @@ model TalentSyncRun {
 
   @@index([orgId, createdAt])
   @@index([orgId, status, availableAt])
+}
+
+enum ProfessionalReferenceStatus {
+  NOT_REQUESTED
+  REQUESTED
+  WAITING_INFORMATION
+  WAITING_CONTACT
+  CONTACTED
+  WAITING_REPLY
+  VERIFIED
+  UNVERIFIABLE
+  WAIVED
+}
+
+model ReferenceCheck {
+  opportunityId String @id
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  status ProfessionalReferenceStatus @default(NOT_REQUESTED)
+  updatedBy String
+  updatedAt DateTime @updatedAt
+  references ProfessionalReference[]
+}
+
+model ProfessionalReference {
+  id String @id @default(uuid())
+  opportunityId String
+  check ReferenceCheck @relation(fields: [opportunityId], references: [opportunityId], onDelete: Cascade)
+  name String
+  company String
+  role String
+  relationship String
+  period String
+  phone String
+  email String
+  channel String
+  notes String
+  authorization String
+  revokedAt DateTime?
+  registeredBy String
+  createdAt DateTime @default(now())
+  answers Json?
+  attempts ReferenceContactAttempt[]
+
+  @@index([opportunityId])
+}
+
+model ReferenceContactAttempt {
+  id String @id @default(uuid())
+  referenceId String
+  reference ProfessionalReference @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+  occurredAt DateTime
+  channel String
+  result String
+  actorId String
+  createdAt DateTime @default(now())
+
+  @@index([referenceId, occurredAt])
+}
+
+
+model PostingStageExclusion {
+  postingId String
+  posting Posting @relation(fields: [postingId], references: [id], onDelete: Cascade)
+  stageId String
+  stage Stage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@id([postingId, stageId])
+  @@index([stageId])
 }
