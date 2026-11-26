@@ -34,9 +34,9 @@ export async function requestTalentSync(ctx: SessionContext) {
 }
 
 export async function processTalentSync(orgId: string, requestedRunId?: string) {
-  if (!talentSyncConfigured(orgId)) return { status: 'UNCONFIGURED' };
+  if (!talentSyncConfigured(orgId)) return { status: 'UNCONFIGURED', complete: false };
   const lease = await talentSyncLease(orgId);
-  if (!lease) return { status: 'BUSY' };
+  if (!lease) return { status: 'BUSY', complete: false };
   try {
     const run = await db.talentSyncRun.findFirst({ where: { orgId, id: requestedRunId, status: { in: pending } },
       orderBy: { createdAt: 'asc' } });
@@ -64,7 +64,7 @@ export async function processTalentSync(orgId: string, requestedRunId?: string) 
       const result = await syncTalentPage({ orgId, userId: admin.id, accessRole: admin.accessRole }, page, run.nextSheetRow, run.id, lease.assertOwned);
       return response(result.count);
     } catch (error) {
-      if (error instanceof Error && error.message === 'sync_lease_lost') return { status: 'BUSY' };
+      if (error instanceof Error && error.message === 'sync_lease_lost') return { status: 'BUSY', complete: false };
       const sourceChanged = error instanceof Error && error.message === 'sheet_reordered';
       const attempts = run.attempts + 1;
       const retry = !sourceChanged && attempts < 3;

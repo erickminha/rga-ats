@@ -42,7 +42,7 @@ export default async function TalentSyncPage() {
     </section>
     {admin && <section className="rga-card grid gap-2 p-4">
       <h2 className="font-semibold">Processamento de resumos</h2>
-      <p>{admin[5]} textos CV disponíveis · {admin[2]} resumos disponíveis · {admin[3]} pendentes · {admin[0]} sem currículo · {admin[1]} sem autorização aplicável</p>
+      <p>{admin[5]} textos CV disponíveis · {admin[2]} resumos disponíveis · {admin[3]} pendentes · {admin[0]} sem currículo anexado no ATS · {admin[1]} sem autorização aplicável</p>
       <p>{sheetMode ? 'O Texto CV vem da planilha. A importação preserva os resumos profissionais salvos.' : `${admin[4]._sum.tokens ?? 0} tokens nas versões atuais · até ${process.env.RGA_SUMMARY_DAILY_LIMIT ?? '20'} gerações Groq por dia e ${process.env.RGA_SUMMARY_MONTHLY_LIMIT ?? '400'} por mês`}</p>
       <p>{sheetMode ? 'Geração interna desativada nesta organização.' : process.env.RGA_SUMMARY_PAUSED === 'true' ? 'Fila pausada.' : process.env.RGA_SUMMARY_AUTO === 'true' ? 'Geração automática habilitada.' : 'Somente solicitações manuais.'}</p>
     </section>}
