@@ -7,6 +7,7 @@ import { looseKey, nameKey } from '@/server/imports/mapping';
 import { isRgaWorkspace } from '@/server/rga-workspace';
 import { RGA_STAGES } from '@/server/rga-pipeline';
 import { GROUP_RANK, stageGroup } from '@/lib/stage-types';
+import { inferOperationalRole } from '@/server/operational-pipeline';
 
 function requireStageAdmin(ctx: SessionContext) {
   if (!isAdmin(ctx)) throw new Error('Somente administradores podem configurar as etapas.');
@@ -37,7 +38,7 @@ export async function createStage(ctx: SessionContext, name: string, type: Stage
       if (hired >= 0) at = hired;
     }
     for (const [i, s] of current.entries()) await tx.stage.update({ where: { id: s.id }, data: { order: -1 - i } });
-    const stage = await tx.stage.create({ data: { orgId: ctx.orgId, name: trimmed, type, order: at } });
+    const stage = await tx.stage.create({ data: { orgId: ctx.orgId, name: trimmed, type, order: at, operationalRole: inferOperationalRole(trimmed) ?? 'OTHER' } });
     for (const [i, s] of current.entries()) {
       await tx.stage.update({ where: { id: s.id }, data: { order: i < at ? i : i + 1 } });
     }
@@ -74,7 +75,7 @@ export async function renameStage(ctx: SessionContext, stageId: string, name: st
     const stage = (await lockStages(tx, ctx.orgId)).find((row) => row.id === stageId);
     if (!stage) throw new Error('Etapa não encontrada.');
     if (stage.name === trimmed) return stage;
-    const updated = await tx.stage.update({ where: { id: stage.id }, data: { name: trimmed } });
+    const updated = await tx.stage.update({ where: { id: stage.id }, data: { name: trimmed, operationalRole: stage.operationalRole ?? inferOperationalRole(stage.name) ?? 'OTHER' } });
     await emitEvent(tx, {
       orgId: ctx.orgId,
       ...actorOf(ctx),
@@ -201,8 +202,8 @@ export async function reconcileRgaStages(ctx: SessionContext) {
     }
     for (const [order, { name, type, existing }] of ordered.entries()) {
       const stage = existing
-        ? await tx.stage.update({ where: { id: existing.id }, data: { name, order } })
-        : await tx.stage.create({ data: { orgId: ctx.orgId, name, type, order } });
+        ? await tx.stage.update({ where: { id: existing.id }, data: { name, order, operationalRole: existing.operationalRole && existing.operationalRole !== 'OTHER' ? existing.operationalRole : inferOperationalRole(name) ?? 'OTHER' } })
+        : await tx.stage.create({ data: { orgId: ctx.orgId, name, type, order, operationalRole: inferOperationalRole(name) ?? 'OTHER' } });
       const change = changes.find((item) => item.order === order);
       if (change) Object.assign(change, { id: stage.id });
     }
