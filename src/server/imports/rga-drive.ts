@@ -37,23 +37,34 @@ export function linkedResume(rows: string[][], origin: string) {
 const eligible = (orgId: string, id: string) => ({ orgId, id, isAnonymized: false, retentionHold: false,
   consents: { some: { orgId, purpose: 'PROFILE_STORAGE' as const, withdrawnAt: null } } });
 
-async function importedResumeId(orgId: string, contactId: string, rows?: string[][]) {
+const prefix = TALENT_SOURCE + ':id:';
+
+async function importedResumeRef(orgId: string, contactId: string) {
   const contact = await db.contact.findFirst({ where: eligible(orgId, contactId), select: { id: true } });
   if (!contact) throw new Error('PRIVACY');
-  const prefix = TALENT_SOURCE + ':id:';
   const refs = await db.importRef.findMany({ where: { orgId, provider: RGA_IMPORT_PROVIDER, kind: 'contact',
-    internalId: contactId, externalId: { startsWith: prefix } }, take: 2, select: { externalId: true } });
+    internalId: contactId, externalId: { startsWith: prefix } }, take: 2, select: { externalId: true, snapshot: true } });
   if (refs.length !== 1) throw new Error('IDENTITY');
-  const driveId = linkedResume(rows ?? await readTalentSheet(), refs[0].externalId.slice(prefix.length));
+  return refs[0];
+}
+
+async function importedResumeId(orgId: string, contactId: string, rows?: string[][]) {
+  const ref = await importedResumeRef(orgId, contactId);
+  const driveId = linkedResume(rows ?? await readTalentSheet(), ref.externalId.slice(prefix.length));
   if (!driveId) throw new Error('IDENTITY');
   return driveId;
 }
 
 export async function originalResumeUrl(ctx: SessionContext, contactId: string) {
   if (!ctx.userId || !canManageRecruiting(ctx)) throw new Error('FORBIDDEN');
+  const ref = await importedResumeRef(ctx.orgId, contactId);
+  const snapshot = ref.snapshot;
+  const cachedId = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) ? snapshot.resumeDriveFileId : null;
+  if (typeof cachedId === 'string' && idPattern.test(cachedId)) return 'https://drive.google.com/open?id=' + cachedId;
   if (!originalResumeEnabled(ctx.orgId)) throw new Error('CONFIG');
-  const id = await importedResumeId(ctx.orgId, contactId);
-  return 'https://drive.google.com/open?id=' + encodeURIComponent(id);
+  const id = linkedResume(await readTalentSheet(), ref.externalId.slice(prefix.length));
+  if (!id) throw new Error('IDENTITY');
+  return 'https://drive.google.com/open?id=' + id;
 }
 
 export function originalResumeEnabled(orgId: string) {
