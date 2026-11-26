@@ -1,7 +1,7 @@
 'use server';
 
 import { after } from 'next/server';
-import { requestTalentSummary, processTalentSummaries } from '@/server/talent-summary';
+import { requestTalentSummary, processTalentSummaries, usesSheetSummaries } from '@/server/talent-summary';
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/session';
 import { confirmDriveResume, originalResumeUrl, previewDriveResume } from '@/server/imports/rga-drive';
@@ -14,7 +14,7 @@ export async function driveResumeAction(contactId: string, ticket?: string, summ
     const created = await confirmDriveResume(ctx, contactId, ticket);
     revalidatePath('/contacts/' + contactId);
     const message = created ? 'Currículo vinculado ao cadastro.' : 'Esta versão do currículo já foi vinculada.';
-    if (summarize === true) {
+    if (summarize === true && !usesSheetSummaries(ctx.orgId)) {
       try {
         await requestTalentSummary(ctx, contactId);
         after(() => processTalentSummaries(ctx.orgId).catch(() => undefined));

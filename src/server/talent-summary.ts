@@ -15,6 +15,10 @@ export const summaryConsent = (orgId: string) => ({
   consents: { some: { orgId, purpose: 'PROFILE_STORAGE' as const, withdrawnAt: null } },
 });
 
+export function usesSheetSummaries(orgId: string) {
+  return orgId === process.env.RGA_TALENT_SYNC_ORG_ID && process.env.RGA_SUMMARY_SOURCE !== 'ats';
+}
+
 async function sources(tx: Prisma.TransactionClient, orgId: string, contactId: string) {
   const contact = await tx.contact.findFirst({ where: { id: contactId, ...summaryConsent(orgId) },
     select: { name: true, headline: true, careerProfile: true, resumeFileId: true, resumeText: true } });
@@ -38,6 +42,7 @@ async function sources(tx: Prisma.TransactionClient, orgId: string, contactId: s
 }
 
 export async function queueTalentSummary(tx: Prisma.TransactionClient, orgId: string, contactId: string, priority: number, retry = false) {
+  if (usesSheetSummaries(orgId)) return false;
   const evidence = await sources(tx, orgId, contactId);
   if (!evidence) return false;
   const current = await tx.talentSummary.findUnique({ where: { contactId }, select: { requestedHash: true, priority: true, status: true } });
@@ -92,7 +97,7 @@ export async function getTalentSummary(ctx: SessionContext, contactId: string) {
   requireRecruitingAccess(ctx);
   const row = await db.talentSummary.findFirst({ where: { contactId, orgId: ctx.orgId, contact: summaryConsent(ctx.orgId) },
     select: { headline: true, content: true, status: true, generatedAt: true, reviewedText: true, reviewedAt: true, sourceKind: true, inputHash: true } });
-  return row ? { ...row, stale: !!row.inputHash && row.inputHash !== (await sources(db, ctx.orgId, contactId))?.hash } : null;
+  return row ? { ...row, stale: row.sourceKind !== 'PLANILHA' && !!row.inputHash && row.inputHash !== (await sources(db, ctx.orgId, contactId))?.hash } : null;
 }
 
 function limit() {
@@ -101,7 +106,7 @@ function limit() {
 }
 
 export async function processTalentSummaries(orgId: string) {
-  if (process.env.RGA_SUMMARY_PAUSED === 'true') return { processed: 0, paused: true };
+  if (usesSheetSummaries(orgId) || process.env.RGA_SUMMARY_PAUSED === 'true') return { processed: 0, paused: true };
   const release = await takeCronLease('rga-talent-summary', new Date(Date.now() + 540000));
   if (!release) return { processed: 0, busy: true };
   let processed = 0;

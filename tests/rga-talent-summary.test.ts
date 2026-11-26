@@ -55,6 +55,7 @@ describe.skipIf(!hasDb)('fila persistente de resumos', () => {
     const before = await getTalentSummary(ctx, person.id);
     await db.contact.update({ where: { id: person.id }, data: { careerProfile: { skills: 'Power BI' } } });
     vi.stubEnv('RGA_TALENT_SYNC_ORG_ID', org.id);
+    vi.stubEnv('RGA_SUMMARY_SOURCE', 'ats');
     vi.stubEnv('RGA_SUMMARY_ALLOW_GROQ', 'true');
     vi.stubEnv('RGA_ASSISTANT_ALLOW_EXTERNAL_AI', 'true');
     vi.stubEnv('RGA_ASSISTANT_PROVIDER', 'groq');

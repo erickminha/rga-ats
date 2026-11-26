@@ -1,5 +1,5 @@
 import { TalentSummaryCard } from '@/components/talent-summary-card';
-import { getTalentSummary } from '@/server/talent-summary';
+import { getTalentSummary, usesSheetSummaries } from '@/server/talent-summary';
 import { OriginalResume } from '@/components/original-resume';
 import { talentSourceFields } from '@/server/talent-source-fields';
 import { ResumePreview } from '@/components/resume-preview';
@@ -73,7 +73,7 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
       <Link className="underline" href="/contacts">Voltar ao banco de talentos</Link>
       {person.opportunities[0] && <Link className="underline" href={`/candidates/${person.opportunities[0].id}`}>Abrir participação mais recente</Link>}
     </nav>
-    {canManageRecruiting(ctx) && <TalentSummaryCard id={id} saved={summary} allowed={allowed} hasResume={resumeFiles.length > 0} />}
+    {canManageRecruiting(ctx) && <TalentSummaryCard id={id} saved={summary} allowed={allowed} hasResume={resumeFiles.length > 0} sheetMode={usesSheetSummaries(ctx.orgId)} />}
     <DuplicatesBanner contactId={id} duplicates={duplicates.map((duplicate) => ({ id: duplicate.id, name: duplicate.name, email: duplicate.emails[0] ?? null }))} />
     <section className="mb-4 rounded-card bg-surface p-4">
       <h2 className="mb-3 font-semibold">Dados cadastrais e perfil profissional</h2>
@@ -91,7 +91,7 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
     </section>
     <section id="curriculos" className="mb-4 rounded-card bg-surface p-4">
       <h2 className="mb-3 font-semibold">Currículos e documentos</h2>
-      {allowed && canManageRecruiting(ctx) && ctx.orgId === process.env.RGA_TALENT_SYNC_ORG_ID && process.env.RGA_RESUME_FOLDER_ID && <RgaDriveResume contactId={id} />}
+      {allowed && canManageRecruiting(ctx) && ctx.orgId === process.env.RGA_TALENT_SYNC_ORG_ID && process.env.RGA_RESUME_FOLDER_ID && <RgaDriveResume contactId={id} sheetMode={usesSheetSummaries(ctx.orgId)} />}
       {files.length === 0 && <p className="mb-3 text-sm">Nenhum documento anexado.</p>}
       <ul className="mb-4 grid gap-2">
         {files.map((file) => <li key={file.id} className="rounded-field border border-line p-3 text-sm">

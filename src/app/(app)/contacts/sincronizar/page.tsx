@@ -5,7 +5,7 @@ import { canManageRecruiting, isAdmin, requireSession } from '@/lib/session';
 import { PageHeader } from '@/components/page-header';
 import { TalentSyncButton } from '@/components/talent-sync-button';
 import { talentSyncConfigured } from '@/server/talent-sync-run';
-import { summaryConsent } from '@/server/talent-summary';
+import { summaryConsent, usesSheetSummaries } from '@/server/talent-summary';
 
 const when = (date: Date | null) => date?.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) ?? '—';
 const labels: Record<string, string> = { QUEUED: 'Em fila', RUNNING: 'Em execução', SUCCEEDED: 'Concluída', PARTIAL: 'Concluída com ressalvas', FAILED: 'Falhou' };
@@ -14,6 +14,7 @@ export default async function TalentSyncPage() {
   const ctx = await requireSession();
   if (!canManageRecruiting(ctx)) notFound();
   const configured = talentSyncConfigured(ctx.orgId);
+  const sheetMode = usesSheetSummaries(ctx.orgId);
   const daily = configured && process.env.RGA_TALENT_SYNC_DAILY === 'true';
   const [runs, last] = await Promise.all([
     db.talentSyncRun.findMany({ where: { orgId: ctx.orgId }, orderBy: { createdAt: 'desc' }, take: 12 }),
@@ -39,8 +40,8 @@ export default async function TalentSyncPage() {
     {admin && <section className="rga-card grid gap-2 p-4">
       <h2 className="font-semibold">Processamento de resumos</h2>
       <p>{admin[2]} disponíveis · {admin[3]} pendentes · {admin[0]} sem currículo · {admin[1]} sem autorização aplicável</p>
-      <p>{admin[4]._sum.tokens ?? 0} tokens nas versões atuais · até {process.env.RGA_SUMMARY_DAILY_LIMIT ?? '20'} gerações Groq por dia e {process.env.RGA_SUMMARY_MONTHLY_LIMIT ?? '400'} por mês</p>
-      <p>{process.env.RGA_SUMMARY_PAUSED === 'true' ? 'Fila pausada.' : process.env.RGA_SUMMARY_AUTO === 'true' ? 'Geração automática habilitada.' : 'Somente solicitações manuais.'}</p>
+      <p>{sheetMode ? 'Fonte: coluna ResumoCurriculo do Google Sheets. Importação sem consumo de IA no ATS.' : `${admin[4]._sum.tokens ?? 0} tokens nas versões atuais · até ${process.env.RGA_SUMMARY_DAILY_LIMIT ?? '20'} gerações Groq por dia e ${process.env.RGA_SUMMARY_MONTHLY_LIMIT ?? '400'} por mês`}</p>
+      <p>{sheetMode ? 'Geração interna desativada; os resumos são preparados na planilha.' : process.env.RGA_SUMMARY_PAUSED === 'true' ? 'Fila pausada.' : process.env.RGA_SUMMARY_AUTO === 'true' ? 'Geração automática habilitada.' : 'Somente solicitações manuais.'}</p>
     </section>}
     <section className="grid gap-3">
       <h2 className="font-semibold">Histórico</h2>
@@ -48,7 +49,7 @@ export default async function TalentSyncPage() {
       {runs.map(run => <article key={run.id} className="rga-card grid gap-2 p-4 text-sm">
         <h3 className="font-semibold">{labels[run.status] ?? run.status} · {run.mode === 'daily' ? 'Diária' : 'Manual'} · {when(run.createdAt)}</h3>
         <p>{run.rowsRead} lidos · {run.createdCount} novos · {run.updatedCount} atualizados · {run.unchanged} sem alterações · {run.duplicates} duplicados ou ignorados</p>
-        <p>{run.unresolved} sem identificação segura · {run.errors} erros de linha · {run.remaining} pendentes · {run.summaries} resumos enfileirados</p>
+        <p>{run.unresolved} sem identificação segura · {run.errors} erros de linha · {run.remaining} pendentes · {run.summaries} {sheetMode ? 'resumos importados' : 'resumos enfileirados'}</p>
         {run.startedAt && run.finishedAt && <p>Duração {Math.round((+run.finishedAt - +run.startedAt) / 1000)} s</p>}
         {run.errorCode && <p>{run.status === 'FAILED' ? 'Confira a integração e solicite outra execução.' : run.status === 'PARTIAL' ? 'Revise as linhas pendentes nas importações antes de repetir os erros.' : 'A execução será retomada automaticamente.'}</p>}
       </article>)}
