@@ -46,5 +46,9 @@ export function referenceOpinionLine(answer: ReferenceAnswer, contacts: string[]
   for (const contact of contacts) {
     if (contact) line = line.replaceAll(new RegExp(contact.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '[omitido]');
   }
-  return line.replace(/\b[^\s@]+@[^\s@]+\.[^\s@]+\b|(?:\+?\d[().\s-]*){8,}\d/g, '[omitido]');
+  return redactProfessionalContacts(line);
+}
+
+export function redactProfessionalContacts(text: string) {
+  return text.replace(/\b[^\s@]+@[^\s@]+\.[^\s@]+\b|(?:\+?\d[().\s-]*){8,}\d/g, '[omitido]');
 }

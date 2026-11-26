@@ -227,22 +227,29 @@ export async function scheduleInterviewAction(
   const panelistIds = formData.getAll('panelistIds').map(String);
 
   if (!title) return { error: 'Informe o título da entrevista.' };
-  const startAt = new Date(startAtRaw);
-  if (Number.isNaN(startAt.getTime())) return { error: 'Informe uma data e um horário válidos.' };
+  const startAt = new Date(startAtRaw + ':00-03:00');
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startAtRaw) || !Number.isFinite(+startAt)
+    || new Date(+startAt - 3 * 3600_000).toISOString().slice(0, 16) !== startAtRaw) {
+    return { error: 'Informe uma data e um horário válidos em Brasília.' };
+  }
   if (panelistIds.length === 0) return { error: 'Selecione pelo menos um entrevistador.' };
 
-  await scheduleInterview(ctx, {
-    opportunityId,
-    title,
-    startAt,
-    durationMins: Number.isFinite(durationMins) ? durationMins : 60,
-    location: String(formData.get('location') ?? '').trim() || undefined,
-    panelistIds,
-    focusAreas: String(formData.get('focusAreas') ?? '')
-      .split('|')
-      .map((f) => f.trim())
-      .filter(Boolean),
-  });
+  try {
+    await scheduleInterview(ctx, {
+      opportunityId,
+      title,
+      startAt,
+      durationMins: Number.isFinite(durationMins) ? durationMins : 60,
+      location: String(formData.get('location') ?? '').trim() || undefined,
+      panelistIds,
+      focusAreas: String(formData.get('focusAreas') ?? '')
+        .split('|')
+        .map((f) => f.trim())
+        .filter(Boolean),
+    });
+  } catch {
+    return { error: 'Não foi possível agendar. Confira a participação e os entrevistadores.' };
+  }
 
   revalidatePath(`/candidates/${opportunityId}`);
   revalidatePath('/interviews');
@@ -767,15 +774,18 @@ export async function bulkMoveStageAction(
   opportunityIds: string[],
   stageId: string,
   final: boolean = true,
+  note?: string,
 ): Promise<BulkResult> {
   const ctx = await requireSession();
   let skipped = Math.max(0, opportunityIds.length - BULK_LIMIT);
   for (const id of opportunityIds.slice(0, BULK_LIMIT)) {
-    await moveStage(ctx, id, stageId, { invalidate: false, requireHireDate: true }).catch(() => skipped++);
+    await moveStage(ctx, id, stageId, { invalidate: false, requireHireDate: true, note }).catch(() => skipped++);
   }
   if (isFinal(final)) {
     invalidatePipelineCounts(ctx.orgId);
     revalidatePath('/pipeline');
+    revalidatePath('/pipeline/operacao');
+    revalidatePath('/postings/[id]', 'page');
   }
   return { skipped };
 }

@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { isAdmin, requireRecruitingAccess, type SessionContext } from '@/lib/session';
-import { localDiscInterpretation, provisionalKey, questionnaireVersion, scoreDisc, validDraft, validGroup, validatedDiscInterpretation, type Scores, type ScoringKey } from '@/lib/native-disc';
+import { localDiscInterpretation, provisionalKey, questionnaireVersion, scoreDisc, simulationDiscInstrument, validDraft, validGroup, validatedDiscInterpretation, type Scores, type ScoringKey } from '@/lib/native-disc';
 import { requestLimitActive, reserveRequest } from './request-limit';
 import { discAiConfiguration, reserveDiscAi } from './disc-ai-settings';
 import { lockIdentifiableContact } from './contact-lock';
@@ -25,12 +25,22 @@ function scoringKey(simulation: boolean) {
   return key;
 }
 
+export function realDiscAvailable() {
+  try {
+    scoringKey(false);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function createDiscInvite(ctx: SessionContext, opportunityId: string, days: number, simulation: boolean) {
   requireRecruitingAccess(ctx);
   if (!ctx.userId || !Number.isInteger(days) || days < 1 || days > 30) throw new Error('Informe um prazo entre 1 e 30 dias.');
   const opportunity = await db.opportunity.findFirst({
-    where: { id: opportunityId, orgId: ctx.orgId, ...available },
-    select: { contactId: true, posting: { select: { title: true } }, contact: { select: { name: true, emails: true } } },
+    where: { id: opportunityId, orgId: ctx.orgId, status: 'ACTIVE', ...available },
+    select: { contactId: true, posting: { select: { title: true } }, org: { select: { name: true, whatsappTemplates: true } },
+      contact: { select: { name: true, emails: true, phones: true, careerProfile: true } } },
   });
   if (!opportunity?.posting) throw new Error('Participação indisponível.');
   if (simulation && (ctx.orgId !== process.env.RGA_DISC_TEST_ORG_ID || !opportunity.contact.emails.length ||
@@ -42,7 +52,7 @@ export async function createDiscInvite(ctx: SessionContext, opportunityId: strin
   const expiresAt = new Date(Date.now() + days * 86400000);
   await db.$transaction(async tx => {
     if (!await lockIdentifiableContact(tx, ctx.orgId, opportunity.contactId) ||
-        !await tx.opportunity.findFirst({ where: { id: opportunityId, orgId: ctx.orgId, ...available }, select: { id: true } })) {
+        !await tx.opportunity.findFirst({ where: { id: opportunityId, orgId: ctx.orgId, status: 'ACTIVE', ...available }, select: { id: true } })) {
       throw new Error('Participação indisponível.');
     }
     await tx.nativeDisc.updateMany({ where: { opportunityId, submittedAt: null, cancelledAt: null }, data: { cancelledAt: new Date() } });
@@ -53,7 +63,8 @@ export async function createDiscInvite(ctx: SessionContext, opportunityId: strin
     await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'disc.invited', subjectType: 'opportunity',
       subjectId: opportunityId, payload: { assessmentId: invite.id, simulation, expiresAt: expiresAt.toISOString() } });
   });
-  return { token, name: opportunity.contact.name, title: opportunity.posting.title };
+  return { token, name: opportunity.contact.name, title: opportunity.posting.title,
+    organization: opportunity.org, phones: opportunity.contact.phones, careerProfile: opportunity.contact.careerProfile };
 }
 
 export function discMessage(name: string, title: string, url: string) {
@@ -225,12 +236,14 @@ export async function reviewDisc(ctx: SessionContext, id: string) {
     const analysis = { ...validated, profile: localDiscInterpretation(scores).profile };
     const changed = await tx.nativeDisc.updateMany({ where: { id, revision: row.revision, reviewedAt: null, opportunity: { orgId: ctx.orgId, ...available } }, data: { reviewedAt: new Date(), revision: { increment: 1 } } });
     if (!changed.count) throw new Error('A avaliação mudou. Revise novamente.');
-    const disc = { D: String(scores.D), I: String(scores.I), S: String(scores.S), C: String(scores.C), scaleMin: '10', scaleMax: '40',
-      instrument: row.simulation ? 'DISC RGA · Simulação' : 'DISC RGA', date: row.submittedAt!.toISOString().slice(0, 10), profile: analysis.profile, traits: [analysis.expected, analysis.detail].filter(Boolean).join('\n'),
-      strengths: analysis.strengths.join('\n'), development: analysis.attention, complete: true };
-    {
+    if (!row.simulation) {
+      const disc = { D: String(scores.D), I: String(scores.I), S: String(scores.S), C: String(scores.C), scaleMin: '10', scaleMax: '40',
+        instrument: 'DISC RGA', date: row.submittedAt!.toISOString().slice(0, 10), profile: analysis.profile, traits: [analysis.expected, analysis.detail].filter(Boolean).join('\n'),
+        strengths: analysis.strengths.join('\n'), development: analysis.attention, complete: true };
       const assessment = await tx.recruitingAssessment.findUnique({ where: { opportunityId: row.opportunityId }, select: { disc: true, discFileId: true } });
-      if (!assessment?.disc && !assessment?.discFileId) await tx.recruitingAssessment.upsert({ where: { opportunityId: row.opportunityId }, create: { opportunityId: row.opportunityId, disc }, update: { disc } });
+      const historical = assessment?.disc;
+      const replacedSimulation = historical && typeof historical === 'object' && !Array.isArray(historical) && historical.instrument === simulationDiscInstrument;
+      if ((!historical || replacedSimulation) && !assessment?.discFileId) await tx.recruitingAssessment.upsert({ where: { opportunityId: row.opportunityId }, create: { opportunityId: row.opportunityId, disc }, update: { disc } });
     }
     await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'disc.reviewed', subjectType: 'opportunity',
       subjectId: row.opportunityId, payload: { assessmentId: id } });
@@ -259,5 +272,22 @@ export async function recalculateDisc(ctx: SessionContext, id: string) {
         provider: 'local', model: 'rga-local-1', tokens: null, aiPending: false, sourceAssessmentId: id } }, select: { id: true } });
     await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'disc.recalculated', subjectType: 'opportunity',
       subjectId: row.opportunityId, payload: { assessmentId: created.id, sourceAssessmentId: id, previousVersion: previousKey.version, newVersion: key.version } });
+  });
+}
+
+export async function recordDiscWhatsapp(ctx: SessionContext, token: string) {
+  requireRecruitingAccess(ctx);
+  if (!ctx.userId || !/^[A-Za-z0-9_-]{43}$/.test(token)) throw new Error('Convite inválido.');
+  await db.$transaction(async tx => {
+    const where = {
+      tokenHash: fingerprint(token), simulation: false, cancelledAt: null, expiresAt: { gt: new Date() },
+      opportunity: { orgId: ctx.orgId, ...available },
+    };
+    const row = await tx.nativeDisc.findFirst({ where, select: { id: true, opportunityId: true, opportunity: { select: { contactId: true } } } });
+    if (!row || !await lockIdentifiableContact(tx, ctx.orgId, row.opportunity.contactId)
+      || !await tx.nativeDisc.findFirst({ where, select: { id: true } })) throw new Error('Convite indisponível.');
+    const event = { orgId: ctx.orgId, verb: 'disc.whatsapp_confirmed', subjectType: 'opportunity', subjectId: row.opportunityId } as const;
+    if (await tx.event.findFirst({ where: { ...event, payload: { path: ['assessmentId'], equals: row.id } }, select: { id: true } })) return;
+    await emitEvent(tx, { ...event, ...actorOf(ctx), payload: { assessmentId: row.id } });
   });
 }

@@ -76,6 +76,7 @@ const STATE_LABELS: Record<InterviewItem['state'], string> = {
 };
 
 const TIMEZONES = [
+  'America/Sao_Paulo',
   'America/New_York',
   'America/Chicago',
   'America/Denver',
@@ -228,10 +229,10 @@ export function InterviewSection({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Fuso horário">
-              <select name="timezone" defaultValue="America/New_York" className={selectClass}>
+              <select name="timezone" defaultValue="America/Sao_Paulo" className={selectClass}>
                 {TIMEZONES.map((tz) => (
                   <option key={tz} value={tz}>
-                    {tz.replace('_', ' ')}
+                    {tz === 'America/Sao_Paulo' ? 'Brasília' : tz.replace('_', ' ')}
                   </option>
                 ))}
               </select>
@@ -346,7 +347,7 @@ export function InterviewSection({
             </p>
           ) : null}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Data e hora">
+            <Field label="Data e hora de Brasília">
               <input {...noAutofill} name="startAt" type="datetime-local" required className={inputClass} />
             </Field>
             <Field label="Duração (min)">

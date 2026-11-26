@@ -5,10 +5,13 @@ import { CompareFinalists, CompetencyPlanForm } from '@/components/competency-as
 import { readInterview, readPlan, readTemplates } from '@/lib/competency-assessment';
 import { textRecord } from '@/lib/i18n/pt-BR/assessment';
 import { FinalistsForm } from '@/components/finalists-form';
-import { finalistStageNames, safeOpinion, shortlistReviewFingerprint } from '@/server/share-links';
+import { safeOpinion, shortlistReviewFingerprint } from '@/server/share-links';
 import { outcomeCategory, outcomeNames } from '@/lib/i18n/pt-BR/recruiting';
 import { AdComposer } from '@/components/rga-productivity';
-import { makeAd, readAdFields } from '@/lib/rga-productivity';
+import { makeAd, readAdFields, registeredSourceCounts } from '@/lib/rga-productivity';
+import { simulationDiscInstrument } from '@/lib/native-disc';
+import { finalistStage } from '@/server/operational-pipeline';
+import type { SharePayload } from '@/lib/share-token';
 import { careersOrigin } from '@/server/public-careers';
 import { careersPath } from '@/lib/public-careers';
 import { NewPostingForm } from '@/components/new-posting-form';
@@ -75,14 +78,15 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
     orderBy: { name: 'asc' }, select: { id: true, name: true, active: true },
   }) : [];
   const scope = { orgId: ctx.orgId, postingId: posting.id, contact: { orgId: ctx.orgId, isAnonymized: false } };
-  const [counts, stages, reasons, finalists] = await Promise.all([
+  const [counts, stages, reasons, finalists, sources] = await Promise.all([
     db.opportunity.groupBy({ by: ['status', 'archiveReasonId', 'stageId'], where: scope, _count: true }),
     db.stage.findMany({ where: { orgId: ctx.orgId }, orderBy: { order: 'asc' } }),
     db.archiveReason.findMany({ where: { orgId: ctx.orgId } }),
     db.opportunity.findMany({
-      where: { ...scope, status: 'ACTIVE', stage: { orgId: ctx.orgId, name: { in: finalistStageNames } } },
+      where: { ...scope, status: 'ACTIVE', stage: finalistStage(ctx.orgId) },
       select: {
-        id: true, confidential: true, contactId: true, applicationResume: { select: { id: true, contactId: true, orgId: true, deletePendingAt: true } }, contact: { select: { name: true, headline: true } },
+        id: true, confidential: true, contactId: true, applicationResume: { select: { id: true, contactId: true, orgId: true, deletePendingAt: true } }, contact: { select: { name: true, headline: true, retentionHold: true } },
+        nativeDiscs: { where: { simulation: false, cancelledAt: null, reviewedAt: { not: null } }, take: 1, select: { id: true } },
         stage: { select: { name: true } },
         recruitingAssessment: { select: { disc: true, opinion: true, opinionFinalizedAt: true, competencyInterview: true, clientFeedback: true,
           opinionVersions: { take: 1, orderBy: { version: 'desc' }, select: { version: true } },
@@ -91,6 +95,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
       },
       orderBy: { contact: { name: 'asc' } },
     }),
+    db.opportunity.groupBy({ by: ['source'], where: scope, _count: true }),
   ]);
   const [assessmentOrg, scorecardQuestions] = canRecruit ? await Promise.all([
     db.organization.findUnique({ where: { id: ctx.orgId }, select: { assessmentTemplates: true } }),
@@ -102,12 +107,20 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
       recruitingAssessment: { select: { competencyInterview: true, disc: true, opinionFinalizedAt: true, opinionDraftAt: true } },
     } }),
     db.shareLink.findMany({ where: { orgId: ctx.orgId, scope: 'shortlist', targetId: posting.id, revokedAt: null, expiresAt: { gt: new Date() } },
-      select: { selection: true } }),
+      orderBy: { createdAt: 'desc' }, select: { code: true, selection: true, createdAt: true, expiresAt: true, sentAt: true } }),
   ]) : [[], []];
-  const presented = new Set(presentations.flatMap(({ selection }) => {
-    const data = selection as { clientId?: string; candidates?: { id: string }[] } | null;
-    return data?.clientId === linkedClient?.id ? data?.candidates?.map(({ id }) => id) ?? [] : [];
-  }));
+  const shareable = new Map(finalists.filter(row => !row.confidential && !row.contact.retentionHold).map(row => [row.id, row.contact.name]));
+  const currentPresentationLinks = presentations.flatMap(link => {
+    const data = link.selection as SharePayload['selection'];
+    if (!linkedClient?.active || data?.clientId !== linkedClient.id || !Array.isArray(data.candidates)) return [];
+    return [{ ...link, candidates: data.candidates.map(({ id }) => id).filter(id => shareable.has(id)) }];
+  });
+  const presented = new Set(currentPresentationLinks.filter(link => link.sentAt).flatMap(link => link.candidates));
+  const discComplete = (row: typeof finalists[number]) => {
+    const disc = row.recruitingAssessment?.disc as { complete?: boolean; instrument?: string } | null;
+    return row.nativeDiscs.length > 0 || (disc?.complete === true && disc.instrument !== simulationDiscInstrument);
+  };
+  const sourceCounts = registeredSourceCounts(sources);
   const feedbackByRow = new Map(finalists.map((row) => [
     row.id, (Array.isArray(row.recruitingAssessment?.clientFeedback) ? row.recruitingAssessment.clientFeedback : [])
       .filter((item) => item && typeof item === 'object' && !Array.isArray(item) && item.clientId === linkedClient?.id)
@@ -144,7 +157,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
           {[
             linkedClient?.name ?? posting.department?.name,
             posting.location,
-            `${posting._count.opportunities} candidaturas`,
+            `${posting._count.opportunities} participações`,
             posting.requisition ? `req ${posting.requisition.code}` : null,
           ]
             .filter(Boolean)
@@ -241,25 +254,35 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
           <li><a className="underline" href={"/disc?vaga=" + id}>Acompanhar avaliações DISC</a></li>
           <li><Link className="underline" href={`/pipeline/operacao?posting=${id}&pending=references`}>Referências pendentes</Link></li>
           <li><Link className="underline" href={`/pipeline/operacao?posting=${id}`}>Ver indicadores operacionais da vaga</Link></li>
-          <li><a className="underline" href="/interviews">Entrevistas pendentes</a> · {operational.filter((row) => !row.interviews.length && !readInterview(row.recruitingAssessment?.competencyInterview)?.completed).length}</li>
+          <li><Link className="underline" href={`/pipeline/operacao?posting=${id}&pending=interview`}>Entrevistas a agendar ou concluir</Link></li>
           <li><a className="underline" href="#roteiro-avaliacao">Competências pendentes</a> · {operational.filter((row) => !readInterview(row.recruitingAssessment?.competencyInterview)?.completed).length}</li>
-          <li><a className="underline" href="#finalistas">DISC pendentes</a> · {finalists.filter((row) => (row.recruitingAssessment?.disc as { complete?: boolean } | null)?.complete !== true).length}</li>
+          <li><a className="underline" href="#finalistas">DISC pendentes</a> · {finalists.filter((row) => !discComplete(row)).length}</li>
           <li><a className="underline" href="#finalistas">Pareceres em elaboração</a> · {operational.filter((row) => row.recruitingAssessment?.opinionDraftAt && !row.recruitingAssessment.opinionFinalizedAt).length}</li>
           <li><a className="underline" href="#finalistas">Pareceres finalizados</a> · {operational.filter((row) => row.recruitingAssessment?.opinionFinalizedAt).length}</li>
-          <li><a className="underline" href="#finalistas">Finalistas com apresentação vigente</a> · {finalists.filter((row) => !row.confidential && presented.has(row.id)).length}</li>
+          <li><a className="underline" href="#finalistas">Envios registrados com apresentação vigente</a> · {finalists.filter((row) => !row.confidential && presented.has(row.id)).length}</li>
           <li><a className="underline" href="#retorno-cliente">Retornos pendentes dos clientes</a> · {finalists.filter((row) => presented.has(row.id) && (!feedbackByRow.get(row.id)?.length || feedbackByRow.get(row.id)?.at(-1)?.status === 'WAIT')).length}</li>
         </ul>
       </section>
+      <details className={`${surface} my-5 p-5`}>
+        <summary className="cursor-pointer font-medium">Origem das candidaturas</summary>
+        {sourceCounts.length ? <ul className="mt-2 grid gap-1 text-sm">{sourceCounts.map(({ label, count }) =>
+          <li key={label} className="break-words">{label} · {count.toLocaleString('pt-BR')}</li>)}</ul> :
+          <p className="mt-2 text-sm">Nenhuma participação registrada.</p>}
+      </details>
       <CompareFinalists finalists={finalists.map((row) => ({
         id: row.id, name: row.contact.name, headline: row.contact.headline,
         experience: textRecord(row.recruitingAssessment?.opinion).experience ?? '',
         review: readInterview(row.recruitingAssessment?.competencyInterview),
-        interview: row.interviews.length > 0, disc: (row.recruitingAssessment?.disc as { complete?: boolean } | null)?.complete === true,
+        interview: row.interviews.length > 0, disc: discComplete(row),
         opinion: !!row.recruitingAssessment?.opinionFinalizedAt,
       }))} />
       <section className={`${surface} my-5 p-5`} id="finalistas">
         <h2 className="mb-3 text-lg font-medium">Finalistas e apresentação ao cliente</h2>
         <FinalistsForm id={posting.id} enabled={posting.state === 'PUBLISHED' && !!linkedClient?.active}
+          links={currentPresentationLinks.map(link => ({
+            id: link.code, createdAt: link.createdAt.toISOString(), expiresAt: link.expiresAt.toISOString(),
+            sentAt: link.sentAt?.toISOString() ?? null, names: link.candidates.map(id => shareable.get(id)!),
+          }))}
           finalists={finalists.map((row) => {
             const version = row.recruitingAssessment?.opinionVersions[0]?.version;
             const summary = safeOpinion(row.recruitingAssessment?.opinion);
@@ -268,9 +291,8 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
             const discId = disc?.orgId === ctx.orgId && disc.contactId === row.contactId && !disc.deletePendingAt ? disc.id : undefined;
             return { id: row.id, name: row.contact.name, headline: row.contact.headline, stage: row.stage.name,
             interviewed: row.interviews.length > 0, opinionFinal: !!row.recruitingAssessment?.opinionFinalizedAt,
-            discComplete: !!row.recruitingAssessment?.disc && typeof row.recruitingAssessment.disc === 'object'
-              && !Array.isArray(row.recruitingAssessment.disc) && row.recruitingAssessment.disc.complete === true,
-            canShare: !row.confidential, version, opinionSummary: summary, resumeId, discId,
+            discComplete: discComplete(row),
+            canShare: shareable.has(row.id), version, opinionSummary: summary, resumeId, discId,
             reviewFingerprint: shortlistReviewFingerprint({ ...row.contact, summary, version, resumeId, discId }),
           }; })} />
       </section>

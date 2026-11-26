@@ -663,13 +663,15 @@ export function PipelineList({
                 options={stages.filter((stage) => stage.type !== 'HIRED').map((s) => ({ value: s.id, label: s.name }))}
                 onSelect={(stageId) => {
                   if (!stageId) return;
+                  const note = window.prompt('Observação opcional para a movimentação em lote.');
+                  if (note === null) return;
                   clear(); // urgent: outside the transition so the bar goes now
                   runOptimisticBulk({
                     startTransition,
                     items: ids,
                     size: BULK_LIMIT,
                     apply: (chunk) => applyOp({ type: 'move', ids: chunk, stageId }),
-                    run: (chunk, final) => bulkMoveStageAction(chunk, stageId, final),
+                    run: (chunk, final) => bulkMoveStageAction(chunk, stageId, final, note),
                     onChunkSaved: (chunk) => commitOp({ type: 'move', ids: chunk, stageId }),
                     refresh: revalidateListsAction,
                     copy: { failure: `Movendo ${candidates(ids.length)}`, done: 'Movidos', skipped: "não puderam ser movidos" },

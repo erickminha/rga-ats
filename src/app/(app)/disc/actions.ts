@@ -3,18 +3,24 @@
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/session';
 import { emailPublicOrigin } from '@/lib/base-url';
-import { cancelDisc, createDiscInvite, discMessage, editDiscInterpretation, emailDisc, prepareDisc, recalculateDisc, reviewDisc } from '@/server/native-disc';
+import { messageFor, readWhatsappTemplates, whatsappPhone } from '@/lib/rga-productivity';
+import { readCareerProfile } from '@/lib/talent-profile';
+import { cancelDisc, createDiscInvite, discMessage, editDiscInterpretation, emailDisc, prepareDisc, recalculateDisc, recordDiscWhatsapp, reviewDisc } from '@/server/native-disc';
 
 export async function issueDiscAction(opportunityId: string, days: number, simulation: boolean) {
   const ctx = await requireSession();
   const origin = emailPublicOrigin();
   if (!origin) return { error: 'O endereço público do ATS precisa ser configurado.' };
   try {
-    const { token, name, title } = await createDiscInvite(ctx, opportunityId, days, simulation === true);
+    const { token, name, title, organization, phones, careerProfile } = await createDiscInvite(ctx, opportunityId, days, simulation === true);
     const url = origin + '/avaliacao-disc#' + token;
-    const message = discMessage(name, title, url);
+    const template = readWhatsappTemplates(organization.whatsappTemplates).disc;
+    const message = !simulation && template
+      ? messageFor('disc', { name, job: title, brand: organization.name, discUrl: url }, template)
+      : discMessage(name, title, url);
+    const phone = simulation ? null : [readCareerProfile(careerProfile).whatsapp ?? '', ...phones].map(whatsappPhone).find(Boolean);
     revalidatePath('/disc');
-    return { url, message };
+    return { url, message, phone };
   } catch { return { error: 'Não foi possível gerar o convite. Confira a participação, o prazo e a autorização da metodologia.' }; }
 }
 
@@ -49,4 +55,15 @@ export async function editDiscAction(id: string, revision: number, input: unknow
     revalidatePath('/disc');
     return { message: 'Interpretação salva. Confira antes de concluir a revisão.' };
   } catch { return { error: 'Não foi possível salvar. Atualize a página e confira os campos.' }; }
+}
+
+export async function recordDiscWhatsappAction(token: string) {
+  const ctx = await requireSession();
+  try {
+    await recordDiscWhatsapp(ctx, token);
+    revalidatePath('/candidates/[id]', 'page');
+    return { message: 'Envio informado registrado no histórico.' };
+  } catch {
+    return { error: 'Não foi possível registrar o envio. Confira se o convite ainda está vigente.' };
+  }
 }

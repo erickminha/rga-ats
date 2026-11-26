@@ -60,3 +60,7 @@ Em 26/11/2026, o Neon de homologação informou 2.103 profissionais, 2.036 eleg�
 | Sincronização diária, retomada e consumo de IA | Implementada parcialmente | Endpoints autenticados disponíveis no código. Falta configurar e testar no Google Cloud |
 
 [Resumo em desktop](evidencias-5c2/resumo-desktop.jpg) · [Sincronização em celular](evidencias-5c2/sincronizacao-mobile.jpg) · [Configuração operacional](rga-sincronizacao-talentos.md)
+
+## Fechamento operacional dos ciclos 5B e 5C
+
+A revisão mais recente da jornada, a situação por funcionalidade, as evidências locais e o roteiro para a Rayane estão no [relatório de fechamento operacional](rga-fechamento-5b-5c-operacional.md).
