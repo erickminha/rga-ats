@@ -1052,6 +1052,7 @@ function PipelineRowView({
             onSurface
             opportunityId={r.id}
             currentStageId={r.stageId}
+            postingId={r.postingId}
             stages={stages}
             onMove={(stageId) => onMove(r.id, stageId)}
             onSaved={(stageId) => onSaved(r.id, stageId)}

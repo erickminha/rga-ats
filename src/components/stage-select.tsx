@@ -20,6 +20,7 @@ import { runOptimistic } from '@/lib/optimistic';
 export function StageSelect({
   opportunityId,
   currentStageId,
+  postingId,
   stages,
   onSurface = false,
   onMove,
@@ -27,7 +28,8 @@ export function StageSelect({
 }: {
   opportunityId: string;
   currentStageId: string;
-  stages: { id: string; name: string; type?: StageType }[];
+  postingId?: string | null;
+  stages: { id: string; name: string; type?: StageType; disabled?: boolean; excludedPostingIds?: string[] }[];
   /** Set when rendered inside a white surface (table rows) so the pill stays visible. */
   onSurface?: boolean;
   /**
@@ -76,7 +78,7 @@ export function StageSelect({
       autoFocus={armed !== 'pointer'}
       showSelectedInTrigger={false}
       value={stageId}
-      options={stages.map((s) => ({ value: s.id, label: s.name }))}
+      options={stages.filter(stage => stage.id === currentStageId || (!stage.disabled && (!postingId || !stage.excludedPostingIds?.includes(postingId)))).map((s) => ({ value: s.id, label: s.name }))}
       onSelect={(next) => {
         if (!next || next === stageId) return;
         const target = stages.find((stage) => stage.id === next);

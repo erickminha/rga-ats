@@ -1,3 +1,6 @@
+import { correctHireAction } from '@/app/(app)/operational-stage-actions';
+import { ProfessionalReferences } from '@/components/professional-references';
+import { readReferenceAnswers, referenceOpinionLine, referenceQuestions, referenceStatuses } from '@/lib/professional-references';
 import { OriginalResume } from '@/components/original-resume';
 import { ResumePreview } from '@/components/resume-preview';
 import { dimensions, scoreDisc, validatedDiscInterpretation, type ScoringKey } from '@/lib/native-disc';
@@ -109,6 +112,7 @@ export async function CandidateProfile({ id }: { id: string }) {
       include: {
         contact: { include: { resumeFile: true, caseStudies: { orderBy: { position: 'asc' } } } },
         applicationResume: true,
+        referenceCheck: { include: { references: { orderBy: { createdAt: 'asc' }, include: { attempts: { orderBy: { occurredAt: 'desc' } } } } } },
         recruitingAssessment: { include: { opinionVersions: { orderBy: { version: 'desc' }, select: { version: true, issuedAt: true } } } },
         posting: {
           include: {
@@ -133,9 +137,9 @@ export async function CandidateProfile({ id }: { id: string }) {
     }),
     db.organization.findUnique({
       where: { id: ctx.orgId },
-      select: { name: true, hideFeedbackUntilSubmitted: true, requireOfferApproval: true, opinionTemplate: true },
+      select: { name: true, hideFeedbackUntilSubmitted: true, requireOfferApproval: true, opinionTemplate: true, referenceQuestionnaire: true },
     }),
-    db.stage.findMany({ where: { orgId: ctx.orgId }, orderBy: { order: 'asc' } }),
+    db.stage.findMany({ where: { orgId: ctx.orgId }, orderBy: { order: 'asc' }, include: { postingExclusions: true } }),
     db.archiveReason.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: 'asc' } }),
     db.user.findMany({
       where: { orgId: ctx.orgId, deactivatedAt: null },
@@ -248,6 +252,14 @@ export async function CandidateProfile({ id }: { id: string }) {
     native?.simulation ? 'SIMULAÇÃO — sem validade para seleção real' : 'Tendências autorrelatadas — DISC',
     nativeAnalysis.expected, nativeAnalysis.detail, nativeAnalysis.attention, nativeAnalysis.environment, nativeAnalysis.interview,
   ].join('\n') : '';
+  const referenceCheck = opportunity.referenceCheck;
+  const staffName = (id: string) => teammates.find(person => person.id === id)?.name ?? 'Usuário da organização';
+  const referenceRows = referenceCheck?.references ?? [];
+  const referenceOptions = referenceRows.filter(row => !row.revokedAt).flatMap(row =>
+    readReferenceAnswers(row.answers).map((answer, index) => ({
+      id: row.id + '-' + index,
+      text: referenceOpinionLine(answer, referenceRows.flatMap(ref => [ref.name, ref.phone, ref.email])),
+    })));
   const recordedOpinion = textRecord(assessment?.opinion);
   const preferences = readCareerProfile(contact.careerProfile);
   const review = readInterview(assessment?.competencyInterview);
@@ -344,7 +356,7 @@ export async function CandidateProfile({ id }: { id: string }) {
             status={opportunity.status}
             archiveReason={opportunity.archiveReason ? `${outcomeNames[outcomeCategory(opportunity.archiveReason)]} · ${opportunity.archiveReason.name}` : null}
             stageId={opportunity.stageId}
-            stages={stages.map(({ id, name, type }) => ({ id, name, type }))}
+            stages={stages.filter(stage => stage.id === opportunity.stageId || (!stage.disabled && !stage.postingExclusions.some(row => row.postingId === opportunity.postingId))).map(({ id, name, type }) => ({ id, name, type }))}
             snoozedUntil={opportunity.snoozedUntil?.toISOString() ?? null}
             reasons={archiveReasons.map((r) => ({ id: r.id, name: r.name, category: outcomeCategory(r) }))}
           />
@@ -632,7 +644,35 @@ export async function CandidateProfile({ id }: { id: string }) {
             discFileId={assessment?.discFileId ?? null} previousDiscs={previousDiscs.map((row) => ({
               id: row.opportunityId, title: row.opportunity.posting?.title ?? 'Vaga anterior',
             }))} />}
-          {!contact.isAnonymized && <OpinionEditor id={opportunity.id} content={recordedOpinion} prefill={opinionPrefill}
+          {isAdmin(ctx) && !contact.isAnonymized && opportunity.status === 'HIRED' && <details className={surface + ' p-4'}>
+            <summary>Corrigir contratação registrada</summary>
+            <form className="mt-3 grid gap-2" action={correctHireAction.bind(null, opportunity.id)}>
+              <label className="grid gap-1">Etapa de retorno <select className={inputClass} name="stage" required>
+                <option value="">Selecionar etapa</option>
+                {stages.filter(stage => stage.type !== 'HIRED' && !stage.disabled && !stage.postingExclusions.some(row => row.postingId === opportunity.postingId))
+                  .map(stage => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+              </select></label>
+              <label className="grid gap-1">Justificativa <textarea className={textareaClass} name="note" maxLength={2000} required /></label>
+              <button className={btnTonal}>Reabrir seleção e registrar correção</button>
+            </form>
+          </details>}
+          {!contact.isAnonymized && <ProfessionalReferences id={opportunity.id}
+            status={referenceCheck?.status ?? 'NOT_REQUESTED'}
+            responsible={referenceCheck ? staffName(referenceCheck.updatedBy) : undefined}
+            history={events.flatMap(event => {
+              const target = textRecord(event.payload).to;
+              return event.verb.startsWith('references.') && Object.hasOwn(referenceStatuses, target)
+                ? [{ id: event.id, at: event.occurredAt.toISOString(), actor: event.actorId ? staffName(event.actorId) : 'Sistema', status: target as keyof typeof referenceStatuses }]
+                : [];
+            })}
+            questions={referenceQuestions(org?.referenceQuestionnaire)}
+            brand={org?.name ?? 'RGA Consultoria de RH'} job={opportunity.posting?.title ?? 'processo seletivo'}
+            references={referenceRows.map(({ attempts, answers, registeredBy, revokedAt, createdAt, opportunityId, ...row }) => ({
+              ...row, registeredBy: staffName(registeredBy), revoked: !!revokedAt, answers: readReferenceAnswers(answers),
+              attempts: attempts.map(attempt => ({ id: attempt.id, at: attempt.occurredAt.toISOString(),
+                channel: attempt.channel, result: attempt.result, actor: staffName(attempt.actorId) })),
+            }))} />}
+          {!contact.isAnonymized && <OpinionEditor referenceOptions={referenceOptions} id={opportunity.id} content={recordedOpinion} prefill={opinionPrefill}
             templates={opinionTemplates(org?.opinionTemplate).filter((item) => !item.inactive)}
             revision={assessment?.opinionDraftAt?.toISOString() ?? ''}
             issued={assessment?.opinionVersions.map(({ version, issuedAt }) => ({ version, date: issuedAt.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) })) ?? []}

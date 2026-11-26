@@ -40,7 +40,8 @@ describe.skipIf(!hasDb)('transferência privada por ID de origem', () => {
     vi.stubGlobal('fetch', vi.fn(async (endpoint: string) => endpoint.includes('alt=media') ? new Response(new Uint8Array(bytes)) :
       Response.json({ id: fileId, parents: [parent], version: revision, trashed: false, size: String(bytes.length), md5Checksum: createHash('md5').update(bytes).digest('hex') })));
     await expect(previewDriveResume(ctx, person.id)).rejects.toThrow('PRIVACY');
-    await expect(previewDriveResume({ ...ctx, accessRole: 'TEAM_MEMBER' }, person.id)).rejects.toThrow('FORBIDDEN');
+    await expect(previewDriveResume({ ...ctx, accessRole: 'INTERVIEWER' }, person.id)).rejects.toThrow('FORBIDDEN');
+    await expect(previewDriveResume({ ...ctx, accessRole: 'TEAM_MEMBER' }, person.id)).rejects.toThrow('PRIVACY');
     const consent = await db.consentRecord.create({ data: { orgId: org.id, contactId: person.id, purpose: 'PROFILE_STORAGE' } });
     vi.stubEnv('RGA_TALENT_SHEET_ID', 'PlanilhaFicticia123');
     vi.stubEnv('RGA_GOOGLE_SERVICE_ACCOUNT', 'configuração simulada');
@@ -54,6 +55,8 @@ describe.skipIf(!hasDb)('transferência privada por ID de origem', () => {
     vi.mocked(readTalentSheet).mockClear();
     await expect(originalResumeUrl(recruiter, person.id)).resolves.toBe(url);
     expect(readTalentSheet).not.toHaveBeenCalled();
+    await expect(driveBatch(recruiter)).rejects.toThrow('FORBIDDEN');
+    await expect(previewDriveResume(recruiter, person.id)).resolves.toHaveProperty('ticket');
     const p = await previewDriveResume(ctx, person.id);
     parent = 'PastaDiferente'; await expect(confirmDriveResume(ctx,person.id,p.ticket)).rejects.toThrow('FILE'); parent = folder;
     expect(await confirmDriveResume(ctx, person.id, p.ticket)).toBe(true);

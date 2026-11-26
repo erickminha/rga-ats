@@ -1,12 +1,13 @@
+import { maybeAutoSendSchedulingLink } from '@/server/scheduling';
+import { emailPublicOrigin } from '@/lib/base-url';
 import { dayBR, outcomeCategory } from '@/lib/i18n/pt-BR/recruiting';
 import { lockIdentifiableContact } from '@/server/contact-lock';
-import type { Origin, StageType } from '@prisma/client';
+import type { Origin } from '@prisma/client';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
 import { buildOpportunityVars, localizedEmailTemplate, sendEmail } from '@/server/email';
-import { maybeAutoSendSchedulingLink } from '@/server/scheduling';
-import { emailPublicOrigin } from '@/lib/base-url';
-import { requireRecruitingAccess, type SessionContext } from '@/lib/session';
+import { availableStageWhere } from '@/server/stages';
+import { isAdmin, requireRecruitingAccess, type SessionContext } from '@/lib/session';
 import { storeExtractedResume, type ResumeUpload } from '@/server/resume-upload';
 import { discardUnlinkedFile } from '@/server/storage';
 import { MAX_RESUME_BYTES } from '@/server/resume';
@@ -42,7 +43,7 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
   const resume = input.resume ? await storeExtractedResume(ctx.orgId, input.resume) : null;
 
   const created = await db.$transaction(async (tx) => {
-    const stage = await tx.stage.findFirst({ where: { id: input.stageId, orgId: ctx.orgId } });
+    const stage = await tx.stage.findFirst({ where: { id: input.stageId, ...availableStageWhere(ctx.orgId, input.postingId) } });
     if (!stage || stage.type === 'HIRED') throw new CandidateResumeError('Escolha uma etapa inicial anterior à contratação.');
     if (input.postingId) {
       const posting = await tx.posting.findFirst({
@@ -126,7 +127,7 @@ export async function createCandidate(ctx: SessionContext, input: CreateCandidat
  * each item and expire the list caches once for the whole chunk, since an
  * expired tag also makes a Server Action send back a re-rendered page.
  */
-export type WriteOptions = { invalidate?: boolean; note?: string; hireDate?: string; requireHireDate?: boolean };
+export type WriteOptions = { invalidate?: boolean; note?: string; hireDate?: string; requireHireDate?: boolean; correctHire?: boolean };
 
 function effectiveHireDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value < '1900-01-01' || value > dayBR()) {
@@ -146,26 +147,34 @@ export async function moveStage(
   ctx: SessionContext,
   opportunityId: string,
   toStageId: string,
-  { invalidate = true, hireDate, requireHireDate, note }: WriteOptions = {},
+  { invalidate = true, hireDate, requireHireDate, note, correctHire }: WriteOptions = {},
 ) {
   requireRecruitingAccess(ctx);
+  if (correctHire && (!isAdmin(ctx) || !movementNote(note))) throw new Error('A correção exige perfil de administração e justificativa.');
   const result = await db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.findFirst({
       where: { id: opportunityId, orgId: ctx.orgId, contact: { isAnonymized: false } },
       include: { stage: true, contact: true, posting: true },
     });
     if (!opportunity) throw new Error('Opportunity not found');
-    const toStage = await tx.stage.findFirst({ where: { id: toStageId, orgId: ctx.orgId } });
+    const toStage = await tx.stage.findFirst({ where: { id: toStageId, ...availableStageWhere(ctx.orgId, opportunity.postingId) } });
     if (!toStage) throw new Error('Etapa não encontrada.');
-    if (opportunity.stageId === toStage.id) return { updated: opportunity, toStage: null as { name: string; type: StageType } | null };
+    if (opportunity.stageId === toStage.id) return { updated: opportunity, destination: null };
 
     if (!await lockIdentifiableContact(tx, ctx.orgId, opportunity.contactId)) throw new Error('Cadastro anonimizado.');
     const current = await tx.opportunity.findUniqueOrThrow({ where: { id: opportunity.id }, include: { stage: true } });
-    if (current.stageId === toStage.id) return { updated: current, toStage: null };
+    if (current.stageId === toStage.id) return { updated: current, destination: null };
     const hiring = toStage.type === 'HIRED';
     if (hiring && current.status !== 'ACTIVE') throw new Error('Reabra a participação antes de contratar.');
     if (hiring && requireHireDate && !hireDate) throw new Error('Confirme a data efetiva da contratação.');
-    if (current.status === 'HIRED') throw new Error('A contratação já foi registrada nesta participação.');
+    if (correctHire && (current.status !== 'HIRED' || hiring)) throw new Error('Selecione uma etapa anterior à contratação.');
+    if (current.status === 'HIRED' && !correctHire) throw new Error('A contratação já foi registrada nesta participação.');
+    if (correctHire && opportunity.posting?.requisitionId) {
+      await tx.requisition.updateMany({
+        where: { id: opportunity.posting.requisitionId, orgId: ctx.orgId, filled: { gt: 0 } },
+        data: { filled: { decrement: 1 } },
+      });
+    }
     const hiredAt = hiring ? effectiveHireDate(hireDate ?? dayBR()) : null;
     if (hiring && opportunity.posting?.requisitionId) {
       await tx.requisition.update({
@@ -178,8 +187,8 @@ export async function moveStage(
       data: {
         stageId: toStage.id,
         stageChangedAt: new Date(),
-        status: hiring ? 'HIRED' : current.status,
-        ...(hiredAt ? { hiredAt } : {}),
+        status: correctHire ? 'ACTIVE' : hiring ? 'HIRED' : current.status,
+        ...(hiredAt || correctHire ? { hiredAt } : {}),
       },
     });
     await tx.stageTransition.create({
@@ -200,17 +209,18 @@ export async function moveStage(
         contactName: opportunity.contact.name,
         from: current.stage.name,
         note: movementNote(note),
+        ...(correctHire ? { correctedHire: true } : {}),
         ...(hiredAt ? { hiredAt: hiredAt.toISOString().slice(0, 10), postingId: current.postingId, clientCompanyId: opportunity.posting?.clientCompanyId } : {}),
         to: toStage.name,
       },
     });
-    return { updated, toStage: { name: toStage.name, type: toStage.type } };
+    return { updated, destination: toStage };
   });
   if (invalidate) invalidatePipelineCounts(ctx.orgId);
 
-  if (result.toStage) {
-    const origin = emailPublicOrigin();
-    if (origin) await maybeAutoSendSchedulingLink(ctx, opportunityId, result.toStage, origin);
+  const origin = emailPublicOrigin();
+  if (origin && result.destination && !correctHire) {
+    await maybeAutoSendSchedulingLink(ctx, opportunityId, result.destination, origin);
   }
   return result.updated;
 }
@@ -297,7 +307,7 @@ export async function unarchiveOpportunity(ctx: SessionContext, opportunityId: s
     const current = await tx.opportunity.findUniqueOrThrow({ where: { id: opportunity.id }, include: { stage: true } });
     if (current.status !== 'ARCHIVED') return current;
     const stage = stageId || current.stage.type === 'HIRED' ? await tx.stage.findFirst({
-      where: { orgId: ctx.orgId, type: { not: 'HIRED' }, ...(stageId ? { id: stageId } : {}) },
+      where: { ...availableStageWhere(ctx.orgId, current.postingId), type: { not: 'HIRED' }, ...(stageId ? { id: stageId } : {}) },
       orderBy: { order: 'asc' },
     }) : current.stage;
     if (!stage) throw new Error('Selecione uma etapa válida para reabrir.');

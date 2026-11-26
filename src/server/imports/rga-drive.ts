@@ -75,7 +75,7 @@ export function originalResumeEnabled(orgId: string) {
 
 type Metadata = { size: number; md5: string; version: string };
 async function source(ctx: SessionContext, contactId: string, rows?: string[][]) {
-  if (!ctx.userId || !isAdmin(ctx) || ctx.orgId !== process.env.RGA_TALENT_SYNC_ORG_ID) throw new Error('FORBIDDEN');
+  if (!ctx.userId || !canManageRecruiting(ctx) || ctx.orgId !== process.env.RGA_TALENT_SYNC_ORG_ID) throw new Error('FORBIDDEN');
   const folder = process.env.RGA_RESUME_FOLDER_ID;
   if (!folder || !idPattern.test(folder)) throw new Error('CONFIG');
   const driveId = await importedResumeId(ctx.orgId, contactId, rows);

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { RecruitingBoard } from '@/components/recruiting-board';
 import type { loadPipelinePage } from '@/app/(app)/page-loaders';
 import { PageHeader } from '@/components/page-header';
@@ -14,6 +15,9 @@ export function PipelineScreen({ data }: { data: Awaited<ReturnType<typeof loadP
       <div className="flex flex-wrap items-start justify-between gap-2 px-3 sm:px-0 sm:pr-6">
         <PageHeader title="Funil de recrutamento" subtitle="Acompanhe os candidatos e movimente as etapas da seleção." />
         <PipelineToolbar board={!!data.board} archived={data.archived} clients={data.clients} postingGroups={data.postingGroups} boardPostings={data.boardPostings} recruitingPostings={data.recruitingPostings} canAdd={data.canAddCandidate} />
+      </div>
+      <div className="px-3 pb-2 text-sm sm:px-6">
+        <Link className="underline" href={{ pathname: '/pipeline/operacao', query: { posting: data.postingFilter, client: data.clientFilter, stage: data.stageFilter } }}>Acompanhamento operacional</Link>
       </div>
       {data.archived && <form action="/pipeline" className="mx-6 mb-3 flex flex-wrap items-center gap-2">
         <input type="hidden" name="status" value="archived" />

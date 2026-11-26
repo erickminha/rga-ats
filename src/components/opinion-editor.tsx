@@ -28,9 +28,10 @@ export function OpinionTemplateForm({ template }: { template?: OpinionTemplate }
   </form>;
 }
 
-export function OpinionEditor({ id, templates, content, prefill, revision, issued, author, finalized, ai }: {
+export function OpinionEditor({ id, templates, content, prefill, revision, issued, author, finalized, ai, referenceOptions = [] }: {
   id: string; templates: OpinionTemplate[]; content: Record<string, string>; prefill: Record<string, string>;
   revision: string; issued: { version: number; date: string }[]; author: string | null; finalized: boolean; ai: boolean;
+  referenceOptions?: { id: string; text: string }[];
 }) {
   const [fields, setFields] = useState(content);
   const [template, setTemplate] = useState(templates[0]?.id);
@@ -60,6 +61,14 @@ export function OpinionEditor({ id, templates, content, prefill, revision, issue
         for (const key of sections) if (!result[key] && prefill[key]) result[key] = prefill[key];
         return result;
       })}>Preencher campos vazios com dados da participação</button>
+      {!!referenceOptions.length && <details className="grid gap-2">
+        <summary>Selecionar informações de referências</summary>
+        {referenceOptions.map(option => <div className="flex flex-wrap items-start gap-2 py-2 text-sm" key={option.id}>
+          <button type="button" className={btnTonal} disabled={fields.references?.includes(option.text) || (fields.references?.length ?? 0) + option.text.length + 1 > 4000}
+            onClick={() => update('references', [fields.references, option.text].filter(Boolean).join('\n'))}>Incluir no parecer</button>
+          <span className="min-w-0 break-words">{option.text}</span>
+        </div>)}
+      </details>}
       {sections.map((key) => <label key={key} className="grid gap-1 text-sm">{opinionFields[key]}
         <textarea name={key} rows={3} className={textareaClass} maxLength={4000} value={fields[key] ?? ''} onChange={(event) => update(key, event.target.value)} />
       </label>)}

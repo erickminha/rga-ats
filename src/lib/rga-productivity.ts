@@ -38,6 +38,7 @@ export function makeAd(input: { title: string; location: string | null; workplac
 
 export const messageKinds = {
   contact: 'Primeiro contato', interview: 'Convite para entrevista', reference: 'Referências profissionais',
+  referenceIntro: 'Primeiro contato com a referência', referenceReminder: 'Lembrete para a referência', referenceThanks: 'Agradecimento à referência',
   documents: 'Orientações sobre documentos', followup: 'Retorno de acompanhamento', approved: 'Aprovação comunicada', closed: 'Encerramento da participação',
 } as const;
 export type MessageKind = keyof typeof messageKinds;
@@ -48,7 +49,10 @@ export function messageFor(kind: MessageKind, input: { name: string; job: string
   const body: Record<MessageKind,string> = {
     contact: 'Estamos conduzindo um processo seletivo para ' + job + '. Você tem interesse e disponibilidade para conversar sobre a oportunidade?',
     interview: 'Gostaríamos de convidar você para uma entrevista referente à vaga de ' + job + '.' + (input.appointment ? '\nData e horário: ' + input.appointment : '\nVamos combinar o melhor horário?') + (input.meeting ? '\nLocal ou link: ' + input.meeting : '') + '\nPor favor, confirme sua disponibilidade.',
-    reference: 'Para dar continuidade à seleção de ' + job + ', gostaríamos de combinar a verificação de referências profissionais, mediante sua autorização. Podemos conversar sobre os contatos apropriados? Não envie dados de terceiros sem autorização.',
+    reference: 'Estamos dando continuidade ao seu processo seletivo para a vaga de ' + job + '. Poderia nos encaminhar referências de pessoas que acompanharam diretamente suas atividades? Confirme previamente a disponibilidade dessas pessoas para contato. Agradecemos pela colaboração.',
+    referenceIntro: 'Você teria disponibilidade para conversar sobre uma experiência profissional que acompanhou diretamente? Antes de prosseguir, confirmaremos a finalidade e o canal mais adequado.',
+    referenceReminder: 'Retomamos nosso contato sobre a referência profissional. Se puder responder, por favor nos indique um horário ou canal adequado.',
+    referenceThanks: 'Agradecemos seu retorno e o tempo dedicado a compartilhar informações profissionais.',
     documents: 'Precisamos combinar a próxima etapa de documentação da vaga de ' + job + '. Vamos orientar quais documentos são necessários e o canal seguro para entrega. Por favor, não envie documentos pessoais por esta conversa.',
     followup: 'Estamos acompanhando o processo seletivo para ' + job + '. Entraremos em contato quando houver novidades. Agradecemos sua disponibilidade.',
     approved: 'Temos uma atualização positiva sobre sua participação na vaga de ' + job + '. Você foi aprovado(a) nesta etapa. Vamos alinhar os próximos passos e as condições antes de qualquer início de trabalho.',

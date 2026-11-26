@@ -137,6 +137,7 @@ type RawRow = {
   stageChangedAt: Date;
   name: string;
   headline: string | null;
+  postingId: string | null;
   postingTitle: string | null;
   clientName: string | null;
   location: string | null;
@@ -152,7 +153,7 @@ type RawRow = {
  * and client. Scoped scalar lookups leave the count and search joins unchanged.
  */
 const ROW_COLUMNS = Prisma.sql`
-  o.id, o."contactId", o."stageId", o."stageChangedAt",
+  o.id, o."contactId", o."stageId", o."stageChangedAt", o."postingId",
   c.name, c.headline, c.location,
   COALESCE((SELECT p.title FROM "Posting" p WHERE p.id = o."postingId" AND p."orgId" = o."orgId"), o."customFields"->'origemPlanilha'->>'cargo') AS "postingTitle",
   COALESCE((SELECT co.name FROM "Posting" p JOIN "ClientCompany" co ON co.id = p."clientCompanyId" AND co."orgId" = p."orgId" WHERE p.id = o."postingId" AND p."orgId" = o."orgId"), o."customFields"->'origemPlanilha'->>'empresaInformada') AS "clientName",
@@ -170,6 +171,7 @@ function toRow(r: RawRow, now: number): PipelineRow {
     contactId: r.contactId,
     name: r.name,
     headline: r.headline,
+    postingId: r.postingId,
     postingTitle: r.postingTitle,
     clientName: r.clientName,
     location: r.location,

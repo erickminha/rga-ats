@@ -8,7 +8,7 @@ import { db } from '@/lib/db';
  */
 export type ListMeta = {
   kind: OrgKind;
-  stages: { id: string; name: string; type: StageType }[];
+  stages: { id: string; name: string; type: StageType; disabled?: boolean; excludedPostingIds?: string[] }[];
   postings: {
     id: string;
     title: string;
@@ -27,7 +27,7 @@ export async function loadListMeta(orgId: string): Promise<ListMeta> {
     db.stage.findMany({
       where: { orgId },
       orderBy: { order: 'asc' },
-      select: { id: true, name: true, type: true },
+      select: { id: true, name: true, type: true, disabled: true, postingExclusions: { select: { postingId: true } } },
     }),
     db.posting.findMany({
       where: { orgId },
@@ -53,7 +53,7 @@ export async function loadListMeta(orgId: string): Promise<ListMeta> {
   ]);
   return {
     kind: org?.kind ?? 'COMPANY',
-    stages,
+    stages: stages.map(({ postingExclusions, ...stage }) => ({ ...stage, excludedPostingIds: postingExclusions.map(row => row.postingId) })),
     postings: postings.map((p) => ({
       id: p.id,
       title: p.title,

@@ -11,6 +11,7 @@ import { actorOf, emitEvent } from './events';
 
 export const summaryConsent = (orgId: string) => ({
   orgId, isAnonymized: false, retentionHold: false,
+  opportunities: { none: { orgId, confidential: true } },
   consents: { some: { orgId, purpose: 'PROFILE_STORAGE' as const, withdrawnAt: null } },
 });
 

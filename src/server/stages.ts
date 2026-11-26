@@ -7,6 +7,7 @@ import { looseKey, nameKey } from '@/server/imports/mapping';
 import { isRgaWorkspace } from '@/server/rga-workspace';
 import { RGA_STAGES } from '@/server/rga-pipeline';
 import { GROUP_RANK, stageGroup } from '@/lib/stage-types';
+import { inferOperationalRole } from '@/server/operational-pipeline';
 
 function requireStageAdmin(ctx: SessionContext) {
   if (!isAdmin(ctx)) throw new Error('Somente administradores podem configurar as etapas.');
@@ -37,7 +38,7 @@ export async function createStage(ctx: SessionContext, name: string, type: Stage
       if (hired >= 0) at = hired;
     }
     for (const [i, s] of current.entries()) await tx.stage.update({ where: { id: s.id }, data: { order: -1 - i } });
-    const stage = await tx.stage.create({ data: { orgId: ctx.orgId, name: trimmed, type, order: at } });
+    const stage = await tx.stage.create({ data: { orgId: ctx.orgId, name: trimmed, type, order: at, operationalRole: inferOperationalRole(trimmed) ?? 'OTHER' } });
     for (const [i, s] of current.entries()) {
       await tx.stage.update({ where: { id: s.id }, data: { order: i < at ? i : i + 1 } });
     }
@@ -74,7 +75,7 @@ export async function renameStage(ctx: SessionContext, stageId: string, name: st
     const stage = (await lockStages(tx, ctx.orgId)).find((row) => row.id === stageId);
     if (!stage) throw new Error('Etapa não encontrada.');
     if (stage.name === trimmed) return stage;
-    const updated = await tx.stage.update({ where: { id: stage.id }, data: { name: trimmed } });
+    const updated = await tx.stage.update({ where: { id: stage.id }, data: { name: trimmed, operationalRole: stage.operationalRole ?? inferOperationalRole(stage.name) ?? 'OTHER' } });
     await emitEvent(tx, {
       orgId: ctx.orgId,
       ...actorOf(ctx),
@@ -122,8 +123,17 @@ export async function setStageOrder(ctx: SessionContext, ids: string[]) {
 export async function deleteStage(ctx: SessionContext, stageId: string) {
   requireStageAdmin(ctx);
   const result = await db.$transaction(async (tx) => {
-    const stage = (await lockStages(tx, ctx.orgId)).find((row) => row.id === stageId);
+    const stages = await lockStages(tx, ctx.orgId);
+    const stage = stages.find((row) => row.id === stageId);
     if (!stage) throw new Error('Etapa não encontrada.');
+    if (!stage.disabled && (stage.type === 'APPLICANT' || stage.type === 'HIRED') &&
+        !stages.some(row => row.id !== stageId && !row.disabled && row.type === stage.type)) {
+      throw new Error('Mantenha pelo menos uma etapa ativa de candidatura e contratação.');
+    }
+    if (!stage.disabled && stage.type !== 'HIRED' &&
+        !stages.some(row => row.id !== stageId && !row.disabled && row.type !== 'HIRED')) {
+      throw new Error('Mantenha pelo menos uma etapa inicial ativa.');
+    }
 
     const stageCount = await tx.stage.count({ where: { orgId: ctx.orgId } });
     if (stageCount <= 1) throw new Error('Mantenha ao menos uma etapa.');
@@ -192,8 +202,8 @@ export async function reconcileRgaStages(ctx: SessionContext) {
     }
     for (const [order, { name, type, existing }] of ordered.entries()) {
       const stage = existing
-        ? await tx.stage.update({ where: { id: existing.id }, data: { name, order } })
-        : await tx.stage.create({ data: { orgId: ctx.orgId, name, type, order } });
+        ? await tx.stage.update({ where: { id: existing.id }, data: { name, order, operationalRole: existing.operationalRole && existing.operationalRole !== 'OTHER' ? existing.operationalRole : inferOperationalRole(name) ?? 'OTHER' } })
+        : await tx.stage.create({ data: { orgId: ctx.orgId, name, type, order, operationalRole: inferOperationalRole(name) ?? 'OTHER' } });
       const change = changes.find((item) => item.order === order);
       if (change) Object.assign(change, { id: stage.id });
     }
@@ -206,4 +216,45 @@ export async function reconcileRgaStages(ctx: SessionContext) {
   });
   if (result.changed) invalidateListMeta(ctx.orgId);
   return result;
+}
+
+
+export function availableStageWhere(orgId: string, postingId?: string | null): Prisma.StageWhereInput {
+  return { orgId, disabled: false, ...(postingId ? { postingExclusions: { none: { postingId } } } : {}) };
+}
+
+export async function setStageAvailability(ctx: SessionContext, stageId: string, enabled: boolean) {
+  requireStageAdmin(ctx);
+  await db.$transaction(async tx => {
+    const stages = await lockStages(tx, ctx.orgId);
+    const stage = stages.find(row => row.id === stageId);
+    if (!stage) throw new Error('Etapa não encontrada.');
+    if (stage.disabled === !enabled) return;
+    if (!enabled && !stages.some(row => row.id !== stageId && !row.disabled && row.type === 'APPLICANT') && stage.type === 'APPLICANT') {
+      throw new Error('Mantenha pelo menos uma etapa de candidatura ativa.');
+    }
+    if (!enabled && !stages.some(row => row.id !== stageId && !row.disabled && row.type !== 'HIRED')) {
+      throw new Error('Mantenha pelo menos uma etapa inicial ativa.');
+    }
+    if (!enabled && stage.type === 'HIRED' && !stages.some(row => row.id !== stageId && !row.disabled && row.type === 'HIRED')) {
+      throw new Error('Mantenha pelo menos uma etapa de contratação ativa.');
+    }
+    await tx.stage.update({ where: { id: stageId }, data: { disabled: !enabled } });
+    await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'stage.availability_changed', subjectType: 'stage', subjectId: stageId, payload: { enabled } });
+  });
+  invalidateListMeta(ctx.orgId);
+}
+
+export async function setPostingStageExclusions(ctx: SessionContext, postingId: string, excluded: string[]) {
+  requireStageAdmin(ctx);
+  await db.$transaction(async tx => {
+    const stages = await lockStages(tx, ctx.orgId);
+    if (!await tx.posting.findFirst({ where: { id: postingId, orgId: ctx.orgId }, select: { id: true } })) throw new Error('Vaga não encontrada.');
+    const optional = stages.filter(stage => stage.type !== 'APPLICANT' && stage.type !== 'HIRED');
+    if (excluded.some(id => !optional.some(stage => stage.id === id))) throw new Error('Etapa inválida nesta vaga.');
+    await tx.postingStageExclusion.deleteMany({ where: { postingId } });
+    if (excluded.length) await tx.postingStageExclusion.createMany({ data: [...new Set(excluded)].map(stageId => ({ postingId, stageId })) });
+    await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'posting.stage_exclusions_changed', subjectType: 'posting', subjectId: postingId, payload: { excluded } });
+  });
+  invalidateListMeta(ctx.orgId);
 }

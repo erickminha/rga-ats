@@ -35,6 +35,39 @@ async function log(ctx: SessionContext, success: boolean, tokens: number | null,
       payload: { success, provider: config?.provider ?? 'local', model: config?.model ?? null, tokens, count, failure } });
   });
 }
+// Operational queries never leave the ATS or reserve provider credits.
+export function operationalIntent(question: string): 'open_list' | 'open_count' | 'contacts_count' | null {
+  const text = question.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+    .replace(/[?!.,:]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/^(?:me mostre|mostre|liste|listar|quais sao|quais|exiba|ver) (?:as )?(?:nossas )?vagas (?:abertas|ativas|em andamento)(?: (?:atualmente|hoje))?$/.test(text) ||
+      /^vagas (?:abertas|ativas|em andamento)$/.test(text)) return 'open_list';
+  if (/^(?:quantas vagas (?:abertas|ativas|em andamento)(?: temos| existem)?|quantas vagas temos (?:abertas|ativas|em andamento)|quantidade de vagas (?:abertas|ativas|em andamento))(?: (?:atualmente|hoje))?$/.test(text)) return 'open_count';
+  if (/^(?:quantos (?:candidatos|profissionais|talentos)(?: cadastrados)? (?:temos|existem|estao cadastrados)|quantos (?:candidatos|profissionais|talentos) temos cadastrados|quantidade de (?:candidatos|profissionais|talentos) cadastrados)$/.test(text)) return 'contacts_count';
+  return null;
+}
+
+export async function askOperationalQuestion(ctx: SessionContext, question: string): Promise<CorpusAnswer | null> {
+  requireRecruitingAccess(ctx);
+  const intent = operationalIntent(question);
+  if (!intent) return null;
+  if (intent === 'contacts_count') {
+    const count = await db.contact.count({ where: { orgId: ctx.orgId, isAnonymized: false, retentionHold: false,
+      opportunities: { none: { orgId: ctx.orgId, confidential: true } } } });
+    return { answer: 'Total de profissionais cadastrados (sem anonimização, bloqueio de retenção ou participação confidencial): ' + count.toLocaleString('pt-BR') + '.', sources: [] };
+  }
+  const where: Prisma.PostingWhereInput = { orgId: ctx.orgId, state: { in: ['PUBLISHED', 'INTERNAL'] } };
+  if (intent === 'open_count') {
+    const count = await db.posting.count({ where });
+    return { answer: count.toLocaleString('pt-BR') + ' vaga(s) aberta(s), publicadas ou internas. Rascunhos, aguardando aprovação e encerradas não estão incluídas.', sources: [] };
+  }
+  const [count, rows] = await db.$transaction([
+    db.posting.count({ where }),
+    db.posting.findMany({ where, orderBy: [{ title: 'asc' }, { id: 'asc' }], take: 100, select: { title: true, location: true, state: true } }),
+  ]);
+  const lines = rows.map((row, i) => (i + 1) + '. ' + row.title + (row.location ? ' — ' + row.location : '') + (row.state === 'INTERNAL' ? ' (interna)' : ' (publicada)'));
+  return { answer: count ? count.toLocaleString('pt-BR') + ' vaga(s) aberta(s).\n\n' + lines.join('\n') + (count > rows.length ? '\n\nExibindo as primeiras 100; consulte a página de vagas para todas.' : '') : 'Nenhuma vaga publicada ou interna está aberta no momento.', sources: [] };
+}
+
 export async function askProfessionalProfiles(ctx: SessionContext, question: string): Promise<CorpusAnswer> {
   requireRecruitingAccess(ctx);
   if (/\b(?:cpf|rg|religiao|religião|etnia|raça|raca|gestante|gravida|grávida|estado civil|filhos|orientacao sexual|orientação sexual|idade)\b/i.test(question)) return { answer: 'Use apenas critérios profissionais pertinentes à vaga, como cargo, área e UF. Não pesquise atributos pessoais ou sensíveis.', sources: [] };

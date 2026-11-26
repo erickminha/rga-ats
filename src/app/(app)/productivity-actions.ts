@@ -8,7 +8,7 @@ import { revalidatePath } from 'next/cache';
 export async function confirmWhatsappAction(id: string, kind: string) {
   const ctx = await requireSession();
   requireRecruitingAccess(ctx);
-  if (!Object.hasOwn(messageKinds, kind)) return { message: 'Modelo inválido.' };
+  if (!Object.hasOwn(messageKinds, kind) || ['referenceIntro', 'referenceReminder', 'referenceThanks'].includes(kind)) return { message: 'Modelo inválido.' };
   try {
     await db.$transaction(async tx => {
       const row = await tx.opportunity.findFirst({ where: { id, orgId: ctx.orgId, confidential: false,

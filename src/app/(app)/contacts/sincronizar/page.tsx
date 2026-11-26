@@ -8,7 +8,7 @@ import { talentSyncConfigured } from '@/server/talent-sync-run';
 import { summaryConsent } from '@/server/talent-summary';
 
 const when = (date: Date | null) => date?.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) ?? '—';
-const labels: Record<string, string> = { QUEUED: 'Em fila', RUNNING: 'Em execução', SUCCEEDED: 'Concluída', FAILED: 'Falhou' };
+const labels: Record<string, string> = { QUEUED: 'Em fila', RUNNING: 'Em execução', SUCCEEDED: 'Concluída', PARTIAL: 'Concluída com ressalvas', FAILED: 'Falhou' };
 
 export default async function TalentSyncPage() {
   const ctx = await requireSession();
@@ -50,7 +50,7 @@ export default async function TalentSyncPage() {
         <p>{run.rowsRead} lidos · {run.createdCount} novos · {run.updatedCount} atualizados · {run.unchanged} sem alterações · {run.duplicates} duplicados ou ignorados</p>
         <p>{run.unresolved} sem identificação segura · {run.errors} erros de linha · {run.remaining} pendentes · {run.summaries} resumos enfileirados</p>
         {run.startedAt && run.finishedAt && <p>Duração {Math.round((+run.finishedAt - +run.startedAt) / 1000)} s</p>}
-        {run.errorCode && <p>{run.status === 'FAILED' ? 'Confira a integração e solicite outra execução.' : 'A execução será retomada automaticamente.'}</p>}
+        {run.errorCode && <p>{run.status === 'FAILED' ? 'Confira a integração e solicite outra execução.' : run.status === 'PARTIAL' ? 'Revise as linhas pendentes nas importações antes de repetir os erros.' : 'A execução será retomada automaticamente.'}</p>}
       </article>)}
     </section>
   </main>;

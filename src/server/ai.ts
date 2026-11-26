@@ -1,5 +1,5 @@
 import { assistantProvider } from '@/server/assistant-provider';
-import { askProfessionalProfiles } from '@/server/rga-assistant';
+import { askOperationalQuestion, askProfessionalProfiles } from '@/server/rga-assistant';
 import { lockIdentifiableContact } from '@/server/contact-lock';
 import { db } from '@/lib/db';
 import { actorOf, emitEvent } from '@/server/events';
@@ -128,6 +128,8 @@ function chunkAround(text: string, terms: string[], radius = 400): string {
  */
 export async function askCorpus(ctx: SessionContext, question: string): Promise<CorpusAnswer> {
   requireRecruitingAccess(ctx);
+  const operational = await askOperationalQuestion(ctx, question);
+  if (operational) return operational;
   if (assistantProvider()) return askProfessionalProfiles(ctx, question);
   if (!aiConfigured()) throw new AiUnavailableError('not_configured');
   const terms = keywords(question);

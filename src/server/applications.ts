@@ -1,4 +1,5 @@
 import { queueTalentSummary } from '@/server/talent-summary';
+import { availableStageWhere } from '@/server/stages';
 import { reserveRequest } from '@/server/request-limit';
 import { discardUnlinkedFile } from '@/server/storage';
 import { EEOEnabled, talentNetworkAllowed } from '@/server/privacy-options';
@@ -66,10 +67,10 @@ export async function submitApplication(input: ApplicationInput) {
 
   const stage =
     (await db.stage.findFirst({
-      where: { orgId: org.id, type: 'APPLICANT' },
+      where: { ...availableStageWhere(org.id, posting.id), type: 'APPLICANT' },
       orderBy: { order: 'asc' },
     })) ??
-    (await db.stage.findFirst({ where: { orgId: org.id }, orderBy: { order: 'asc' } }));
+    (await db.stage.findFirst({ where: { ...availableStageWhere(org.id, posting.id), type: { not: 'HIRED' } }, orderBy: { order: 'asc' } }));
   if (!stage) throw new Error('Organization has no pipeline stages');
 
   if (!await reserveRequest('public-application', [org.id, email], 12, 60 * 60_000)) {

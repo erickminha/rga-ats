@@ -52,7 +52,8 @@ export async function directChat(config: NonNullable<ReturnType<typeof assistant
   messages: { role: string; content: string }[]; model: string; max_completion_tokens?: number; max_tokens?: number;
 }) {
   const body = JSON.stringify(payload);
-  if (config.provider === 'groq' && !await reserveGroq(body, payload.max_completion_tokens ?? payload.max_tokens ?? 1200)) {
+  const reservation = config.provider === 'groq' ? await reserveGroq(body, payload.max_completion_tokens ?? payload.max_tokens ?? 1200) : null;
+  if (config.provider === 'groq' && !reservation) {
     throw new AiUnavailableError('limit');
   }
   let response: Response;
@@ -67,10 +68,12 @@ export async function directChat(config: NonNullable<ReturnType<typeof assistant
   if (!response.ok) throw new AiUnavailableError('http_' + response.status, response.status);
   try {
     const data = await response.json();
+    const tokens = Number.isSafeInteger(data.usage?.total_tokens) ? Number(data.usage.total_tokens) : null;
+    await reservation?.settle(tokens).catch(() => {});
     if (data.choices?.[0]?.finish_reason === 'length') throw new AiUnavailableError('truncated');
     const raw = data.choices?.[0]?.message?.content;
     if (typeof raw !== 'string' || !raw.trim()) throw new AiUnavailableError('empty_response');
-    return { value: JSON.parse(raw) as unknown, tokens: Number.isSafeInteger(data.usage?.total_tokens) ? Number(data.usage.total_tokens) : null };
+    return { value: JSON.parse(raw) as unknown, tokens };
   } catch (error) { if (error instanceof AiUnavailableError) throw error; throw new AiUnavailableError('invalid_response'); }
 }
 

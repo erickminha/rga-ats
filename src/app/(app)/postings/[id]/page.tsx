@@ -1,3 +1,5 @@
+import { setPostingStagesAction } from '@/app/(app)/operational-stage-actions';
+import { btnTonal } from '@/components/form-controls';
 import { CustomerFeedbackForm, type CustomerFeedback } from '@/components/opinion-editor';
 import { CompareFinalists, CompetencyPlanForm } from '@/components/competency-assessment';
 import { readInterview, readPlan, readTemplates } from '@/lib/competency-assessment';
@@ -52,6 +54,7 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
       clientCompany: { select: { id: true, name: true, active: true, orgId: true } },
       requisition: true,
       org: { select: { requirePostingApproval: true, name: true, slug: true } },
+      stageExclusions: { select: { stageId: true } },
       planSteps: { orderBy: { order: 'asc' } },
       _count: { select: { opportunities: true } },
     },
@@ -216,6 +219,16 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
             ) : null}
           </div>
 
+      {isAdmin(ctx) && <details className={`${surface} my-5 p-5`}>
+        <summary className="font-medium">Etapas desta vaga</summary>
+        <form className="mt-3 grid gap-2" action={setPostingStagesAction.bind(null, id)}>
+          <p className="text-sm">Marque as etapas que deseja desativar para novas movimentações nesta vaga.</p>
+          {stages.filter(stage => stage.type !== 'APPLICANT' && stage.type !== 'HIRED').map(stage => <label key={stage.id}>
+            <input type="checkbox" name="excluded" value={stage.id} defaultChecked={posting.stageExclusions.some(row => row.stageId === stage.id)} /> {stage.name}{stage.disabled ? ' · Desativada na organização' : ''}
+          </label>)}
+          <button className={btnTonal}>Salvar etapas da vaga</button>
+        </form>
+      </details>}
       <details id="roteiro-avaliacao" className={`${surface} my-5 p-5`}>
         <summary className="font-medium">Roteiro de avaliação da vaga</summary>
         {isAdmin(ctx) && <a className="underline" href="/settings/modelos-avaliacao">Gerenciar modelos de avaliação</a>}
@@ -226,6 +239,8 @@ export default async function PostingDetailPage({ params }: { params: Promise<{ 
         <h2 className="font-medium" id="pendencias-vaga">Acompanhamento das avaliações</h2>
         <ul className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
           <li><a className="underline" href={"/disc?vaga=" + id}>Acompanhar avaliações DISC</a></li>
+          <li><Link className="underline" href={`/pipeline/operacao?posting=${id}&pending=references`}>Referências pendentes</Link></li>
+          <li><Link className="underline" href={`/pipeline/operacao?posting=${id}`}>Ver indicadores operacionais da vaga</Link></li>
           <li><a className="underline" href="/interviews">Entrevistas pendentes</a> · {operational.filter((row) => !row.interviews.length && !readInterview(row.recruitingAssessment?.competencyInterview)?.completed).length}</li>
           <li><a className="underline" href="#roteiro-avaliacao">Competências pendentes</a> · {operational.filter((row) => !readInterview(row.recruitingAssessment?.competencyInterview)?.completed).length}</li>
           <li><a className="underline" href="#finalistas">DISC pendentes</a> · {finalists.filter((row) => (row.recruitingAssessment?.disc as { complete?: boolean } | null)?.complete !== true).length}</li>
