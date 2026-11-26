@@ -1,7 +1,7 @@
 import { readSummaryText } from './talent-summary';
 
 const fields = ['Resumo', 'Cargo recente', 'Cargo pretendido', 'Experiência', 'Histórico profissional', 'Formação', 'Competências', 'Cursos e certificações', 'Idiomas', 'Localização'] as const;
-const sensitive = /@|https?:|(?:\d[\s().-]*){8}|\b(?:cpf|rg|cep|endereço residencial|data de nascimento|estado civil|apto para|inapto para|recomendo a contratação)\b/i;
+const sensitive = /@|https?:|\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b|\b(?:\+?55[\s-]?)?(?:\(\d{2}\)|\d{2})[\s.-]?\d{4,5}[-.\s]?\d{4}\b|\b(?:cpf|rg|cep|endereço residencial|data de nascimento|estado civil|apto para|inapto para|recomendo a contratação)\b/i;
 const clean = (value: string) => value.trim() === 'Não informado' ? '' : value.trim();
 const list = (value: string) => clean(value).split(/[,;\n]/).map(v => v.trim()).filter(Boolean).slice(0, 30);
 
@@ -61,10 +61,10 @@ export function explicitTalentConsent(value: string) {
   return value.trim().normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').replace(/\.$/, '') === 'li as informacoes acima e concordo';
 }
 
-export function prepareTalentRows(rows: string[][], known: { origin: string; file: string }[], newId: (file: string) => string) {
+export function prepareTalentRows(rows: string[][], known: { origin: string; file: string }[], newId: (file: string, date: string) => string) {
   const header = rows[0] ?? [];
   const unique = (name: string) => header.indexOf(name) === header.lastIndexOf(name) ? header.indexOf(name) : -1;
-  const originCol = unique('ID Origem'), fileCol = unique('Upload de Currículo');
+  const originCol = unique('ID Origem'), fileCol = unique('Upload de Currículo'), dateCol = unique('Carimbo de data/hora');
   const acceptCols = header.flatMap((h, i) => h.startsWith('Ao enviar este formulário, autorizo a RGA Consultoria de RH') ? [i] : []);
   if (originCol < 0 || fileCol < 0 || acceptCols.length !== 1) return rows;
   const files = rows.slice(1).map(row => sheetResumeFileId(row[fileCol] ?? ''));
@@ -80,7 +80,7 @@ export function prepareTalentRows(rows: string[][], known: { origin: string; fil
     if (refs.length > 1) return row;
     const copy = [...row];
     while (copy.length <= originCol) copy.push('');
-    copy[originCol] = refs[0] ?? newId(file);
+    copy[originCol] = refs[0] ?? newId(file, row[dateCol] ?? '');
     return copy;
   })];
 }
