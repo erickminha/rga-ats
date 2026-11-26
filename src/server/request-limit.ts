@@ -27,3 +27,15 @@ export async function reserveRequest(scope: string, identity: string[], limit: n
   `;
   return changed === 1;
 }
+
+/** Adjust a prior reservation once the upstream reports the actual usage. Never revive an expired counter. */
+export async function settleReservedRequest(scope: string, identity: string[], reserved: number, actual: number) {
+  if (!Number.isSafeInteger(reserved) || reserved < 1 || !Number.isSafeInteger(actual) || actual < 0 || actual > 10_000_000) return;
+  const delta = actual - reserved;
+  if (!delta) return;
+  const key = limitKey(scope, identity);
+  await db.$executeRaw`
+    UPDATE "PasswordResetLimit" SET "count" = GREATEST(0, "count" + ${delta})
+    WHERE "key" = ${key} AND "expiresAt" > ${new Date()}
+  `;
+}
