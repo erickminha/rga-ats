@@ -80,7 +80,15 @@ export async function syncTalentBatch(ctx: SessionContext, mode: 'preview' | 'co
       const snapshot = ref.snapshot;
       const file = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) ? snapshot.resumeDriveFileId : null;
       return typeof file === 'string' ? [{ origin: ref.externalId.slice(prefix.length), file }] : [];
-    }), file => 'DRIVE-RGA-' + hash(file));
+    }), (file, date) => {
+      // Only synthesize identities for new submissions after the reconciled historical export.
+      // An older record with missing evidence must never be recreated after erasure.
+      const m = date.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
+      const after = process.env.RGA_TALENT_DRIVE_ID_FROM;
+      if (!m || !after || !Number.isFinite(Date.parse(after))) return '';
+      const timestamp = Date.parse(m[3] + '-' + m[2] + '-' + m[1] + 'T' + m[4] + ':' + m[5] + ':' + m[6] + '-03:00');
+      return Number.isFinite(timestamp) && timestamp > Date.parse(after) ? 'DRIVE-RGA-' + hash(file) : '';
+    });
   }
   const sheetMode = usesSheetSummaries(ctx.orgId);
   const saved = await db.importRef.findMany({ where: { orgId: ctx.orgId, provider: PROVIDER, kind: 'contact' },
