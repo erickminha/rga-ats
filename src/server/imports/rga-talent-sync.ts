@@ -97,9 +97,11 @@ export async function syncTalentBatch(ctx: SessionContext, mode: 'preview' | 'co
   if (!batch.length) {
     const summaries = mode !== 'preview' && sheetMode ? await syncSheetSummaries(ctx, rows) : { imported: 0, remaining: 0 };
     if (runId && mode !== 'preview') {
+      const previousRun = await db.talentSyncRun.findFirstOrThrow({ where: { id: runId, orgId: ctx.orgId }, select: { errors: true } });
+      const partial = !!(unresolved || skippedErrors || previousRun.errors);
       await db.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId, rowsRead: 0 }, data: { unchanged: Math.max(0, rowsRead - unresolved - skippedErrors) } });
       await db.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId },
-      data: { rowsRead, unresolved, summaries: { increment: summaries.imported }, remaining: skippedErrors + summaries.remaining, ...(summaries.remaining ? { status: 'RUNNING', errorCode: null } : { status: unresolved || skippedErrors ? 'PARTIAL' : 'SUCCEEDED', finishedAt: new Date(), errorCode: unresolved || skippedErrors ? 'review_rows' : null }) } });
+      data: { rowsRead, unresolved, summaries: { increment: summaries.imported }, remaining: skippedErrors + summaries.remaining, ...(summaries.remaining ? { status: 'RUNNING', errorCode: null } : { status: partial ? 'PARTIAL' : 'SUCCEEDED', finishedAt: new Date(), errorCode: partial ? 'review_rows' : null }) } });
     }
     return { changed, unresolved, count: 0, report: null, ticket: null, summariesImported: summaries.imported, summariesRemaining: summaries.remaining };
   }
