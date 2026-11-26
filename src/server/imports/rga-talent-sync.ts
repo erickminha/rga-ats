@@ -22,6 +22,7 @@ export function changedTalentRows(rows: string[][], saved: Map<string, string | 
     if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
   }
   let unresolved = 0;
+  let skippedErrors = 0;
   let changed = 0;
   const batch: { key: string; fingerprint: string; sourceId: string; row: string[] }[] = [];
   const keys = Object.keys(mapping);
@@ -32,14 +33,15 @@ export function changedTalentRows(rows: string[][], saved: Map<string, string | 
     const fields = keys.map(k => row[Number(mapping[k])] ?? '');
     const fingerprint = hash(JSON.stringify([keys, fields]));
     const previous = saved.get(key);
-    if (previous === fingerprint || (!retry && previous === 'erro:' + fingerprint)) continue;
+    if (previous === fingerprint) continue;
+    if (!retry && previous === 'erro:' + fingerprint) { skippedErrors++; continue; }
     changed++;
     if (batch.length < LIMIT) batch.push({ key, fingerprint, sourceId, row: fields });
   }
   const csv = [keys, ...batch.map(item => item.row)].map(row => row.map(value => '"' + value.replaceAll('"', '""') + '"').join(',')).join('\n');
   const file: RgaSpreadsheet = { name: 'sincronizacao.csv', data: Buffer.from(csv), kind: 'talent', headerRow: 1,
     mapping: Object.fromEntries(keys.map((key, i) => [key, String(i)])) };
-  return { batch, file, unresolved, changed, rowsRead: data.length };
+  return { batch, file, unresolved, changed, skippedErrors, rowsRead: data.length };
 }
 
 export async function syncTalentBatch(ctx: SessionContext, mode: 'preview' | 'confirm' | 'scheduled', ticket?: string, retry = false, runId?: string) {
@@ -56,12 +58,12 @@ export async function syncTalentBatch(ctx: SessionContext, mode: 'preview' | 'co
   }
   const saved = await db.importRef.findMany({ where: { orgId: ctx.orgId, provider: PROVIDER, kind: 'contact' },
     select: { externalId: true, fingerprint: true } });
-  const { batch, file, unresolved, changed, rowsRead } = changedTalentRows(rows, new Map(saved.map(ref => [ref.externalId, ref.fingerprint])), retry);
+  const { batch, file, unresolved, changed, skippedErrors, rowsRead } = changedTalentRows(rows, new Map(saved.map(ref => [ref.externalId, ref.fingerprint])), retry);
   if (!batch.length) {
     if (runId) {
-      await db.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId, rowsRead: 0 }, data: { unchanged: rowsRead - unresolved } });
+      await db.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId, rowsRead: 0 }, data: { unchanged: Math.max(0, rowsRead - unresolved - skippedErrors) } });
       await db.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId },
-      data: { rowsRead, unresolved, remaining: 0, status: 'SUCCEEDED', finishedAt: new Date(), errorCode: null } });
+      data: { rowsRead, unresolved, remaining: skippedErrors, status: unresolved || skippedErrors ? 'PARTIAL' : 'SUCCEEDED', finishedAt: new Date(), errorCode: unresolved || skippedErrors ? 'review_rows' : null } });
     }
     return { changed, unresolved, count: 0, report: null, ticket: null };
   }
@@ -83,13 +85,21 @@ export async function syncTalentBatch(ctx: SessionContext, mode: 'preview' | 'co
     }
     if (runId) {
       await tx.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId, rowsRead: 0 },
-        data: { unchanged: Math.max(0, rowsRead - unresolved - changed) } });
+        data: { unchanged: Math.max(0, rowsRead - unresolved - changed - skippedErrors) } });
       await tx.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId }, data: {
       rowsRead, unresolved, remaining: Math.max(0, changed - batch.length), attempts: 0,
       createdCount: { increment: report.created }, updatedCount: { increment: report.updated },
       duplicates: { increment: report.duplicates }, errors: { increment: report.errors }, summaries: { increment: summaries },
-      errorCode: null, ...(changed <= batch.length ? { status: 'SUCCEEDED', finishedAt: new Date() } : {}),
+      errorCode: null,
       } });
+      if (changed <= batch.length) {
+        const current = await tx.talentSyncRun.findFirstOrThrow({ where: { id: runId, orgId: ctx.orgId }, select: { errors: true } });
+        const partial = !!(unresolved || skippedErrors || current.errors || errors.size);
+        await tx.talentSyncRun.updateMany({ where: { id: runId, orgId: ctx.orgId }, data: {
+          status: partial ? 'PARTIAL' : 'SUCCEEDED', remaining: skippedErrors + errors.size,
+          finishedAt: new Date(), errorCode: partial ? 'review_rows' : null,
+        } });
+      }
     }
   };
   const run = await confirmRgaImport(ctx, file, mode === 'scheduled' ? preview.ticket : ticket ?? '', checkpoint);
