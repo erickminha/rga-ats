@@ -72,6 +72,7 @@ export default async function TalentProfilePage({ params }: { params: Promise<{ 
           : <OriginalResume contactId={id} prominent />
       )}
       <Link className="underline" href="/contacts">Voltar ao banco de talentos</Link>
+      <Link className="underline" href={`/disc?profissional=${id}`}>Avaliações DISC</Link>
       {person.opportunities[0] && <Link className="underline" href={`/candidates/${person.opportunities[0].id}`}>Abrir participação mais recente</Link>}
     </nav>
     {canManageRecruiting(ctx) && (sheetMode || cvText) && <section className="mb-4 rounded-card bg-surface p-4" aria-labelledby="texto-cv">

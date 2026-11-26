@@ -240,6 +240,7 @@ model Contact {
   careerProfile  Json?
   talentSummary TalentSummary?
   talentCvText TalentCvText?
+  talentDiscs TalentDisc[]
   salaryExpectation Int?
   location       String?
   emails         String[]
@@ -1656,4 +1657,25 @@ model PostingStageExclusion {
 
   @@id([postingId, stageId])
   @@index([stageId])
+}
+
+model TalentDisc {
+  id String @id @default(uuid())
+  orgId String
+  contactId String
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  createdById String
+  instrument String
+  authorization String
+  externalUrl String?
+  status String @default("PENDING")
+  result Json?
+  validUntil DateTime? @db.Date
+  sentAt DateTime?
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orgId, contactId, createdAt])
+  @@index([orgId, status])
 }
