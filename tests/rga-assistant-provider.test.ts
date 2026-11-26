@@ -20,3 +20,23 @@ describe('Conexão direta do Assistente RGA', () => {
     await expect(assistantChat('auxiliar',[{n:1,professional:'cargo: auxiliar'}])).rejects.toMatchObject({reason:'invalid_response'});
   });
 });
+
+ describe('API nativa DeepSeek', () => {
+  afterEach(() => {vi.unstubAllGlobals(); vi.unstubAllEnvs()});
+  it('usa max_tokens e desativa thinking, preservando diagnóstico HTTP', async () => {
+    vi.stubEnv('RGA_ASSISTANT_ALLOW_EXTERNAL_AI','true');
+    vi.stubEnv('RGA_ASSISTANT_PROVIDER','deepseek');
+    vi.stubEnv('RGA_ASSISTANT_MODEL','deepseek-flash');
+    vi.stubEnv('RGA_ASSISTANT_TOKEN','teste-ficticio');
+    const fake=vi.fn(async (_url:string, _init:RequestInit)=>Response.json({choices:[{finish_reason:'stop',message:{content:'{"answer":"Perfil [1]."}'}}]}));
+    vi.stubGlobal('fetch',fake);
+    await assistantChat('teste',[{n:1,professional:'Auxiliar'}]);
+    const body=JSON.parse(String(fake.mock.calls[0][1].body));
+    expect(body).toMatchObject({model:'deepseek-flash',max_tokens:1800,thinking:{type:'disabled'}});
+    expect(body).not.toHaveProperty('max_completion_tokens');
+    fake.mockImplementation(async()=>new Response('{}',{status:402}));
+    await expect(assistantChat('teste',[])).rejects.toMatchObject({reason:'http_402'});
+    fake.mockImplementation(async()=>Response.json({choices:[{message:{content:' '}}]}));
+    await expect(assistantChat('teste',[])).rejects.toMatchObject({reason:'empty_response'});
+  });
+});
