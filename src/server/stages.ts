@@ -122,8 +122,17 @@ export async function setStageOrder(ctx: SessionContext, ids: string[]) {
 export async function deleteStage(ctx: SessionContext, stageId: string) {
   requireStageAdmin(ctx);
   const result = await db.$transaction(async (tx) => {
-    const stage = (await lockStages(tx, ctx.orgId)).find((row) => row.id === stageId);
+    const stages = await lockStages(tx, ctx.orgId);
+    const stage = stages.find((row) => row.id === stageId);
     if (!stage) throw new Error('Etapa não encontrada.');
+    if (!stage.disabled && (stage.type === 'APPLICANT' || stage.type === 'HIRED') &&
+        !stages.some(row => row.id !== stageId && !row.disabled && row.type === stage.type)) {
+      throw new Error('Mantenha pelo menos uma etapa ativa de candidatura e contratação.');
+    }
+    if (!stage.disabled && stage.type !== 'HIRED' &&
+        !stages.some(row => row.id !== stageId && !row.disabled && row.type !== 'HIRED')) {
+      throw new Error('Mantenha pelo menos uma etapa inicial ativa.');
+    }
 
     const stageCount = await tx.stage.count({ where: { orgId: ctx.orgId } });
     if (stageCount <= 1) throw new Error('Mantenha ao menos uma etapa.');
@@ -225,6 +234,9 @@ export async function setStageAvailability(ctx: SessionContext, stageId: string,
     }
     if (!enabled && !stages.some(row => row.id !== stageId && !row.disabled && row.type !== 'HIRED')) {
       throw new Error('Mantenha pelo menos uma etapa inicial ativa.');
+    }
+    if (!enabled && stage.type === 'HIRED' && !stages.some(row => row.id !== stageId && !row.disabled && row.type === 'HIRED')) {
+      throw new Error('Mantenha pelo menos uma etapa de contratação ativa.');
     }
     await tx.stage.update({ where: { id: stageId }, data: { disabled: !enabled } });
     await emitEvent(tx, { orgId: ctx.orgId, ...actorOf(ctx), verb: 'stage.availability_changed', subjectType: 'stage', subjectId: stageId, payload: { enabled } });
