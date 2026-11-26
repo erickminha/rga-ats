@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { parseSheetSummary, prepareTalentRows, sheetSummaryRows } from '@/lib/rga-sheet-summary';
+import { parseSheetSummary, prepareTalentRows, sheetCvRows, sheetSummaryRows } from '@/lib/rga-sheet-summary';
 import { syncSheetSummaries } from '@/server/imports/rga-sheet-summary';
 import { db } from '@/lib/db';
 import { getTalentSummary, requestTalentSummary, reviewTalentSummary } from '@/server/talent-summary';
@@ -48,6 +48,14 @@ it('preserva ID existente e restaura apenas o vínculo de arquivo único com ace
   expect(prepareTalentRows([header, ['', link, summary, 'Não concordo']], [], () => 'novo')[1][0]).toBe('');
 });
 
+it('importa Texto CV integral sem exigir resumo ou excluir contatos do documento', () => {
+  const cvHeader = ['ID Origem', 'Upload de Currículo', 'Texto CV'];
+  const raw = 'Pessoa Fictícia\nContato: pessoa@example.invalid\nExperiência em SAP';
+  expect(sheetCvRows([cvHeader, ['id1', link, raw]])).toEqual([{ origin: 'id1', file, text: raw, cvText: raw }]);
+  expect(sheetCvRows([cvHeader, ['id1', link, raw], ['id2', link, '']])).toEqual([]);
+  expect(sheetCvRows([cvHeader, ['id1', link, 'ERRO: OCR']])).toEqual([]);
+});
+
 describe.skipIf(!hasDb)('importação sem provedor de IA', () => {
   it('é idempotente, conserva revisão, não chama IA e respeita revogação', async () => {
     const { org, admin } = await createOrg();
@@ -67,6 +75,12 @@ describe.skipIf(!hasDb)('importação sem provedor de IA', () => {
     await reviewTalentSummary(ctx, person.id, 'Experiência conferida pela recrutadora.');
     expect((await syncSheetSummaries(ctx, [header, ['id1', link, summary.replace('SAP', 'Power BI')]])).imported).toBe(1);
     expect(await db.talentSummary.findUniqueOrThrow({ where: { contactId: person.id } })).toMatchObject({ provider: 'sheets', tokens: 0, reviewedText: 'Experiência conferida pela recrutadora.', searchText: expect.stringContaining('Power BI') });
+    const cvHeader = ['ID Origem', 'Upload de Currículo', 'Texto CV'];
+    const raw = 'Pessoa fictícia\nContato: pessoa@example.invalid\nExperiência em SAP';
+    expect((await syncSheetSummaries(ctx, [cvHeader, ['id1', link, raw]])).imported).toBe(1);
+    expect((await syncSheetSummaries(ctx, [cvHeader, ['id1', link, raw]])).imported).toBe(0);
+    expect(await getTalentSummary(ctx, person.id)).toMatchObject({ content: { cvText: raw }, reviewedText: 'Experiência conferida pela recrutadora.' });
+    expect((await db.talentSummary.findUniqueOrThrow({ where: { contactId: person.id } })).searchText).not.toContain('pessoa@example.invalid');
     await recordTalentPreference(ctx, person.id, false);
     expect((await syncSheetSummaries(ctx, source)).imported).toBe(0);
     expect(await db.talentSummary.count({ where: { contactId: person.id } })).toBe(0);
