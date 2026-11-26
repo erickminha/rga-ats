@@ -40,3 +40,30 @@ describe('Conexão direta do Assistente RGA', () => {
     await expect(assistantChat('teste',[])).rejects.toMatchObject({reason:'empty_response'});
   });
 });
+
+describe('API direta Groq GPT-OSS', () => {
+  afterEach(() => {vi.unstubAllGlobals(); vi.unstubAllEnvs()});
+  it.each(['openai/gpt-oss-120b','openai/gpt-oss-20b'])('usa parâmetros compatíveis com %s', async (model) => {
+    vi.stubEnv('RGA_ASSISTANT_ALLOW_EXTERNAL_AI','true');
+    vi.stubEnv('RGA_ASSISTANT_PROVIDER','groq');
+    vi.stubEnv('RGA_ASSISTANT_MODEL',model);
+    vi.stubEnv('RGA_ASSISTANT_TOKEN','teste-ficticio');
+    const fake = vi.fn(async (_url:string, _init:RequestInit) => Response.json({
+      choices:[{finish_reason:'stop',message:{content:'{"answer":"Perfil [1]."}',reasoning:'raciocínio não destinado à resposta'}}],
+      usage:{total_tokens:151}
+    }));
+    vi.stubGlobal('fetch',fake);
+    const result = await assistantChat('teste',[{n:1,professional:'Auxiliar'}]);
+    expect(result).toEqual({answer:'Perfil [1].',provider:'groq',model,tokens:151});
+    const [url,init] = fake.mock.calls[0];
+    expect(url).toBe('https://api.groq.com/openai/v1/chat/completions');
+    expect(init.redirect).toBe('error');
+    const body = JSON.parse(String(init.body));
+    expect(body).toMatchObject({model,max_completion_tokens:1000,reasoning_effort:'low',response_format:{type:'json_object'}});
+    expect(body).not.toHaveProperty('max_tokens');
+    expect(body).not.toHaveProperty('thinking');
+    fake.mockImplementation(async()=>new Response('{}',{status:429}));
+    await expect(assistantChat('teste',[])).rejects.toMatchObject({reason:'http_429'});
+    expect(fake).toHaveBeenCalledTimes(2);
+  });
+});
