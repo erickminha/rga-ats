@@ -16,7 +16,8 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
   const ctx = await requireSession();
   if (!canManageRecruiting(ctx)) notFound();
   const params = await searchParams;
-  if (params.modo !== 'vagas') return <TalentDiscCentral ctx={ctx} params={params} />;
+  const legacy = ['vaga','candidato','empresa','participacao','situacao','responsavel','desde'].some(key => Boolean(params[key as keyof typeof params]));
+  if (params.modo !== 'vagas' && !legacy) return <TalentDiscCentral ctx={ctx} params={params} />;
   const since = params.desde && /^\d{4}-\d{2}-\d{2}$/.test(params.desde) ? new Date(params.desde + 'T00:00:00-03:00') : null;
   const deadline = new Date();
   const cases: Record<string, Prisma.NativeDiscWhereInput> = {
@@ -55,6 +56,7 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
     {!canInvite && <p className="text-sm">Convites reais aguardam a aprovação e configuração da metodologia pela administração.</p>}
     {isAdmin(ctx) && <Link className="underline" href="/settings/ia">Configurar inteligência artificial</Link>}
     <form className="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="modo" value="vagas" />
       <label className="grid text-sm">Candidato <input className="rounded-field border border-line p-2" name="candidato" defaultValue={params.candidato} /></label>
       <label className="grid text-sm">Empresa <input className="rounded-field border border-line p-2" name="empresa" defaultValue={params.empresa} /></label>
       <label className="grid text-sm">Vaga <select className="rounded-field border border-line p-2" name="vaga" defaultValue={params.vaga}>
