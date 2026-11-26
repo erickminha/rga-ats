@@ -398,6 +398,7 @@ model Stage {
   createdAt DateTime  @default(now())
 
   disabled Boolean @default(false)
+  operationalRole String?
   postingExclusions PostingStageExclusion[]
   opportunities   Opportunity[]
   transitionsFrom StageTransition[] @relation("FromStage")
