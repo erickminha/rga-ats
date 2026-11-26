@@ -48,7 +48,7 @@ export async function processTalentSync(orgId: string) {
     await db.talentSyncRun.update({ where: { id: run.id }, data: { status: 'RUNNING', startedAt: run.startedAt ?? new Date() } });
     try {
       const result = await syncTalentBatch({ orgId, userId: admin.id, accessRole: admin.accessRole }, 'scheduled', undefined, false, run.id);
-      return { processed: result.count, remaining: result.changed - result.count };
+      return { processed: result.count, remaining: result.changed - result.count + ('summariesRemaining' in result ? result.summariesRemaining ?? 0 : 0), summariesImported: 'summariesImported' in result ? result.summariesImported ?? 0 : 0 };
     } catch {
       const attempts = run.attempts + 1;
       await db.talentSyncRun.updateMany({ where: { id: run.id, status: 'RUNNING' }, data: {
