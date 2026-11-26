@@ -4,8 +4,8 @@ Base de integração `homolog`, commit `c4bb6d6739dc394dddf8c52a6a2e73142fb95b75
 
 ## 1. Problemas encontrados
 
-- A execução diária `c4a38c50-182d-4041-972d-f8666d39415e` começou às 11h46min59s de Brasília em 26/11/2026. Durante a auditoria, seguia em execução com 2.154 linhas lidas, 1.561 pendentes e 9 erros. O contador de resumos da execução era 28, enquanto 657 registros no banco já tinham Texto CV. O número acumulado no banco inclui os textos persistidos até a consulta, sem atribuição individual àquela execução.
-- Os nove erros de linha registrados eram de validação de telefone brasileiro. Os identificadores abaixo são do relatório de importação e as posições são do CSV intermediário de cada lote, sem relação direta com o número da linha em Sheets. O relatório não comprova se a origem contém telefone internacional, erro de entrada ou outra causa de formatação.
+- A execução diária `c4a38c50-182d-4041-972d-f8666d39415e` começou às 11h46min59s de Brasília em 26/11/2026. Durante a auditoria, seguia em execução com 2.154 linhas lidas, 1.561 pendentes e 9 erros. O contador de resumos da execução era 28, enquanto 657 registros no banco já tinham Texto CV. Às 12h33min03s, a mesma execução ainda estava em andamento, com 1.169 pendências, 16 erros, 181 no contador de resumos e 810 Textos CV no banco. O número acumulado no banco inclui os textos persistidos até cada consulta, sem atribuição individual à execução.
+- Os 16 erros de linha consultados eram de validação de telefone brasileiro. Os identificadores abaixo são do relatório de importação e as posições são do CSV intermediário de cada lote, sem relação direta com o número da linha em Sheets. O relatório não comprova se a origem contém telefone internacional, erro de entrada ou outra causa de formatação.
 - A deduplicação diária retornava qualquer execução do mesmo dia, inclusive `FAILED`. O histórico podia mostrar pendências mesmo após terminar a varredura e não distinguia textos importados de resumos.
 - Em homologação, havia 2.103 profissionais ativos, 2.102 autorizações vigentes, 2.102 referências com vínculo do Drive, 21 empresas e 38 vagas. Nenhuma vaga tinha `clientCompanyId`.
 
@@ -16,6 +16,10 @@ Base de integração `homolog`, commit `c4bb6d6739dc394dddf8c52a6a2e73142fb95b75
 | `eb035106-1430-4b81-949c-d5daa30687b3` | 65 |
 | `e47796e3-1d01-44b6-852b-d168961e1a99` | 30, 48 |
 | `460f7cf9-8d5a-4f2a-8701-7beaf9a56562` | 65, 94 |
+| `8210d44b-20fe-4fba-ac31-83a5bd1867fb` | 39, 80 |
+| `94a2d180-7108-4bb4-af75-007ab4f0cd0b` | 47, 82 |
+| `3b428820-ae1f-46da-9ce6-c079860c516a` | 80, 84 |
+| `c02ccb00-9879-4cd7-bc73-40a0403c7a79` | 7 |
 
 ## 2. Causas identificadas
 
@@ -49,11 +53,11 @@ A área de dados A:C de `Controle de Vagas` retornou apenas o cabeçalho. A plan
 
 ## 4. Evidências de testes
 
-Os comandos e resultados finais estão no PR. Chromium local em 1440 × 900 e 390 × 844 verificou a ficha, as quebras do OCR, o resumo anterior, o redirecionamento simulado do Drive, o PDF privado, a negação após revogação, a busca com link e o histórico. Outra organização recebeu negação para a ficha e para o download. Uma migração com dados fictícios no formato anterior preservou o OCR autorizado, o resumo revisado e o histórico do cursor, e excluiu o OCR do cadastro revogado. A validação usa PostgreSQL local descartável e não lê dados pessoais de homologação. As regressões cobrem página retomada após falha, diário após falha terminal, importação e atualização de OCR, revisão preservada, conteúdo inválido, revogação, isolamento por organização e exemplos de busca sem requisições ao provedor. A suíte de currículos valida pasta autorizada, escopo, idempotência, integridade e arquivo fictício.
+`npm ci`, `npx prisma validate`, `npm run typecheck`, `npm test` e `npm run build` passaram. A suíte completa passou com 1.099 testes em 104 arquivos. Os 19 testes focados da entrega também passaram. Chromium local em 1440 × 900 e 390 × 844 verificou a ficha, as quebras do OCR, o resumo anterior, o redirecionamento simulado do Drive, o PDF privado, a negação após revogação, a busca com link e o histórico. Outra organização recebeu negação para a ficha e para o download. Uma migração com dados fictícios no formato anterior preservou o OCR autorizado, o resumo revisado e o histórico do cursor, e excluiu o OCR do cadastro revogado. A validação usa PostgreSQL local descartável e não lê dados pessoais de homologação. As regressões cobrem página retomada após falha, diário após falha terminal, importação e atualização de OCR, revisão preservada, conteúdo inválido, revogação, isolamento por organização e exemplos de busca sem requisições ao provedor. A suíte de currículos valida pasta autorizada, escopo, idempotência, integridade e arquivo fictício.
 
 ## 5. Riscos residuais
 
-- Os nove relatórios comprovam rejeição na validação de telefone. A correção do valor depende de evidência da origem. As referências dos lotes devem ser usadas em sessão administrativa. Evite copiar valores para tickets, mensagens ou logs.
+- Os nove relatórios registram 16 rejeições na validação de telefone. A correção do valor depende de evidência da origem. As referências dos lotes devem ser usadas em sessão administrativa. Evite copiar valores para tickets, mensagens ou logs.
 - A paginação ainda consulta o índice global de identidade em cada execução de lote para impedir associação ambígua. O tamanho máximo de resposta do Google permanece 32 MB por chamada. Medir latência, bytes e frequência de consultas com a carga efetiva depois que a revisão estiver no ar. Busca de texto é lexical e as categorias de evidência dependem da redação do currículo. A análise da experiência cabe à recrutadora.
 - Três amostras de currículos PDF no Drive apresentaram permissões individuais e nenhuma entrada pública na consulta de metadados da conta conectada. A conta Google do navegador da recrutadora decide a abertura. O Drive informa quando um original foi apagado ou o acesso foi retirado. Revogar no ATS impede novas aberturas a partir do sistema. Permissões Google, cópias já baixadas e backups exigem controle próprio.
 - O R2 de homologação tem domínio `r2.dev` desativado, sem domínio personalizado. A política do bucket observada aborta multipart após sete dias. A aplicação autentica a transferência ao S3/R2 no servidor e transmite o download pela sessão ATS. Use o tempo de expiração da sessão e revogação do ATS como limites desse acesso. O repositório contém ensaios de formato, tamanho, análise de malware e exclusão pendente. A disponibilidade do scanner e a política de retenção no bucket ainda precisam de teste operacional.
