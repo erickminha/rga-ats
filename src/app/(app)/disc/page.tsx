@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { TalentDiscCentral } from '@/components/talent-disc-central';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { canManageRecruiting, isAdmin, requireSession } from '@/lib/session';
@@ -11,10 +12,11 @@ import { dimensions, localDiscInterpretation, type Scores } from '@/lib/native-d
 const colors = { D: '#B42318', I: '#F9C82B', S: '#23734D', C: '#116DA9' };
 const date = (when: Date) => when.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
-export default async function DiscPage({ searchParams }: { searchParams: Promise<{ vaga?: string; candidato?: string; empresa?: string; participacao?: string; situacao?: string; responsavel?: string; desde?: string }> }) {
+export default async function DiscPage({ searchParams }: { searchParams: Promise<{ vaga?: string; candidato?: string; empresa?: string; participacao?: string; situacao?: string; responsavel?: string; desde?: string; modo?: string; busca?: string; profissional?: string; estado?: string; aviso?: string }> }) {
   const ctx = await requireSession();
   if (!canManageRecruiting(ctx)) notFound();
   const params = await searchParams;
+  if (params.modo !== 'vagas') return <TalentDiscCentral ctx={ctx} params={params} />;
   const since = params.desde && /^\d{4}-\d{2}-\d{2}$/.test(params.desde) ? new Date(params.desde + 'T00:00:00-03:00') : null;
   const deadline = new Date();
   const cases: Record<string, Prisma.NativeDiscWhereInput> = {
@@ -49,6 +51,7 @@ export default async function DiscPage({ searchParams }: { searchParams: Promise
   const canInvite = test || realDiscAvailable();
   return <main className="grid gap-4 p-5">
     <PageHeader title="Central DISC" subtitle="Convites, acompanhamento e revisão das avaliações por vaga." />
+    <Link className="underline" href="/disc">Avaliações por profissional (banco de talentos)</Link>
     {!canInvite && <p className="text-sm">Convites reais aguardam a aprovação e configuração da metodologia pela administração.</p>}
     {isAdmin(ctx) && <Link className="underline" href="/settings/ia">Configurar inteligência artificial</Link>}
     <form className="flex flex-wrap items-end gap-3">

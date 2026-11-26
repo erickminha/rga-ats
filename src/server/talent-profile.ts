@@ -144,6 +144,7 @@ export async function recordTalentPreference(ctx: SessionContext, id: string, gr
     if (!granted) {
       await tx.talentSummary.deleteMany({ where: { orgId: ctx.orgId, contactId: id } });
       await tx.talentCvText.deleteMany({ where: { orgId: ctx.orgId, contactId: id } });
+      await tx.talentDisc.deleteMany({ where: { orgId: ctx.orgId, contactId: id } });
     }
     else if (process.env.RGA_SUMMARY_AUTO === 'true') await queueTalentSummary(tx, ctx.orgId, id, 20);
     await emitEvent(tx, {
