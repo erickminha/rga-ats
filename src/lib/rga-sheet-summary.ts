@@ -55,3 +55,32 @@ export function sheetSummaryRows(rows: string[][]) {
     return summary ? [{ origin: row.origin, file: row.file, ...summary }] : [];
   });
 }
+
+
+export function explicitTalentConsent(value: string) {
+  return value.trim().normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').replace(/\.$/, '') === 'li as informacoes acima e concordo';
+}
+
+export function prepareTalentRows(rows: string[][], known: { origin: string; file: string }[], newId: (file: string) => string) {
+  const header = rows[0] ?? [];
+  const unique = (name: string) => header.indexOf(name) === header.lastIndexOf(name) ? header.indexOf(name) : -1;
+  const originCol = unique('ID Origem'), fileCol = unique('Upload de Currículo');
+  const acceptCols = header.flatMap((h, i) => h.startsWith('Ao enviar este formulário, autorizo a RGA Consultoria de RH') ? [i] : []);
+  if (originCol < 0 || fileCol < 0 || acceptCols.length !== 1) return rows;
+  const files = rows.slice(1).map(row => sheetResumeFileId(row[fileCol] ?? ''));
+  const counts = new Map<string, number>();
+  for (const file of files) if (file) counts.set(file, (counts.get(file) ?? 0) + 1);
+  const lookup = new Map<string, string[]>();
+  for (const ref of known) if (ref.file) lookup.set(ref.file, [...(lookup.get(ref.file) ?? []), ref.origin]);
+  return [header, ...rows.slice(1).map((row, i) => {
+    if ((row[originCol] ?? '').trim() || !explicitTalentConsent(row[acceptCols[0]] ?? '')) return row;
+    const file = files[i];
+    if (!file || counts.get(file) !== 1) return row;
+    const refs = lookup.get(file) ?? [];
+    if (refs.length > 1) return row;
+    const copy = [...row];
+    while (copy.length <= originCol) copy.push('');
+    copy[originCol] = refs[0] ?? newId(file);
+    return copy;
+  })];
+}
